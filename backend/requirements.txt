@@ -11,3 +11,6 @@ lancedb==0.5.5
 requests==2.31.0
 beautifulsoup4==4.12.2
 lxml==4.9.3
+imapclient==2.3.1
+email-validator==2.1.0
+python-multipart==0.0.6

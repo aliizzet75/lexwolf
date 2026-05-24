@@ -4,6 +4,7 @@ import os
 
 # Import API routers
 from api.legal_db import router as legal_db_router
+from api.email import router as email_router
 
 app = FastAPI(
     title="LexWolf Legal Database API",
@@ -22,6 +23,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(legal_db_router)
+app.include_router(email_router)
 
 @app.get("/")
 async def root():
