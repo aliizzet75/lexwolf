@@ -1,11 +1,34 @@
-INFO:     Started server process [396112]
+INFO:     Started server process [397114]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:55296 - "GET /documents/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55304 - "GET /documents/k%C3%BCndigungsschutzklage HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55320 - "POST /documents/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55330 - "POST /documents/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55342 - "POST /documents/format?format_type=text HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55358 - "POST /documents/ HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:55370 - "POST /documents/ HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:48294 - "GET /knowledge/health HTTP/1.1" 200 OK
+INFO:api.knowledge:Storing knowledge chunk: § 1 KSchG - Allgemeiner Teil
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 401 Unauthorized"
+Error generating embedding: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your_ope************here. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+Stored chunk: § 1 KSchG - Allgemeiner Teil
+INFO:     127.0.0.1:48304 - "POST /knowledge/chunks HTTP/1.1" 200 OK
+INFO:api.knowledge:Searching knowledge database for query: Kündigungsschutz nach § 1 KSchG
+INFO:services.search_service:Performing hybrid search for query: Kündigungsschutz nach § 1 KSchG
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 401 Unauthorized"
+INFO:services.search_service:Generated query embedding
+INFO:services.search_service:Dense search returned 3 results
+INFO:services.search_service:Sparse search returned 3 results
+INFO:services.search_service:RRF fusion returned 3 results
+INFO:api.knowledge:Found 3 results
+Error generating embedding: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your_ope************here. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+INFO:     127.0.0.1:48314 - "POST /knowledge/search HTTP/1.1" 200 OK
+INFO:api.knowledge:Fetching knowledge chunk: 1
+INFO:     127.0.0.1:48330 - "GET /knowledge/chunks/1 HTTP/1.1" 200 OK
+INFO:api.knowledge:Fetching knowledge database statistics
+INFO:     127.0.0.1:48332 - "GET /knowledge/stats HTTP/1.1" 200 OK
+INFO:api.knowledge:Searching knowledge database for query: 
+INFO:services.search_service:Performing hybrid search for query: 
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 401 Unauthorized"
+INFO:services.search_service:Generated query embedding
+INFO:services.search_service:Dense search returned 3 results
+INFO:services.search_service:Sparse search returned 3 results
+INFO:services.search_service:RRF fusion returned 3 results
+INFO:api.knowledge:Found 3 results
+Error generating embedding: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your_ope************here. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+INFO:     127.0.0.1:48334 - "POST /knowledge/search HTTP/1.1" 200 OK
