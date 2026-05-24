@@ -1,0 +1,11 @@
+INFO:     Started server process [396112]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55296 - "GET /documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55304 - "GET /documents/k%C3%BCndigungsschutzklage HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55320 - "POST /documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55330 - "POST /documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55342 - "POST /documents/format?format_type=text HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55358 - "POST /documents/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55370 - "POST /documents/ HTTP/1.1" 400 Bad Request
