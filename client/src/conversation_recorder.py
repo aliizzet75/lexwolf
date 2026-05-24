@@ -2,16 +2,31 @@ import threading
 import time
 import queue
 import json
+import requests
 from datetime import datetime
 import re
 
 class ConversationRecorder:
-    def __init__(self):
+    def __init__(self, server_url="http://localhost:8000"):
         self.is_recording = False
         self.conversation_data = []
         self.recording_thread = None
         self.audio_queue = queue.Queue()
+        self.server_url = server_url
+        self.client_id = None
         
+    def set_client_id(self, client_id):
+        """
+        Set client ID for conversation tracking
+        """
+        self.client_id = client_id
+    
+    def set_server_url(self, server_url):
+        """
+        Set server URL for API calls
+        """
+        self.server_url = server_url
+    
     def start_recording(self):
         """
         Start conversation recording
@@ -276,6 +291,67 @@ class ConversationRecorder:
         except Exception as e:
             print(f"Fehler beim Laden des Gesprächs: {e}")
             return False
+    
+    def send_to_server(self):
+        """
+        Send conversation data to server for processing
+        """
+        if not self.conversation_data:
+            return {"success": False, "message": "Keine Gesprächsdaten zum Senden"}
+        
+        try:
+            # Combine all transcripts into one
+            full_transcript = "\n".join([entry["transcript"] for entry in self.conversation_data])
+            
+            # Prepare data for server
+            payload = {
+                "transcript": full_transcript,
+                "client_id": self.client_id
+            }
+            
+            # Send to server
+            response = requests.post(
+                f"{self.server_url}/conversation/process",
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return {"success": True, "data": result}
+            else:
+                return {"success": False, "message": f"Serverfehler: {response.status_code}"}
+                
+        except requests.exceptions.RequestException as e:
+            return {"success": False, "message": f"Netzwerkfehler: {str(e)}"}
+        except Exception as e:
+            return {"success": False, "message": f"Unerwarteter Fehler: {str(e)}"}
+    
+    def get_server_summary(self, conversation_data):
+        """
+        Get summary from server
+        """
+        try:
+            payload = {
+                "conversation_data": conversation_data
+            }
+            
+            response = requests.post(
+                f"{self.server_url}/conversation/summarize",
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return {"success": True, "data": result}
+            else:
+                return {"success": False, "message": f"Serverfehler: {response.status_code}"}
+                
+        except requests.exceptions.RequestException as e:
+            return {"success": False, "message": f"Netzwerkfehler: {str(e)}"}
+        except Exception as e:
+            return {"success": False, "message": f"Unerwarteter Fehler: {str(e)}"}
 
 # Example usage
 if __name__ == "__main__":

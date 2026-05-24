@@ -7,6 +7,9 @@ from datetime import datetime
 import threading
 import queue
 
+# Import conversation recorder
+from conversation_recorder import ConversationRecorder
+
 class LexWolfClient:
     def __init__(self, root):
         self.root = root
@@ -18,6 +21,9 @@ class LexWolfClient:
         self.style_profile = None
         self.documents = []
         self.conversations = []
+        
+        # Conversation recorder
+        self.conversation_recorder = ConversationRecorder()
         
         # Create UI
         self.create_menu()
@@ -156,6 +162,21 @@ class LexWolfClient:
         self.record_btn = ttk.Button(controls_frame, text="Gespräch aufzeichnen", command=self.toggle_recording)
         self.record_btn.pack(side=tk.LEFT)
         
+        send_btn = ttk.Button(controls_frame, text="An Server senden", command=self.send_conversation_to_server)
+        send_btn.pack(side=tk.LEFT, padx=(5, 0))
+        
+        # Conversation input
+        input_frame = ttk.Frame(self.conversations_frame)
+        input_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(input_frame, text="Transkript hinzufügen:").pack(anchor=tk.W)
+        self.transcript_var = tk.StringVar()
+        transcript_entry = ttk.Entry(input_frame, textvariable=self.transcript_var, width=80)
+        transcript_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        
+        add_btn = ttk.Button(input_frame, text="Hinzufügen", command=self.add_transcript)
+        add_btn.pack(side=tk.LEFT)
+        
         # Conversation display
         conv_label = ttk.Label(self.conversations_frame, text="Gesprächsverlauf:", font=("Arial", 10, "bold"))
         conv_label.pack(anchor=tk.W, pady=(10, 5))
@@ -178,11 +199,14 @@ class LexWolfClient:
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
         
     def load_config(self):
-        config_file = "config.json"
+        config_file = "config/default.json"
         if os.path.exists(config_file):
             try:
                 with open(config_file, "r") as f:
                     self.config = json.load(f)
+                    # Update conversation recorder with server URL
+                    server_url = self.config.get("server_url", "http://localhost:8000")
+                    self.conversation_recorder.set_server_url(server_url)
             except:
                 self.config = {}
         else:
@@ -193,7 +217,8 @@ class LexWolfClient:
             self.save_config()
             
     def save_config(self):
-        with open("config.json", "w") as f:
+        os.makedirs("config", exist_ok=True)
+        with open("config/default.json", "w") as f:
             json.dump(self.config, f, indent=2)
             
     def new_case(self):
@@ -227,6 +252,9 @@ class LexWolfClient:
                 # Add to treeview
                 self.cases_tree.insert("", "end", values=(name, client, datetime.now().strftime("%d.%m.%Y"), "Neu"))
                 
+                # Set client ID for conversation recorder
+                self.conversation_recorder.set_client_id(case_data["id"])
+                
                 case_window.destroy()
                 messagebox.showinfo("Erfolg", f"Fall '{name}' wurde erstellt.")
             else:
@@ -248,7 +276,9 @@ class LexWolfClient:
         messagebox.showinfo("Info", "Dokumentenerstellung Funktion")
         
     def record_conversation(self):
-        messagebox.showinfo("Info", "Gespräch aufzeichnen Funktion")
+        # This opens the conversations tab and starts recording
+        self.notebook.select(self.conversations_frame)
+        self.toggle_recording()
         
     def server_settings(self):
         # Server settings dialog
@@ -264,6 +294,8 @@ class LexWolfClient:
         def save_settings():
             self.config["server_url"] = url_var.get()
             self.save_config()
+            # Update conversation recorder
+            self.conversation_recorder.set_server_url(url_var.get())
             settings_window.destroy()
             messagebox.showinfo("Erfolg", "Einstellungen gespeichert.")
             
@@ -302,10 +334,54 @@ class LexWolfClient:
             self.record_btn.config(text="Gespräch aufzeichnen")
             self.status_var.set("Aufzeichnung gestoppt")
             self.conv_text.insert(tk.END, f"[{datetime.now().strftime('%H:%M:%S')}] Gespräch beendet\n")
-            self.suggestions_text.insert(tk.END, "Vorschläge:\n")
-            self.suggestions_text.insert(tk.END, "• Kündigungsschutzklage vorbereiten\n")
-            self.suggestions_text.insert(tk.END, "• Frist 15.06. für Widerspruch eintragen\n")
-            self.suggestions_text.insert(tk.END, "• Zusammenfassung per E-Mail senden\n")
+            
+            # Generate suggestions
+            self.generate_suggestions()
+    
+    def add_transcript(self):
+        transcript = self.transcript_var.get()
+        if transcript:
+            self.conversation_recorder.add_transcript(transcript)
+            self.conv_text.insert(tk.END, f"[{datetime.now().strftime('%H:%M:%S')}] {transcript}\n")
+            self.transcript_var.set("")
+            
+            # Auto-generate suggestions when adding transcript
+            self.generate_suggestions()
+    
+    def generate_suggestions(self):
+        summary = self.conversation_recorder.generate_summary()
+        suggestions = summary.get("suggestions", [])
+        
+        self.suggestions_text.delete(1.0, tk.END)
+        self.suggestions_text.insert(tk.END, "Vorschläge:\n")
+        for suggestion in suggestions:
+            self.suggestions_text.insert(tk.END, f"• {suggestion}\n")
+    
+    def send_conversation_to_server(self):
+        self.status_var.set("Sende Gespräch an Server...")
+        self.root.update()
+        
+        # Send conversation to server
+        result = self.conversation_recorder.send_to_server()
+        
+        if result["success"]:
+            self.status_var.set("Gespräch erfolgreich an Server gesendet")
+            messagebox.showinfo("Erfolg", "Gespräch wurde erfolgreich an den Server gesendet.")
+            
+            # Get server summary
+            server_summary = self.conversation_recorder.get_server_summary(result["data"])
+            if server_summary["success"]:
+                self.display_server_summary(server_summary["data"])
+        else:
+            self.status_var.set("Fehler beim Senden an Server")
+            messagebox.showerror("Fehler", f"Fehler beim Senden an Server: {result['message']}")
+    
+    def display_server_summary(self, summary_data):
+        self.suggestions_text.insert(tk.END, "\n--- Server-Zusammenfassung ---\n")
+        self.suggestions_text.insert(tk.END, f"Themen: {', '.join(summary_data.get('topics', []))}\n")
+        self.suggestions_text.insert(tk.END, f"Vorschläge:\n")
+        for suggestion in summary_data.get('suggested_actions', []):
+            self.suggestions_text.insert(tk.END, f"• {suggestion}\n")
 
 def main():
     root = tk.Tk()
