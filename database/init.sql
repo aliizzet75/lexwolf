@@ -11,13 +11,22 @@ CREATE TABLE IF NOT EXISTS legal_documents (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create table for legal knowledge base
+-- Create table for document versions
+CREATE TABLE IF NOT EXISTS document_versions (
+    id SERIAL PRIMARY KEY,
+    document_id INTEGER REFERENCES legal_documents(id),
+    content TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for legal knowledge base with vector embeddings
 CREATE TABLE IF NOT EXISTS legal_knowledge (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     content TEXT,
-    embedding vector(1536),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    embedding vector(1536),  -- Using ada-002 with 1536 dimensions
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create table for users
