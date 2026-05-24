@@ -1,121 +1,48 @@
-import sqlite3
 import os
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from models import Base, LegalDocument, DocumentVersion, LegalKnowledge, User
 
-# Create SQLite database and tables
+# Database setup
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://lexwolf:lexwolf@localhost:5432/lexwolf")
+engine = create_engine(DATABASE_URL)
+
+# Create database tables
+try:
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created successfully")
+except Exception as e:
+    print(f"Error creating database tables: {e}")
+
+# Create a session to check if tables exist and are accessible
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 def init_db():
-    # Ensure database directory exists
-    db_path = "data/lexwolf.db"
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    # Create entries table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            content TEXT,
-            chapter TEXT,
-            tags TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Create versions table for edit history
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS versions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            entry_id INTEGER,
-            content TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (entry_id) REFERENCES entries (id)
-        )
-    ''')
-    
-    # Create roadmap table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS roadmap (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            task TEXT NOT NULL,
-            quarter TEXT,
-            status TEXT DEFAULT 'planned',
-            progress_percent REAL DEFAULT 0.0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Create FTS5 virtual table for full-text search
-    cursor.execute('''
-        CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
-            title, 
-            content, 
-            chapter, 
-            tags,
-            content='entries',
-            content_rowid='id'
-        )
-    ''')
-    
-    # Create triggers to keep FTS table in sync
-    cursor.execute('''
-        CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN
-            INSERT INTO entries_fts(rowid, title, content, chapter, tags) 
-            VALUES (new.id, new.title, new.content, new.chapter, new.tags);
-        END
-    ''')
-    
-    cursor.execute('''
-        CREATE TRIGGER IF NOT EXISTS entries_ad AFTER DELETE ON entries BEGIN
-            INSERT INTO entries_fts(fts_entries, rowid, title, content, chapter, tags) 
-            VALUES('delete', old.id, old.title, old.content, old.chapter, old.tags);
-        END
-    ''')
-    
-    cursor.execute('''
-        CREATE TRIGGER IF NOT EXISTS entries_au AFTER UPDATE ON entries BEGIN
-            INSERT INTO entries_fts(fts_entries, rowid, title, content, chapter, tags) 
-            VALUES('delete', old.id, old.title, old.content, old.chapter, old.tags);
-            INSERT INTO entries_fts(rowid, title, content, chapter, tags) 
-            VALUES (new.id, new.title, new.content, new.chapter, new.tags);
-        END
-    ''')
-    
-    # Insert sample data for chapters
-    chapters = [
-        "PRODUKT",
-        "ARCHITEKTUR", 
-        "ENTWICKLUNG",
-        "DOKUMENTATION",
-        "TESTING & QUALITÄT"
-    ]
-    
-    for chapter in chapters:
-        cursor.execute('''
-            INSERT OR IGNORE INTO entries (title, content, chapter, tags) 
-            VALUES (?, ?, ?, ?)
-        ''', (f"{chapter} Overview", f"Overview of {chapter} section", chapter, "overview"))
-    
-    # Insert sample roadmap items
-    roadmap_items = [
-        ("Implement authentication", "Q2 2026", "in_progress", 75.0),
-        ("Add document generation", "Q2 2026", "planned", 0.0),
-        ("Deploy to production", "Q3 2026", "planned", 0.0),
-        ("Add AI features", "Q3 2026", "planned", 0.0),
-        ("User testing", "Q3 2026", "planned", 0.0)
-    ]
-    
-    for task, quarter, status, progress in roadmap_items:
-        cursor.execute('''
-            INSERT OR IGNORE INTO roadmap (task, quarter, status, progress_percent)
-            VALUES (?, ?, ?, ?)
-        ''', (task, quarter, status, progress))
-    
-    conn.commit()
-    conn.close()
-    print("Database initialized successfully!")
+    try:
+        # Create a test session
+        db = SessionLocal()
+        
+        # Test query to check if tables are accessible
+        try:
+            # Test legal_documents table
+            doc_count = db.query(LegalDocument).count()
+            print(f"Legal documents table accessible, count: {doc_count}")
+            
+            # Test legal_knowledge table
+            knowledge_count = db.query(LegalKnowledge).count()
+            print(f"Legal knowledge table accessible, count: {knowledge_count}")
+            
+            # Test users table
+            user_count = db.query(User).count()
+            print(f"Users table accessible, count: {user_count}")
+            
+        except Exception as query_error:
+            print(f"Error querying tables: {query_error}")
+            
+        db.close()
+        
+    except Exception as e:
+        print(f"Error initializing database: {e}")
 
 if __name__ == "__main__":
     init_db()

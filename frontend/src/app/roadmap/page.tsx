@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import * as api from '../lib/api'
+import * as api from '../../lib/api'
 
 export default function RoadmapPage() {
   const [roadmapItems, setRoadmapItems] = useState([])

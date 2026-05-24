@@ -7,16 +7,25 @@ from datetime import datetime
 import os
 import openai
 from pgvector.sqlalchemy import Vector
+import logging
 
 from models import Base, LegalDocument, DocumentVersion, LegalKnowledge, User
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://lexwolf:lexwolf@localhost:5432/lexwolf")
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create database tables
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables created successfully")
+except Exception as e:
+    logger.error(f"Error creating database tables: {e}")
 
 # OpenAI setup
 openai.api_key = os.getenv("OPENAI_API_KEY", "your_openai_api_key_here")
@@ -32,6 +41,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception as e:
+        logger.error(f"Database session error: {e}")
+        raise
     finally:
         db.close()
 
@@ -97,7 +109,8 @@ async def get_documents(skip: int = 0, limit: int = 100, db: Session = Depends(g
         documents = db.query(LegalDocument).offset(skip).limit(limit).all()
         return documents
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching documents: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching documents: {str(e)}")
 
 @app.post("/documents", response_model=LegalDocumentInDB)
 async def create_document(document: LegalDocumentCreate, db: Session = Depends(get_db)):
@@ -109,7 +122,8 @@ async def create_document(document: LegalDocumentCreate, db: Session = Depends(g
         return db_document
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error creating document: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating document: {str(e)}")
 
 @app.get("/documents/{document_id}", response_model=LegalDocumentInDB)
 async def get_document(document_id: int, db: Session = Depends(get_db)):
@@ -121,7 +135,8 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching document {document_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching document: {str(e)}")
 
 @app.put("/documents/{document_id}", response_model=LegalDocumentInDB)
 async def update_document(document_id: int, document: LegalDocumentUpdate, db: Session = Depends(get_db)):
@@ -146,7 +161,8 @@ async def update_document(document_id: int, document: LegalDocumentUpdate, db: S
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error updating document {document_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating document: {str(e)}")
 
 @app.delete("/documents/{document_id}")
 async def delete_document(document_id: int, db: Session = Depends(get_db)):
@@ -162,7 +178,8 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error deleting document {document_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error deleting document: {str(e)}")
 
 # Knowledge base endpoints
 @app.get("/knowledge", response_model=List[LegalKnowledgeInDB])
@@ -171,17 +188,23 @@ async def get_knowledge(skip: int = 0, limit: int = 100, db: Session = Depends(g
         knowledge_items = db.query(LegalKnowledge).offset(skip).limit(limit).all()
         return knowledge_items
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching knowledge items: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching knowledge items: {str(e)}")
 
 @app.post("/knowledge", response_model=LegalKnowledgeInDB)
 async def add_knowledge(knowledge: LegalKnowledgeCreate, db: Session = Depends(get_db)):
     try:
         # Generate embedding using OpenAI ada-002 model (1536 dimensions)
-        response = openai.embeddings.create(
-            input=knowledge.content,
-            model="text-embedding-ada-002"
-        )
-        embedding = response.data[0].embedding
+        embedding = None
+        try:
+            response = openai.embeddings.create(
+                input=knowledge.content,
+                model="text-embedding-ada-002"
+            )
+            embedding = response.data[0].embedding
+        except Exception as openai_error:
+            # If OpenAI fails, log the error but continue with null embedding
+            print(f"Warning: Failed to generate embedding: {openai_error}")
         
         db_knowledge = LegalKnowledge(
             title=knowledge.title,
@@ -206,8 +229,16 @@ async def search_knowledge(query: str, limit: int = 10, db: Session = Depends(ge
         )
         query_embedding = response.data[0].embedding
         
-        # Perform semantic search using pgvector
-        results = db.query(LegalKnowledge).order_by(
+        # Check if there are any knowledge items in the database
+        knowledge_count = db.query(LegalKnowledge).count()
+        if knowledge_count == 0:
+            # Return empty list if no knowledge items exist
+            return []
+        
+        # Perform semantic search using pgvector, filtering out items with null embeddings
+        results = db.query(LegalKnowledge).filter(
+            LegalKnowledge.embedding.isnot(None)
+        ).order_by(
             LegalKnowledge.embedding.l2_distance(query_embedding)
         ).limit(limit).all()
         
@@ -222,7 +253,8 @@ async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_d
         users = db.query(User).offset(skip).limit(limit).all()
         return users
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching users: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}")
 
 @app.post("/users", response_model=UserInDB)
 async def create_user(user: UserCreate, db: Session = Depends(get_db)):
@@ -234,4 +266,5 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
         return db_user
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error creating user: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")

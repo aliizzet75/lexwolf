@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Search, Plus, Edit, Trash2 } from 'lucide-react'
-import * as api from '../lib/api'
+import * as api from '../../lib/api'
 
 export default function KnowledgeBase() {
   const [chapters] = useState([
