@@ -1,0 +1,38 @@
+{
+  "created": "2026-05-24T20:13:45.774783",
+  "decision_patterns": {
+    "test_case": {
+      "test_decision": {
+        "count": 6,
+        "contexts": [
+          {
+            "context": "test"
+          },
+          {
+            "context": "test"
+          },
+          {
+            "context": "test"
+          },
+          {
+            "context": "test"
+          },
+          {
+            "context": "test"
+          },
+          {
+            "context": "test"
+          }
+        ],
+        "last_used": "2026-05-24T20:16:39.560133"
+      }
+    }
+  },
+  "style_feedback": [],
+  "client_memory": {},
+  "statistics": {
+    "documents_created": 0,
+    "conversations_recorded": 0,
+    "decisions_made": 6
+  }
+}

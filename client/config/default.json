@@ -1,0 +1,8 @@
+{
+  "server_url": "http://localhost:8000",
+  "style_profile_id": null,
+  "default_language": "de",
+  "anonymization_enabled": true,
+  "whisper_model": "small",
+  "local_storage_path": "./data"
+}
