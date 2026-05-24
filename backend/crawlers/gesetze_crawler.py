@@ -4,6 +4,7 @@ from typing import List, Dict
 from bs4 import BeautifulSoup
 import time
 import hashlib
+import re
 
 class GesetzeImInternetCrawler:
     """
@@ -12,29 +13,50 @@ class GesetzeImInternetCrawler:
     
     def __init__(self):
         self.base_url = "https://www.gesetze-im-internet.de"
-        self.api_url = "https://www.gesetze-im-internet.de/Teilliste_.html"
         
     def get_law_list(self) -> List[Dict]:
         """
-        Get list of all available laws from the XML API
+        Get list of all available laws by crawling alphabetical lists
         """
         try:
-            response = requests.get(self.api_url)
-            response.raise_for_status()
-            
-            # Parse XML
-            root = ET.fromstring(response.content)
-            
             laws = []
-            for item in root.findall(".//item"):
-                law = {
-                    "title": item.find("title").text if item.find("title") is not None else "",
-                    "link": item.find("link").text if item.find("link") is not None else "",
-                    "description": item.find("description").text if item.find("description") is not None else "",
-                    "pubDate": item.find("pubDate").text if item.find("pubDate") is not None else "",
-                    "guid": item.find("guid").text if item.find("guid") is not None else ""
-                }
-                laws.append(law)
+            
+            # Crawl alphabetical lists (A-Z)
+            for letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
+                          'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']:
+                list_url = f"{self.base_url}/Teilliste_{letter}.html"
+                print(f"Fetching law list for letter {letter}...")
+                
+                try:
+                    response = requests.get(list_url, timeout=10)
+                    response.raise_for_status()
+                    
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    
+                    # Find all law links
+                    law_links = soup.find_all('a', href=re.compile(r'^/[a-z_]+/'))
+                    
+                    for link in law_links:
+                        law_title = link.get_text().strip()
+                        law_href = link.get('href', '')
+                        
+                        if law_title and law_href and not law_href.startswith('http'):
+                            law_url = f"{self.base_url}{law_href}"
+                            law = {
+                                "title": law_title,
+                                "link": law_url,
+                                "description": f"Law starting with {letter}",
+                                "pubDate": "",
+                                "guid": law_url
+                            }
+                            laws.append(law)
+                            
+                except Exception as e:
+                    print(f"Error fetching law list for letter {letter}: {e}")
+                    continue
+                    
+                # Be respectful to the server
+                time.sleep(0.5)
                 
             return laws
         except Exception as e:
@@ -46,7 +68,7 @@ class GesetzeImInternetCrawler:
         Get content of a specific law
         """
         try:
-            response = requests.get(law_url)
+            response = requests.get(law_url, timeout=10)
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')

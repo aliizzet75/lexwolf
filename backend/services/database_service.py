@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from models import Base, LegalDocument, LegalChunk, StyleProfile
 from datetime import datetime
 import hashlib
+import json
 
 class DatabaseService:
     """
@@ -52,11 +53,18 @@ class DatabaseService:
                 db.add(document)
                 db.flush()  # Get document ID
             
+            # Handle vector field - convert to JSON string for SQLite
+            vector_data = chunk_data.get('vector')
+            if vector_data:
+                vector_json = json.dumps(vector_data)
+            else:
+                vector_json = None
+            
             # Create chunk
             chunk = LegalChunk(
                 document_id=document.id,
                 text=chunk_data.get('text', ''),
-                vector=chunk_data.get('vector'),
+                vector=vector_json,  # Store as JSON string
                 title=chunk_data.get('title', ''),
                 court=chunk_data.get('court', ''),
                 case_number=chunk_data.get('case_number', ''),
@@ -115,6 +123,14 @@ class DatabaseService:
             chunk = db.query(LegalChunk).filter(LegalChunk.id == chunk_id).first()
             
             if chunk:
+                # Parse vector JSON if it exists
+                vector_data = None
+                if chunk.vector:
+                    try:
+                        vector_data = json.loads(chunk.vector)
+                    except:
+                        vector_data = None
+                
                 return {
                     "id": chunk.id,
                     "document_id": chunk.document_id,
@@ -151,13 +167,13 @@ class DatabaseService:
             
             if profile:
                 # Update existing profile
-                profile.vector = vector
+                profile.vector = json.dumps(vector)  # Store as JSON string
                 profile.updated_at = datetime.utcnow()
             else:
                 # Create new profile
                 profile = StyleProfile(
                     profile_id=profile_id,
-                    vector=vector,
+                    vector=json.dumps(vector),  # Store as JSON string
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow()
                 )

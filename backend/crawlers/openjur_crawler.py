@@ -51,6 +51,17 @@ class OpenJurCrawler:
                     "legal_field": "Verfassungsrecht",
                     "tags": "Grundrechte,Verfassungsrecht,öffentliche Gewalt",
                     "url": "https://www.openjur.de/u/12346.html"
+                },
+                {
+                    "id": "12347",
+                    "title": "Urteil des BGH vom 10.01.2024 - Az. IX ZR 789/23",
+                    "court": "BGH",
+                    "case_number": "IX ZR 789/23",
+                    "date": "2024-01-10",
+                    "content": "Beschluss des IX. Zivilsenats des Bundesgerichtshofs vom 10. Januar 2024. Leitsatz: 1. Ein Mietvertrag kann auch dann fristlos gekündigt werden, wenn der Mieter trotz Mahnung nicht die vereinbarte Miete zahlt. 2. Die Kündigung muss jedoch angemessen sein und das Vertragsverhältnis nicht völlig zerstören.",
+                    "legal_field": "Mietrecht",
+                    "tags": "Mietvertrag,Kündigung,Miete",
+                    "url": "https://www.openjur.de/u/12347.html"
                 }
             ]
             

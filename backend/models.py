@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Boolean, TypeDecorator
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import json
 
 # Try to import Vector from pgvector, fallback if not available
 try:
@@ -13,6 +14,23 @@ except ImportError:
         def __init__(self, dimensions):
             self.dimensions = dimensions
     VECTOR_AVAILABLE = False
+
+# Custom type decorator for handling vectors in SQLite
+class VectorType(TypeDecorator):
+    impl = Text
+    
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            return json.dumps(value)
+        return None
+    
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            try:
+                return json.loads(value)
+            except:
+                return None
+        return None
 
 Base = declarative_base()
 
@@ -38,9 +56,11 @@ class LegalChunk(Base):
     document_id = Column(Integer, ForeignKey('legal_documents.id'))
     text = Column(Text)
     
-    # Only add vector column if Vector is available
+    # Use VectorType for SQLite compatibility, Vector for PostgreSQL
     if VECTOR_AVAILABLE:
         vector = Column(Vector(1536))  # Using text-embedding-3-small with 1536 dimensions
+    else:
+        vector = Column(VectorType)
     
     title = Column(String)
     court = Column(String)  # For judgments
@@ -62,9 +82,11 @@ class StyleProfile(Base):
     id = Column(Integer, primary_key=True, index=True)
     profile_id = Column(String, unique=True)  # e.g., "sp_a7f3b2"
     
-    # Only add vector column if Vector is available
+    # Use VectorType for SQLite compatibility, Vector for PostgreSQL
     if VECTOR_AVAILABLE:
         vector = Column(Vector(1536))  # Stil-Vektor-Repräsentation
+    else:
+        vector = Column(VectorType)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -1,7 +1,7 @@
 import asyncio
 from crawlers.gesetze_crawler import GesetzeImInternetCrawler
 from crawlers.openjur_crawler import OpenJurCrawler
-from services.embedding_service import EmbeddingService
+from services.embedding_service import EmbeddingService, MockEmbeddingService
 from services.database_service import DatabaseService
 import logging
 
@@ -17,7 +17,8 @@ class LegalDatabaseCrawler:
     def __init__(self):
         self.gesetze_crawler = GesetzeImInternetCrawler()
         self.openjur_crawler = OpenJurCrawler()
-        self.embedding_service = EmbeddingService()
+        # Use mock embedding service for testing
+        self.embedding_service = MockEmbeddingService()
         self.database_service = DatabaseService()
         
     async def crawl_all_sources(self, limit_per_source: int = None):
@@ -60,10 +61,8 @@ class LegalDatabaseCrawler:
         for i, chunk in enumerate(chunks):
             try:
                 # Generate embedding using the first 200 tokens of content
-                content_preview = chunk['text'][:1000]  # Approximate 200 tokens
-                embedding = self.embedding_service.generate_embedding(
-                    f"{chunk.get('title', '')} {chunk.get('content', '')[:200]}"
-                )
+                content_preview = f"{chunk.get('title', '')} {chunk.get('text', '')[:200]}"
+                embedding = self.embedding_service.generate_embedding(content_preview)
                 
                 # Add embedding to chunk
                 chunk['vector'] = embedding
