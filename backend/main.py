@@ -6,8 +6,16 @@ from pydantic import BaseModel
 from datetime import datetime
 import os
 import openai
-from pgvector.sqlalchemy import Vector
 import logging
+
+# Try to import Vector from pgvector, fallback if not available
+try:
+    from pgvector.sqlalchemy import Vector
+except ImportError:
+    # Dummy Vector class for development
+    class Vector:
+        def __init__(self, dimensions):
+            self.dimensions = dimensions
 
 from models import Base, LegalDocument, DocumentVersion, LegalKnowledge, User
 
