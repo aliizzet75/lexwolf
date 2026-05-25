@@ -88,6 +88,12 @@ docker-compose down -v
 
 ## Troubleshooting
 
+### Docker Not Available
+If you see an error like "failed to connect to the docker API", please ensure:
+- Docker is installed on your system
+- Docker daemon is running (`sudo systemctl start docker` on Linux)
+- Your user has permissions to access Docker (`sudo usermod -aG docker $USER` on Linux)
+
 ### Database Connection Issues
 - Ensure Docker is running
 - Check that port 5432 is not being used by another service
