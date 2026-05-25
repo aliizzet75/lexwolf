@@ -101,18 +101,53 @@ class HybridSearchService:
     
     def _sparse_search(self, query: str, limit: int = 10) -> List[Dict]:
         """
-        Perform sparse keyword search (BM25-like)
+        Perform sparse keyword search using PostgreSQL Full-Text Search
         """
         try:
-            # For demonstration, return database results with simulated scores
-            results = self.database_service.search_chunks_hybrid(query, limit)
+            logger.info(f"Performing sparse search with PostgreSQL FTS for query: {query}")
             
-            # Add sparse search scores (simulated)
-            for i, result in enumerate(results):
-                result["sparse_score"] = 1.0 / (i + 1)  # Simulated score
-                result["sparse_rank"] = i + 1
+            # Get database session
+            db = self.database_service.get_db()
             
+            # Execute PostgreSQL FTS search using plainto_tsquery for exact matches
+            # This is particularly important for legal citations like '§ 1 KSchG'
+            query_sql = text("""
+                SELECT *, 
+                       ts_rank(ts_vector, plainto_tsquery('german', :query)) AS sparse_score
+                FROM legal_chunks 
+                WHERE ts_vector @@ plainto_tsquery('german', :query)
+                ORDER BY ts_rank(ts_vector, plainto_tsquery('german', :query)) DESC
+                LIMIT :k
+            """)
+            
+            result = db.execute(query_sql, {"query": query, "k": limit})
+            rows = result.fetchall()
+            
+            # Convert rows to dictionaries
+            results = []
+            for i, row in enumerate(rows):
+                result_dict = {
+                    "id": row.id,
+                    "document_id": row.document_id,
+                    "text": row.text,
+                    "title": row.title,
+                    "court": row.court,
+                    "case_number": row.case_number,
+                    "date": row.date.isoformat() if row.date else None,
+                    "legal_field": row.legal_field,
+                    "tags": row.tags,
+                    "chunk_hash": row.chunk_hash,
+                    "parent_id": row.parent_id,
+                    "is_parent": row.is_parent,
+                    "sparse_score": float(row.sparse_score),  # FTS relevance score
+                    "sparse_rank": i + 1,
+                    "created_at": row.created_at.isoformat() if row.created_at else None
+                }
+                results.append(result_dict)
+            
+            logger.info(f"Sparse search completed with {len(results)} results")
             return results
+            
         except Exception as e:
             logger.error(f"Error in sparse search: {e}")
             return []

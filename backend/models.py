@@ -44,6 +44,9 @@ class LegalChunk(Base):
     is_parent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
+    # Full-text search vector column
+    ts_vector = mapped_column("ts_vector", String)  # Will be populated with tsvector data
+    
     # Relationship back to document
     document = relationship("LegalDocument", back_populates="chunks")
 
