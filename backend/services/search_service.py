@@ -1,6 +1,7 @@
 from typing import List, Dict
 from services.embedding_service import EmbeddingService
 from services.database_service import DatabaseService
+from sqlalchemy import text
 import logging
 
 # Configure logging
@@ -48,20 +49,52 @@ class HybridSearchService:
     
     def _dense_search(self, query_vector: List[float], limit: int = 10) -> List[Dict]:
         """
-        Perform dense vector search
-        In a real implementation, this would use LanceDB or similar
-        For now, we'll simulate it by returning database results with scores
+        Perform dense vector search using pgvector cosine similarity with <-> operator
         """
         try:
-            # For demonstration, return database results with simulated scores
-            results = self.database_service.search_chunks_hybrid("", limit)
+            logger.info(f"Performing dense search with pgvector cosine similarity")
             
-            # Add dense search scores (simulated)
-            for i, result in enumerate(results):
-                result["dense_score"] = 1.0 / (i + 1)  # Simulated score
-                result["dense_rank"] = i + 1
+            # Get database session
+            db = self.database_service.get_db()
             
+            # Execute pgvector cosine similarity search using <-> operator
+            # The <-> operator computes cosine distance (1 - cosine similarity)
+            # So lower scores are better (more similar)
+            query = text("""
+                SELECT *, embedding <-> :vec AS score 
+                FROM legal_chunks 
+                ORDER BY embedding <-> :vec 
+                LIMIT :k
+            """)
+            
+            result = db.execute(query, {"vec": query_vector, "k": limit})
+            rows = result.fetchall()
+            
+            # Convert rows to dictionaries
+            results = []
+            for i, row in enumerate(rows):
+                result_dict = {
+                    "id": row.id,
+                    "document_id": row.document_id,
+                    "text": row.text,
+                    "title": row.title,
+                    "court": row.court,
+                    "case_number": row.case_number,
+                    "date": row.date.isoformat() if row.date else None,
+                    "legal_field": row.legal_field,
+                    "tags": row.tags,
+                    "chunk_hash": row.chunk_hash,
+                    "parent_id": row.parent_id,
+                    "is_parent": row.is_parent,
+                    "dense_score": float(row.score),  # Cosine distance (lower is better)
+                    "dense_rank": i + 1,
+                    "created_at": row.created_at.isoformat() if row.created_at else None
+                }
+                results.append(result_dict)
+            
+            logger.info(f"Dense search completed with {len(results)} results")
             return results
+            
         except Exception as e:
             logger.error(f"Error in dense search: {e}")
             return []
