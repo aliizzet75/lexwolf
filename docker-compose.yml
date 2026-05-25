@@ -19,6 +19,18 @@ services:
       timeout: 5s
       retries: 5
 
+  neo4j:
+    image: neo4j:5
+    container_name: lexwolf-neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/lexwolf123
+    volumes:
+      - neo4j_data:/data
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    restart: unless-stopped
+
   api:
     build:
       context: ./backend
@@ -26,6 +38,9 @@ services:
     container_name: lexwolf-api
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/lexwolf
+      - NEO4J_URI=neo4j://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=lexwolf123
       - OPENAI_API_KEY=your_openai_api_key_here
       - CLAUDE_API_KEY=your_claude_api_key_here
       - ENV=development
@@ -40,3 +55,4 @@ services:
 
 volumes:
   postgres_data:
+  neo4j_data:
