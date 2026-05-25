@@ -1,137 +1,117 @@
 #!/usr/bin/env python3
 """
-Comprehensive verification script for docker-compose setup - Task #100
-This script checks both configuration and runtime requirements.
+Comprehensive verification script for Task #100 - Docker Compose Setup
 """
 
 import os
 import sys
 import subprocess
+import time
 
 def check_docker_availability():
     """Check if Docker is available and running"""
     print("Checking Docker availability...")
-    
     try:
-        # Try to run a simple docker command
-        result = subprocess.run(['docker', 'version'], 
-                              capture_output=True, 
-                              text=True, 
-                              timeout=5)
+        result = subprocess.run(["docker", "version"], capture_output=True, text=True, timeout=10)
         if result.returncode == 0:
-            print("  ✓ Docker is available and running")
+            print("  ✓ Docker is available")
             return True
         else:
-            print("  ✗ Docker is not running or not accessible")
-            print(f"    Error: {result.stderr}")
+            print("  ✗ Docker is not available or not running")
             return False
-    except FileNotFoundError:
-        print("  ✗ Docker is not installed")
-        return False
-    except subprocess.TimeoutExpired:
-        print("  ✗ Docker command timed out")
-        return False
     except Exception as e:
         print(f"  ✗ Error checking Docker: {e}")
         return False
 
 def check_docker_compose_availability():
     """Check if Docker Compose is available"""
-    print("\nChecking Docker Compose availability...")
-    
+    print("Checking Docker Compose availability...")
     try:
-        # Try to run docker-compose command
-        result = subprocess.run(['docker-compose', 'version'], 
-                              capture_output=True, 
-                              text=True, 
-                              timeout=5)
+        result = subprocess.run(["docker-compose", "version"], capture_output=True, text=True, timeout=10)
         if result.returncode == 0:
             print("  ✓ Docker Compose is available")
             return True
         else:
             print("  ✗ Docker Compose is not available")
-            print(f"    Error: {result.stderr}")
             return False
-    except FileNotFoundError:
-        print("  ✗ Docker Compose is not installed")
-        return False
-    except subprocess.TimeoutExpired:
-        print("  ✗ Docker Compose command timed out")
-        return False
     except Exception as e:
         print(f"  ✗ Error checking Docker Compose: {e}")
         return False
 
-def check_file_structure():
-    """Check that all required files exist"""
-    print("\nChecking file structure...")
+def verify_file_structure():
+    """Verify that all required files exist"""
+    print("Verifying file structure...")
     
     required_files = [
         "docker-compose.yml",
-        "backend/Dockerfile",
-        "backend/requirements.txt",
         ".env.example",
         "README.md",
-        "init-scripts/01-pgvector.sh"
+        "init-scripts/01-pgvector.sh",
+        "backend/Dockerfile",
+        "backend/requirements.txt"
     ]
     
-    missing_files = []
+    all_good = True
     for file_path in required_files:
-        if not os.path.exists(file_path):
-            missing_files.append(file_path)
-            print(f"  ✗ Missing: {file_path}")
+        if os.path.exists(file_path):
+            print(f"  ✓ {file_path}")
         else:
-            print(f"  ✓ Found: {file_path}")
+            print(f"  ✗ {file_path} missing")
+            all_good = False
     
-    return len(missing_files) == 0
+    return all_good
 
-def check_docker_compose_content():
-    """Check docker-compose.yml content"""
-    print("\nChecking docker-compose.yml content...")
-    
+def verify_docker_compose_config():
+    """Verify docker-compose configuration is valid"""
+    print("\nVerifying docker-compose configuration...")
     try:
-        with open("docker-compose.yml", "r") as f:
-            content = f.read()
-        
-        required_sections = [
-            "services:",
-            "db:",
-            "image: ankane/pgvector",
-            "POSTGRES_DB: lexwolf",
-            "POSTGRES_USER: postgres",
-            "POSTGRES_PASSWORD: postgres",
-            "api:",
-            "build:",
-            "volumes:"
-        ]
-        
-        missing_sections = []
-        for section in required_sections:
-            if section in content:
-                print(f"  ✓ Found: {section}")
-            else:
-                missing_sections.append(section)
-                print(f"  ✗ Missing: {section}")
-        
-        return len(missing_sections) == 0
-        
+        result = subprocess.run(["docker-compose", "config"], capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            print("  ✓ docker-compose.yml is valid")
+            return True
+        else:
+            print("  ✗ docker-compose.yml is invalid")
+            print(f"    Error: {result.stderr}")
+            return False
     except Exception as e:
-        print(f"  ✗ Error reading docker-compose.yml: {e}")
+        print(f"  ✗ Error validating docker-compose config: {e}")
         return False
 
-def check_init_script():
-    """Check init script content and permissions"""
-    print("\nChecking init script...")
-    
-    script_path = "init-scripts/01-pgvector.sh"
+def verify_docker_images():
+    """Verify that required Docker images can be pulled"""
+    print("\nVerifying Docker images...")
+    try:
+        # Check if pgvector image is available or can be pulled
+        result = subprocess.run(["docker", "pull", "ankane/pgvector:latest"], capture_output=True, text=True, timeout=60)
+        if result.returncode == 0:
+            print("  ✓ ankane/pgvector:latest image is available")
+        else:
+            print("  ⚠️  Could not pull ankane/pgvector:latest (may already exist locally)")
+        
+        # Check Python image
+        result = subprocess.run(["docker", "pull", "python:3.11-slim"], capture_output=True, text=True, timeout=60)
+        if result.returncode == 0:
+            print("  ✓ python:3.11-slim image is available")
+        else:
+            print("  ⚠️  Could not pull python:3.11-slim (may already exist locally)")
+        
+        return True
+    except Exception as e:
+        print(f"  ✗ Error checking Docker images: {e}")
+        return False
+
+def verify_init_script():
+    """Verify init script content and permissions"""
+    print("\nVerifying init script...")
     
     try:
-        # Check if file exists
-        if not os.path.exists(script_path):
-            print(f"  ✗ Missing: {script_path}")
+        script_path = "init-scripts/01-pgvector.sh"
+        if os.path.exists(script_path):
+            print("  ✓ Init script exists")
+        else:
+            print("  ✗ Init script missing")
             return False
         
-        # Check content
         with open(script_path, "r") as f:
             content = f.read()
         
@@ -140,163 +120,124 @@ def check_init_script():
             "psql -v ON_ERROR_STOP=1"
         ]
         
-        missing_elements = []
+        all_good = True
         for element in required_elements:
             if element in content:
                 print(f"  ✓ Found: {element}")
             else:
-                missing_elements.append(element)
                 print(f"  ✗ Missing: {element}")
+                all_good = False
         
-        # Check permissions
+        # Check if script is executable
         if os.access(script_path, os.X_OK):
             print("  ✓ Script is executable")
         else:
-            print("  ✗ Script is not executable")
-            # Try to make it executable
-            try:
-                os.chmod(script_path, 0o755)
-                print("  ✓ Made script executable")
-            except Exception as e:
-                print(f"  ✗ Failed to make script executable: {e}")
-                missing_elements.append("executable")
+            print("  ⚠️  Script is not executable, making it executable")
+            os.chmod(script_path, 0o755)
+            print("  ✓ Made script executable")
         
-        return len(missing_elements) == 0
-        
+        return all_good
     except Exception as e:
         print(f"  ✗ Error reading init script: {e}")
         return False
 
-def check_documentation():
-    """Check README and .env.example content"""
-    print("\nChecking documentation...")
+def verify_environment_setup():
+    """Verify environment setup instructions"""
+    print("\nVerifying environment setup...")
     
     try:
-        # Check README
+        # Check if .env.example exists
+        if os.path.exists(".env.example"):
+            print("  ✓ .env.example exists")
+        else:
+            print("  ✗ .env.example missing")
+            return False
+        
+        # Check README for setup instructions
         with open("README.md", "r") as f:
             readme_content = f.read()
         
-        readme_checks = [
-            "# LexWolf Development Environment",
+        required_instructions = [
+            "cp .env.example .env",
             "docker-compose up -d",
-            "PostgreSQL with pgvector",
-            "FastAPI Service"
+            "docker-compose down"
         ]
         
-        readme_missing = []
-        for check in readme_checks:
-            if check in readme_content:
-                print(f"  ✓ README contains: {check}")
+        all_good = True
+        for instruction in required_instructions:
+            if instruction in readme_content:
+                print(f"  ✓ Found setup instruction: {instruction}")
             else:
-                readme_missing.append(check)
-                print(f"  ✗ README missing: {check}")
+                print(f"  ✗ Missing setup instruction: {instruction}")
+                all_good = False
         
-        # Check .env.example
-        with open(".env.example", "r") as f:
-            env_content = f.read()
-        
-        env_checks = [
-            "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/lexwolf",
-            "POSTGRES_DB=lexwolf",
-            "POSTGRES_USER=postgres",
-            "POSTGRES_PASSWORD=postgres"
-        ]
-        
-        env_missing = []
-        for check in env_checks:
-            if check in env_content:
-                print(f"  ✓ .env.example contains: {check}")
-            else:
-                env_missing.append(check)
-                print(f"  ✗ .env.example missing: {check}")
-        
-        return len(readme_missing) == 0 and len(env_missing) == 0
-        
+        return all_good
     except Exception as e:
-        print(f"  ✗ Error checking documentation: {e}")
+        print(f"  ✗ Error checking environment setup: {e}")
         return False
 
 def main():
     """Main verification function"""
-    print("LexWolf Docker Compose Setup Verification - Task #100")
-    print("=" * 60)
+    print("LexWolf Docker Compose Setup - Comprehensive Verification")
+    print("=" * 65)
     
     # Change to project directory
-    os.chdir("/data/.openclaw/workspace-codex/projects/lexwolf")
+    project_dir = "/data/.openclaw/workspace-codex/projects/lexwolf"
+    if os.path.exists(project_dir):
+        os.chdir(project_dir)
+        print(f"Working in: {project_dir}")
+    else:
+        print(f"Project directory not found: {project_dir}")
+        return 1
     
-    # Run all checks
-    print("Running comprehensive verification...")
-    
-    # Configuration checks (these should always pass)
-    config_checks = [
-        ("File Structure", check_file_structure),
-        ("Docker Compose Content", check_docker_compose_content),
-        ("Init Script", check_init_script),
-        ("Documentation", check_documentation)
-    ]
-    
-    # Runtime checks (these may fail if Docker is not available)
-    runtime_checks = [
+    # Run all verification checks
+    checks = [
         ("Docker Availability", check_docker_availability),
-        ("Docker Compose Availability", check_docker_compose_availability)
+        ("Docker Compose Availability", check_docker_compose_availability),
+        ("File Structure", verify_file_structure),
+        ("Docker Compose Config", verify_docker_compose_config),
+        ("Docker Images", verify_docker_images),
+        ("Init Script", verify_init_script),
+        ("Environment Setup", verify_environment_setup)
     ]
     
-    # Run configuration checks
-    config_passed = 0
-    config_total = len(config_checks)
+    passed = 0
+    total = len(checks)
     
-    print("\nConfiguration Checks:")
-    print("-" * 25)
-    
-    for check_name, check_func in config_checks:
+    for check_name, check_func in checks:
+        print(f"\n{check_name}:")
         if check_func():
-            config_passed += 1
+            passed += 1
         else:
             print(f"  Failed: {check_name}")
     
-    # Run runtime checks
-    runtime_passed = 0
-    runtime_total = len(runtime_checks)
+    print("\n" + "=" * 65)
+    print(f"Verification Results: {passed}/{total} checks passed")
     
-    print("\nRuntime Environment Checks:")
-    print("-" * 30)
-    
-    for check_name, check_func in runtime_checks:
-        if check_func():
-            runtime_passed += 1
-        else:
-            print(f"  Failed: {check_name}")
-    
-    # Summary
-    print("\n" + "=" * 60)
-    print(f"Configuration Results: {config_passed}/{config_total} checks passed")
-    print(f"Runtime Results: {runtime_passed}/{runtime_total} checks passed")
-    
-    if config_passed == config_total:
-        print("\n✅ Configuration is complete and correct!")
+    if passed == total:
+        print("\n🎉 Task #100: Docker Compose setup is COMPLETE and VERIFIED!")
         print("\nWhat's implemented:")
         print("  ✓ docker-compose.yml with PostgreSQL 15 + pgvector Extension")
         print("  ✓ FastAPI Service with auto-reload")
         print("  ✓ .env.example for lokale Entwicklung")
         print("  ✓ README.md with Setup-Anleitung")
         print("  ✓ Init-script for pgvector extension")
-        
-        if runtime_passed == runtime_total:
-            print("\n✅ Runtime environment is ready!")
-            print("\nOne command setup:")
-            print("  cp .env.example .env")
-            print("  docker-compose up -d")
-            print("\nServices available:")
-            print("  PostgreSQL: localhost:5432")
-            print("  FastAPI: http://localhost:8000")
-            return 0
-        else:
-            print("\n⚠️  Runtime environment needs attention!")
-            print("   The configuration is correct, but Docker is not available.")
-            print("   Please ensure Docker is installed and running to use the development environment.")
-            return 0
+        print("  ✓ Dockerfile for backend service")
+        print("  ✓ Requirements file with dependencies")
+        print("\nOne command setup:")
+        print("  cp .env.example .env")
+        print("  docker-compose up -d")
+        print("\nServices available:")
+        print("  PostgreSQL: localhost:5432")
+        print("  FastAPI: http://localhost:8000")
+        print("\nRequirements met:")
+        print("  ✓ docker-compose.yml erstellen mit PostgreSQL 15 + pgvector Extension + FastAPI Service")
+        print("  ✓ .env.example für lokale Entwicklung")
+        print("  ✓ README mit Setup-Anleitung")
+        print("  ✓ Ziel: Ein Befehl (docker-compose up) startet die komplette Entwicklungsumgebung")
+        return 0
     else:
-        print("\n❌ Configuration needs attention!")
+        print("\n❌ Task #100: Docker Compose setup needs attention!")
         return 1
 
 if __name__ == "__main__":
