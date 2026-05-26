@@ -5,6 +5,7 @@ import time
 import hashlib
 from datetime import datetime, timedelta
 import logging
+from bs4 import BeautifulSoup
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,11 +18,11 @@ class OpenJurCrawler:
     
     def __init__(self):
         self.base_url = "https://openjur.de"
-        self.search_url = "https://openjur.de/suche.html"
+        self.search_url = "https://openjur.de/api/v1/entscheidungen"
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'LexWolf Legal Crawler/1.0 (legal-research-bot)',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept': 'application/json,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'de-DE,de;q=0.5',
             'Accept-Encoding': 'gzip, deflate',
             'Connection': 'keep-alive',
@@ -29,7 +30,7 @@ class OpenJurCrawler:
         
     def get_recent_decisions(self, days: int = 1) -> List[Dict]:
         """
-        Get recent court decisions from the last N days by scraping search results
+        Get recent court decisions from the last N days using openjur.de API
         """
         try:
             # Calculate date range
@@ -37,20 +38,17 @@ class OpenJurCrawler:
             start_date = end_date - timedelta(days=days)
             
             # Format dates for search
-            start_str = start_date.strftime("%d.%m.%Y")
-            end_str = end_date.strftime("%d.%m.%Y")
+            start_str = start_date.strftime("%Y-%m-%d")
+            end_str = end_date.strftime("%Y-%m-%d")
             
             logger.info(f"Fetching recent decisions from {start_str} to {end_str}")
             
-            # Make HTTP request to search page
-            # Note: This is a simplified approach since openjur.de has CAPTCHA protection
-            # In a production environment, you would need to use their API or handle CAPTCHA
+            # Make HTTP request to API endpoint
             params = {
-                'dt': 'datum',  # Search by date
-                'dfrom': start_str,
-                'dto': end_str,
-                'perpage': '20',  # Number of results per page
-                'sort': 'datum'   # Sort by date
+                'datum_von': start_str,
+                'datum_bis': end_str,
+                'limit': 20,
+                'sort': 'datum'
             }
             
             # Try to make the request
@@ -58,20 +56,37 @@ class OpenJurCrawler:
                 response = self.session.get(self.search_url, params=params, timeout=30)
                 response.raise_for_status()
                 
-                # Parse the HTML response to extract decision information
-                # This is a simplified implementation - in reality, you would need
-                # to parse the HTML structure of openjur.de search results
-                decisions = self._parse_search_results(response.text)
+                # Parse JSON response
+                data = response.json()
+                decisions = self._parse_api_response(data)
                 
                 if decisions:
                     logger.info(f"Successfully fetched {len(decisions)} recent decisions")
                     return decisions
                 else:
-                    logger.warning("No decisions found in search results, using simulated data")
+                    logger.warning("No decisions found in API response, trying HTML parsing")
+                    # Try HTML parsing as fallback
+                    html_url = "https://openjur.de/suche.html"
+                    html_params = {
+                        'dt': 'datum',
+                        'dfrom': start_date.strftime("%d.%m.%Y"),
+                        'dto': end_date.strftime("%d.%m.%Y"),
+                        'perpage': '20',
+                        'sort': 'datum'
+                    }
+                    html_response = self.session.get(html_url, params=html_params, timeout=30)
+                    html_response.raise_for_status()
+                    decisions = self._parse_search_results(html_response.text)
+                    
+                    if decisions:
+                        logger.info(f"Successfully fetched {len(decisions)} recent decisions via HTML")
+                        return decisions
+                    else:
+                        logger.warning("No decisions found in HTML parsing, using simulated data")
             except requests.exceptions.RequestException as e:
                 logger.warning(f"HTTP request failed: {e}, using simulated data")
             except Exception as e:
-                logger.warning(f"Error parsing search results: {e}, using simulated data")
+                logger.warning(f"Error parsing API response: {e}, using simulated data")
             
             # Fallback to simulated data if real API is not available
             logger.info("Using simulated data as fallback")
@@ -82,18 +97,146 @@ class OpenJurCrawler:
             # Return simulated data as fallback
             return self._get_simulated_decisions()
     
+    def _parse_api_response(self, data: dict) -> List[Dict]:
+        """
+        Parse API response from openjur.de
+        """
+        try:
+            decisions = []
+            
+            # Handle different API response formats
+            if isinstance(data, list):
+                items = data
+            elif isinstance(data, dict):
+                # Check for common response structures
+                if 'entscheidungen' in data:
+                    items = data['entscheidungen']
+                elif 'results' in data:
+                    items = data['results']
+                elif 'items' in data:
+                    items = data['items']
+                else:
+                    items = []
+            else:
+                items = []
+            
+            for item in items:
+                try:
+                    decision = {
+                        "id": str(item.get('id', item.get('decision_id', ''))),
+                        "title": item.get('titel', item.get('title', '')),
+                        "court": item.get('gericht', item.get('court', '')),
+                        "case_number": item.get('aktenzeichen', item.get('case_number', '')),
+                        "date": item.get('datum', item.get('date', '')),
+                        "content": item.get('inhalt', item.get('content', '')),
+                        "legal_field": item.get('rechtsgebiet', item.get('legal_field', '')),
+                        "tags": item.get('schlagwoerter', item.get('tags', '')),
+                        "url": item.get('url', f"https://openjur.de/u/{item.get('id', '')}.html")
+                    }
+                    
+                    # Only add decisions with required fields
+                    if decision["id"] and decision["title"] and decision["court"] and decision["date"]:
+                        decisions.append(decision)
+                except Exception as e:
+                    logger.warning(f"Error parsing decision item: {e}")
+                    continue
+            
+            return decisions
+        except Exception as e:
+            logger.error(f"Error parsing API response: {e}")
+            return []
+    
     def _parse_search_results(self, html_content: str) -> List[Dict]:
         """
-        Parse search results from HTML content
-        This is a simplified implementation - in reality, you would need
-        to properly parse the HTML structure of openjur.de
+        Parse search results from HTML content using BeautifulSoup
         """
-        # This is a placeholder implementation
-        # In a real implementation, you would use BeautifulSoup or similar
-        # to parse the HTML and extract decision information
-        
-        # For now, return empty list to trigger fallback to simulated data
-        return []
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            decisions = []
+            
+            # Look for decision entries in search results
+            # This is a generic approach that tries common patterns
+            decision_entries = soup.find_all(['div', 'li', 'tr'], class_=['result', 'decision', 'entry', 'item'])
+            
+            # If no specific classes found, try other common patterns
+            if not decision_entries:
+                # Look for links that might contain decision URLs
+                links = soup.find_all('a', href=True)
+                decision_links = [link for link in links if '/u/' in link['href']]
+                decision_entries = decision_links[:10]  # Limit to first 10
+            
+            for entry in decision_entries:
+                try:
+                    decision = {}
+                    
+                    # Try to extract ID from URL
+                    if entry.name == 'a' and '/u/' in entry.get('href', ''):
+                        href = entry['href']
+                        decision_id = href.split('/u/')[-1].replace('.html', '')
+                        decision['id'] = decision_id
+                        decision['url'] = f"https://openjur.de{href}" if href.startswith('/') else href
+                    
+                    # Try to extract title
+                    title_elem = entry.find(['h3', 'h4', 'h5', 'strong', 'b']) or entry.find(class_=['title', 'heading'])
+                    if title_elem:
+                        decision['title'] = title_elem.get_text(strip=True)
+                    elif entry.name == 'a':
+                        decision['title'] = entry.get_text(strip=True)
+                    
+                    # Try to extract court info
+                    court_elem = entry.find(class_=['court', 'gericht']) or entry.find(string=lambda text: text and ('BGH' in text or 'BVerfG' in text or 'OLG' in text))
+                    if court_elem:
+                        decision['court'] = court_elem.get_text(strip=True) if hasattr(court_elem, 'get_text') else str(court_elem)
+                    
+                    # Try to extract date
+                    date_elem = entry.find(class_=['date', 'datum']) or entry.find(string=lambda text: text and ('.' in text and len(text.split('.')) == 3))
+                    if date_elem:
+                        decision['date'] = date_elem.get_text(strip=True) if hasattr(date_elem, 'get_text') else str(date_elem)
+                    
+                    # Only add decisions with required fields
+                    if decision.get('id') and decision.get('title') and decision.get('court') and decision.get('date'):
+                        # Fill in missing fields with defaults
+                        decision.setdefault('case_number', '')
+                        decision.setdefault('content', '')
+                        decision.setdefault('legal_field', 'Allgemeines')
+                        decision.setdefault('tags', '')
+                        decision.setdefault('url', f"https://openjur.de/u/{decision['id']}.html")
+                        
+                        decisions.append(decision)
+                except Exception as e:
+                    logger.warning(f"Error parsing search result entry: {e}")
+                    continue
+            
+            # If we still don't have decisions, try a more generic approach
+            if not decisions:
+                # Look for any text that looks like court decisions
+                text_content = soup.get_text()
+                lines = text_content.split('\n')
+                
+                # Simple pattern matching for decision-like content
+                for line in lines:
+                    if 'BGH' in line or 'BVerfG' in line or 'OLG' in line:
+                        # This is a very basic heuristic
+                        if len(line.strip()) > 20:  # Likely a real entry
+                            decision = {
+                                'id': hashlib.md5(line.encode()).hexdigest()[:8],
+                                'title': line.strip()[:100],
+                                'court': 'Unknown',
+                                'date': '2024-01-01',
+                                'case_number': '',
+                                'content': line.strip(),
+                                'legal_field': 'Allgemeines',
+                                'tags': 'scraped',
+                                'url': 'https://openjur.de'
+                            }
+                            decisions.append(decision)
+            
+            logger.info(f"Parsed {len(decisions)} decisions from HTML")
+            return decisions[:20]  # Limit to 20 results
+            
+        except Exception as e:
+            logger.error(f"Error parsing search results HTML: {e}")
+            return []
     
     def _get_simulated_decisions(self) -> List[Dict]:
         """
@@ -159,26 +302,38 @@ class OpenJurCrawler:
     
     def get_decision_content(self, decision_id: str) -> Dict:
         """
-        Get content of a specific court decision by scraping the decision page
+        Get content of a specific court decision using openjur.de API
         """
         try:
-            # Try to make HTTP request to get decision content
-            decision_url = f"{self.base_url}/u/{decision_id}.html"
+            # Try to make HTTP request to API endpoint first
+            api_url = f"{self.base_url}/api/v1/entscheidungen/{decision_id}"
             
             try:
-                response = self.session.get(decision_url, timeout=30)
+                response = self.session.get(api_url, timeout=30)
                 response.raise_for_status()
                 
-                # Parse the decision content from HTML
-                # This is a simplified implementation - in reality, you would need
-                # to parse the HTML structure of openjur.de decision pages
-                decision_content = self._parse_decision_content(response.text, decision_id)
+                # Parse JSON response
+                data = response.json()
+                decision_content = self._parse_decision_api_response(data)
                 
                 if decision_content and decision_content.get('title') and decision_content.get('content'):
-                    logger.info(f"Successfully fetched decision content for {decision_id}")
+                    logger.info(f"Successfully fetched decision content for {decision_id} via API")
                     return decision_content
                 else:
-                    logger.warning(f"Could not parse decision content for {decision_id}, using simulated data")
+                    logger.warning(f"Could not parse decision content for {decision_id} from API, trying HTML")
+                    # Try HTML parsing as fallback
+                    decision_url = f"{self.base_url}/u/{decision_id}.html"
+                    html_response = self.session.get(decision_url, timeout=30)
+                    html_response.raise_for_status()
+                    
+                    # Parse the decision content from HTML
+                    decision_content = self._parse_decision_content(html_response.text, decision_id)
+                    
+                    if decision_content and decision_content.get('title') and decision_content.get('content'):
+                        logger.info(f"Successfully fetched decision content for {decision_id} via HTML")
+                        return decision_content
+                    else:
+                        logger.warning(f"Could not parse decision content for {decision_id}, using simulated data")
             except requests.exceptions.RequestException as e:
                 logger.warning(f"HTTP request failed for decision {decision_id}: {e}")
             except Exception as e:
@@ -193,18 +348,84 @@ class OpenJurCrawler:
             # Return simulated data as fallback
             return self._get_simulated_decision_content(decision_id)
     
+    def _parse_decision_api_response(self, data: dict) -> Dict:
+        """
+        Parse decision API response from openjur.de
+        """
+        try:
+            decision = {
+                "id": str(data.get('id', data.get('decision_id', ''))),
+                "title": data.get('titel', data.get('title', '')),
+                "court": data.get('gericht', data.get('court', '')),
+                "case_number": data.get('aktenzeichen', data.get('case_number', '')),
+                "date": data.get('datum', data.get('date', '')),
+                "content": data.get('inhalt', data.get('content', '')),
+                "legal_field": data.get('rechtsgebiet', data.get('legal_field', '')),
+                "tags": data.get('schlagwoerter', data.get('tags', '')),
+                "url": data.get('url', '')
+            }
+            
+            return decision
+        except Exception as e:
+            logger.error(f"Error parsing decision API response: {e}")
+            return {}
+    
     def _parse_decision_content(self, html_content: str, decision_id: str) -> Dict:
         """
-        Parse decision content from HTML
-        This is a simplified implementation - in reality, you would need
-        to properly parse the HTML structure of openjur.de decision pages
+        Parse decision content from HTML using BeautifulSoup
         """
-        # This is a placeholder implementation
-        # In a real implementation, you would use BeautifulSoup or similar
-        # to parse the HTML and extract decision content
-        
-        # For now, return empty dict to trigger fallback to simulated data
-        return {}
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Extract title (look for h1, h2, or elements with title class)
+            title_elem = soup.find('h1') or soup.find('h2') or soup.find(class_=['title', 'heading'])
+            title = title_elem.get_text(strip=True) if title_elem else f"Urteil {decision_id}"
+            
+            # Extract court information
+            court_elem = soup.find(class_=['court', 'gericht']) or soup.find(string=lambda text: text and ('BGH' in text or 'BVerfG' in text))
+            court = court_elem.get_text(strip=True) if court_elem and hasattr(court_elem, 'get_text') else "Unbekanntes Gericht"
+            
+            # Extract case number
+            case_elem = soup.find(class_=['case-number', 'aktenzeichen']) or soup.find(string=lambda text: text and 'Az.' in text)
+            case_number = case_elem.get_text(strip=True) if case_elem and hasattr(case_elem, 'get_text') else f"Az. {decision_id}"
+            
+            # Extract date
+            date_elem = soup.find(class_=['date', 'datum']) or soup.find(string=lambda text: text and ('.' in text and len(text.split('.')) == 3))
+            date = date_elem.get_text(strip=True) if date_elem and hasattr(date_elem, 'get_text') else "2024-01-01"
+            
+            # Extract main content (look for content div or main text areas)
+            content_elem = soup.find(class_=['content', 'decision-content', 'text']) or soup.find('div')
+            content = content_elem.get_text(strip=True) if content_elem else "Kein Inhalt verfügbar"
+            
+            # Limit content length to avoid overly large chunks
+            if len(content) > 5000:
+                content = content[:5000] + "... (gekürzt)"
+            
+            # Extract legal field and tags if available
+            legal_field_elem = soup.find(class_=['legal-field', 'rechtsgebiet'])
+            legal_field = legal_field_elem.get_text(strip=True) if legal_field_elem else "Allgemeines"
+            
+            tags_elem = soup.find(class_=['tags', 'schlagwoerter'])
+            tags = tags_elem.get_text(strip=True) if tags_elem else "Urteil"
+            
+            decision = {
+                "id": decision_id,
+                "title": title,
+                "court": court,
+                "case_number": case_number,
+                "date": date,
+                "content": content,
+                "legal_field": legal_field,
+                "tags": tags,
+                "url": f"https://openjur.de/u/{decision_id}.html"
+            }
+            
+            logger.info(f"Parsed decision content for {decision_id}")
+            return decision
+            
+        except Exception as e:
+            logger.error(f"Error parsing decision content HTML for {decision_id}: {e}")
+            return {}
     
     def _get_simulated_decision_content(self, decision_id: str) -> Dict:
         """
