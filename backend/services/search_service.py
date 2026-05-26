@@ -55,15 +55,15 @@ class HybridSearchService:
             logger.info(f"Performing dense search with pgvector cosine similarity")
             
             # Get database session
-            db = self.database_service.get_db()
+            db = self.database_service.SessionLocal()
             
             # Execute pgvector cosine similarity search using <-> operator
             # The <-> operator computes cosine distance (1 - cosine similarity)
             # So lower scores are better (more similar)
             query = text("""
-                SELECT *, embedding <-> :vec AS score 
+                SELECT *, vector <-> :vec AS score 
                 FROM legal_chunks 
-                ORDER BY embedding <-> :vec 
+                ORDER BY score 
                 LIMIT :k
             """)
             
@@ -98,6 +98,8 @@ class HybridSearchService:
         except Exception as e:
             logger.error(f"Error in dense search: {e}")
             return []
+        finally:
+            db.close()
     
     def _sparse_search(self, query: str, limit: int = 10) -> List[Dict]:
         """
@@ -107,7 +109,7 @@ class HybridSearchService:
             logger.info(f"Performing sparse search with PostgreSQL FTS for query: {query}")
             
             # Get database session
-            db = self.database_service.get_db()
+            db = self.database_service.SessionLocal()
             
             # Execute PostgreSQL FTS search using plainto_tsquery for exact matches
             # This is particularly important for legal citations like '§ 1 KSchG'
