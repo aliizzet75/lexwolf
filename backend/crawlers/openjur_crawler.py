@@ -17,8 +17,8 @@ class OpenJurCrawler:
     """
     
     def __init__(self):
-        self.base_url = "https://openjur.de"
-        self.search_url = "https://openjur.de/api/v1/entscheidungen"
+        self.base_url = "https://www.openjur.de"
+        self.search_url = "https://www.openjur.de/api/v1/entscheidungen"
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'LexWolf Legal Crawler/1.0 (legal-research-bot)',
@@ -45,12 +45,16 @@ class OpenJurCrawler:
             
             # Try different API endpoints
             api_endpoints = [
-                "https://openjur.de/api/v1/entscheidungen",  # Current attempt
+                "https://www.openjur.de/api/v1/entscheidungen",  # Current attempt with www
+                "https://www.openjur.de/api/entscheidungen",
+                "https://www.openjur.de/api/v1/search",
+                "https://www.openjur.de/api/search",
+                "https://www.openjur.de/entscheidungen/api",
+                "https://openjur.de/api/v1/entscheidungen",  # Without www
                 "https://openjur.de/api/entscheidungen",
                 "https://openjur.de/api/v1/search",
                 "https://openjur.de/api/search",
-                "https://openjur.de/entscheidungen/api",
-                "https://www.openjur.de/api/v1/entscheidungen"
+                "https://openjur.de/entscheidungen/api"
             ]
             
             # Common API parameters
@@ -103,7 +107,7 @@ class OpenJurCrawler:
             
             # If API endpoints don't work, try HTML parsing as fallback
             logger.warning("No working API endpoint found, trying HTML parsing")
-            html_url = "https://openjur.de/suche.html"
+            html_url = "https://www.openjur.de/suche/"  # Correct URL according to error history
             html_params = {
                 'dt': 'datum',
                 'dfrom': start_date.strftime("%d.%m.%Y"),
@@ -357,10 +361,12 @@ class OpenJurCrawler:
         try:
             # Try different API endpoints for individual decisions
             api_endpoints = [
+                f"https://www.openjur.de/api/v1/entscheidungen/{decision_id}",
+                f"https://www.openjur.de/api/entscheidungen/{decision_id}",
+                f"https://www.openjur.de/entscheidungen/{decision_id}/api",
                 f"https://openjur.de/api/v1/entscheidungen/{decision_id}",
                 f"https://openjur.de/api/entscheidungen/{decision_id}",
-                f"https://openjur.de/entscheidungen/{decision_id}/api",
-                f"https://www.openjur.de/api/v1/entscheidungen/{decision_id}"
+                f"https://openjur.de/entscheidungen/{decision_id}/api"
             ]
             
             # Try each endpoint
