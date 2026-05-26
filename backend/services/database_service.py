@@ -12,9 +12,9 @@ class DatabaseService:
     """
     
     def __init__(self):
-        # Database setup - use SQLite for testing
-        self.DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
-        self.engine = create_engine(self.DATABASE_URL, connect_args={"check_same_thread": False})
+        # Database setup - use PostgreSQL for production, SQLite for testing
+        self.DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/lexwolf")
+        self.engine = create_engine(self.DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in self.DATABASE_URL else {})
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         
         # Create database tables

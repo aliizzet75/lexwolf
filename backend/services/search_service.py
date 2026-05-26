@@ -153,6 +153,8 @@ class HybridSearchService:
         except Exception as e:
             logger.error(f"Error in sparse search: {e}")
             return []
+        finally:
+            db.close()
     
     def _reciprocal_rank_fusion(self, dense_results: List[Dict], sparse_results: List[Dict], limit: int = 10) -> List[Dict]:
         """
