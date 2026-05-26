@@ -56,6 +56,15 @@ def test_get_recent_decisions():
                     missing_fields.append(field)
                     print(f"  ✗ Decision missing {field}")
             
+            # Check if data is real or simulated
+            source = decision.get("_source", "unknown")
+            if source == "real":
+                print("  ✓ Decision data is REAL from openjur.de")
+            elif source == "simulated":
+                print("  ⚠️  Decision data is simulated (fallback)")
+            else:
+                print("  ⚠️  Decision data source unknown")
+            
             return len(missing_fields) == 0
         else:
             print("  ✗ No decisions returned")
@@ -80,6 +89,15 @@ def test_get_decision_content():
             print(f"  ✓ Decision title: {decision_content.get('title', 'N/A')}")
             print(f"  ✓ Decision court: {decision_content.get('court', 'N/A')}")
             print(f"  ✓ Decision date: {decision_content.get('date', 'N/A')}")
+            
+            # Check if data is real or simulated
+            source = decision_content.get("_source", "unknown")
+            if source == "real":
+                print("  ✓ Decision content is REAL from openjur.de")
+            elif source == "simulated":
+                print("  ⚠️  Decision content is simulated (fallback)")
+            else:
+                print("  ⚠️  Decision content source unknown")
             
             # Check that content is not empty
             content = decision_content.get('content', '')

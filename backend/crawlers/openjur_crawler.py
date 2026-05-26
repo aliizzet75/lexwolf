@@ -43,50 +43,92 @@ class OpenJurCrawler:
             
             logger.info(f"Fetching recent decisions from {start_str} to {end_str}")
             
-            # Make HTTP request to API endpoint
-            params = {
-                'datum_von': start_str,
-                'datum_bis': end_str,
-                'limit': 20,
+            # Try different API endpoints
+            api_endpoints = [
+                "https://openjur.de/api/v1/entscheidungen",  # Current attempt
+                "https://openjur.de/api/entscheidungen",
+                "https://openjur.de/api/v1/search",
+                "https://openjur.de/api/search",
+                "https://openjur.de/entscheidungen/api",
+                "https://www.openjur.de/api/v1/entscheidungen"
+            ]
+            
+            # Common API parameters
+            params_list = [
+                {
+                    'datum_von': start_str,
+                    'datum_bis': end_str,
+                    'limit': 20,
+                    'sort': 'datum'
+                },
+                {
+                    'date_from': start_str,
+                    'date_to': end_str,
+                    'limit': 20,
+                    'sort': 'date'
+                },
+                {
+                    'dt': 'datum',
+                    'dfrom': start_date.strftime("%d.%m.%Y"),
+                    'dto': end_date.strftime("%d.%m.%Y"),
+                    'perpage': '20',
+                    'sort': 'datum'
+                }
+            ]
+            
+            # Try each endpoint with each parameter set
+            for api_url in api_endpoints:
+                for params in params_list:
+                    try:
+                        logger.info(f"Trying API endpoint: {api_url}")
+                        response = self.session.get(api_url, params=params, timeout=30)
+                        if response.status_code == 200:
+                            # Parse JSON response
+                            data = response.json()
+                            decisions = self._parse_api_response(data)
+                            
+                            if decisions:
+                                logger.info(f"Successfully fetched {len(decisions)} recent decisions from {api_url}")
+                                return decisions
+                            else:
+                                logger.warning(f"No decisions found in API response from {api_url}")
+                        elif response.status_code == 404:
+                            logger.debug(f"API endpoint not found: {api_url}")
+                        else:
+                            logger.warning(f"API request failed with status {response.status_code}: {api_url}")
+                    except requests.exceptions.RequestException as e:
+                        logger.debug(f"API request failed for {api_url}: {e}")
+                    except Exception as e:
+                        logger.debug(f"Error parsing API response from {api_url}: {e}")
+            
+            # If API endpoints don't work, try HTML parsing as fallback
+            logger.warning("No working API endpoint found, trying HTML parsing")
+            html_url = "https://openjur.de/suche.html"
+            html_params = {
+                'dt': 'datum',
+                'dfrom': start_date.strftime("%d.%m.%Y"),
+                'dto': end_date.strftime("%d.%m.%Y"),
+                'perpage': '20',
                 'sort': 'datum'
             }
             
-            # Try to make the request
             try:
-                response = self.session.get(self.search_url, params=params, timeout=30)
-                response.raise_for_status()
-                
-                # Parse JSON response
-                data = response.json()
-                decisions = self._parse_api_response(data)
-                
-                if decisions:
-                    logger.info(f"Successfully fetched {len(decisions)} recent decisions")
-                    return decisions
-                else:
-                    logger.warning("No decisions found in API response, trying HTML parsing")
-                    # Try HTML parsing as fallback
-                    html_url = "https://openjur.de/suche.html"
-                    html_params = {
-                        'dt': 'datum',
-                        'dfrom': start_date.strftime("%d.%m.%Y"),
-                        'dto': end_date.strftime("%d.%m.%Y"),
-                        'perpage': '20',
-                        'sort': 'datum'
-                    }
-                    html_response = self.session.get(html_url, params=html_params, timeout=30)
-                    html_response.raise_for_status()
+                html_response = self.session.get(html_url, params=html_params, timeout=30)
+                if html_response.status_code == 200:
                     decisions = self._parse_search_results(html_response.text)
                     
                     if decisions:
                         logger.info(f"Successfully fetched {len(decisions)} recent decisions via HTML")
+                        # Mark as real data since we successfully accessed the site
+                        for decision in decisions:
+                            decision["_source"] = "real"
                         return decisions
                     else:
-                        logger.warning("No decisions found in HTML parsing, using simulated data")
+                        logger.warning("No decisions found in HTML parsing")
             except requests.exceptions.RequestException as e:
-                logger.warning(f"HTTP request failed: {e}, using simulated data")
+                logger.warning(f"HTML request failed: {e}")
             except Exception as e:
-                logger.warning(f"Error parsing API response: {e}, using simulated data")
+                logger.warning(f"Error parsing HTML response: {e}")
             
             # Fallback to simulated data if real API is not available
             logger.info("Using simulated data as fallback")
@@ -136,6 +178,8 @@ class OpenJurCrawler:
                     
                     # Only add decisions with required fields
                     if decision["id"] and decision["title"] and decision["court"] and decision["date"]:
+                        # Add a marker to indicate this is real data (not simulated)
+                        decision["_source"] = "real"
                         decisions.append(decision)
                 except Exception as e:
                     logger.warning(f"Error parsing decision item: {e}")
@@ -242,7 +286,7 @@ class OpenJurCrawler:
         """
         Get simulated court decisions for testing purposes
         """
-        return [
+        decisions = [
             {
                 "id": "12345",
                 "title": "Urteil des BGH vom 01.01.2024 - Az. VIII ZR 123/23",
@@ -299,43 +343,69 @@ class OpenJurCrawler:
                 "url": "https://www.openjur.de/u/12349.html"
             }
         ]
+        
+        # Mark all simulated decisions
+        for decision in decisions:
+            decision["_source"] = "simulated"
+        
+        return decisions
     
     def get_decision_content(self, decision_id: str) -> Dict:
         """
         Get content of a specific court decision using openjur.de API
         """
         try:
-            # Try to make HTTP request to API endpoint first
-            api_url = f"{self.base_url}/api/v1/entscheidungen/{decision_id}"
+            # Try different API endpoints for individual decisions
+            api_endpoints = [
+                f"https://openjur.de/api/v1/entscheidungen/{decision_id}",
+                f"https://openjur.de/api/entscheidungen/{decision_id}",
+                f"https://openjur.de/entscheidungen/{decision_id}/api",
+                f"https://www.openjur.de/api/v1/entscheidungen/{decision_id}"
+            ]
+            
+            # Try each endpoint
+            for api_url in api_endpoints:
+                try:
+                    logger.debug(f"Trying decision API endpoint: {api_url}")
+                    response = self.session.get(api_url, timeout=30)
+                    if response.status_code == 200:
+                        # Parse JSON response
+                        data = response.json()
+                        decision_content = self._parse_decision_api_response(data)
+                        
+                        if decision_content and decision_content.get('title') and decision_content.get('content'):
+                            logger.info(f"Successfully fetched decision content for {decision_id} via API")
+                            decision_content["_source"] = "real"
+                            return decision_content
+                        else:
+                            logger.warning(f"Could not parse decision content for {decision_id} from API")
+                    elif response.status_code == 404:
+                        logger.debug(f"Decision API endpoint not found: {api_url}")
+                    else:
+                        logger.warning(f"Decision API request failed with status {response.status_code}: {api_url}")
+                except requests.exceptions.RequestException as e:
+                    logger.debug(f"Decision API request failed for {api_url}: {e}")
+                except Exception as e:
+                    logger.debug(f"Error parsing decision API response from {api_url}: {e}")
+            
+            # If API endpoints don't work, try HTML parsing as fallback
+            logger.warning(f"No working API endpoint found for decision {decision_id}, trying HTML parsing")
+            decision_url = f"{self.base_url}/u/{decision_id}.html"
             
             try:
-                response = self.session.get(api_url, timeout=30)
-                response.raise_for_status()
-                
-                # Parse JSON response
-                data = response.json()
-                decision_content = self._parse_decision_api_response(data)
-                
-                if decision_content and decision_content.get('title') and decision_content.get('content'):
-                    logger.info(f"Successfully fetched decision content for {decision_id} via API")
-                    return decision_content
-                else:
-                    logger.warning(f"Could not parse decision content for {decision_id} from API, trying HTML")
-                    # Try HTML parsing as fallback
-                    decision_url = f"{self.base_url}/u/{decision_id}.html"
-                    html_response = self.session.get(decision_url, timeout=30)
-                    html_response.raise_for_status()
-                    
+                html_response = self.session.get(decision_url, timeout=30)
+                if html_response.status_code == 200:
                     # Parse the decision content from HTML
                     decision_content = self._parse_decision_content(html_response.text, decision_id)
                     
                     if decision_content and decision_content.get('title') and decision_content.get('content'):
                         logger.info(f"Successfully fetched decision content for {decision_id} via HTML")
+                        decision_content["_source"] = "real"
                         return decision_content
                     else:
-                        logger.warning(f"Could not parse decision content for {decision_id}, using simulated data")
+                        logger.warning(f"Could not parse decision content for {decision_id} from HTML")
             except requests.exceptions.RequestException as e:
-                logger.warning(f"HTTP request failed for decision {decision_id}: {e}")
+                logger.warning(f"HTML request failed for decision {decision_id}: {e}")
             except Exception as e:
                 logger.warning(f"Error parsing decision content for {decision_id}: {e}")
             
@@ -442,7 +512,8 @@ class OpenJurCrawler:
             "content": f"Dies ist ein simuliertes Urteil mit der ID {decision_id}. Inhalt des Urteils würde hier stehen. Der Beschluss behandelt wichtige rechtliche Aspekte im Bereich des Testrechts. Die Entscheidung hat bedeutende Auswirkungen auf die Rechtsprechung in diesem Bereich.",
             "legal_field": "Testrecht",
             "tags": "Test,Simulation",
-            "url": f"https://www.openjur.de/u/{decision_id}.html"
+            "url": f"https://www.openjur.de/u/{decision_id}.html",
+            "_source": "simulated"
         }
         
         return decision
