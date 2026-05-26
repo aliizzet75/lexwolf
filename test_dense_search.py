@@ -50,7 +50,7 @@ def test_dense_search_implementation():
             print("  ✗ Method does not mention cosine similarity")
             return False
             
-        if "embedding <-> :vec" in method_source:
+        if "vector <-> :vec" in method_source:
             print("  ✓ Method uses correct query pattern")
         else:
             print("  ✗ Method does not use correct query pattern")
@@ -75,9 +75,9 @@ def test_query_structure():
         # Check for required elements in the query
         required_elements = [
             "SELECT *",
-            "embedding <-> :vec AS score",
+            "vector <-> :vec AS score",
             "FROM legal_chunks",
-            "ORDER BY embedding <-> :vec",
+            "ORDER BY score",
             "LIMIT :k"
         ]
         
@@ -106,7 +106,7 @@ def test_vector_dimensionality():
         method_source = inspect.getsource(search_service._dense_search)
         
         # The query should work with proper vector dimensions
-        if "embedding" in method_source:
+        if "vector" in method_source:
             print("  ✓ Query structure supports proper vector dimensions")
             return True
         else:
