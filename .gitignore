@@ -73,4 +73,9 @@ ENV/
 *.db
 
 # VS Code
-.vscode/settings.json
+.vscode/settings.jsonbackend/venv/
+backend/venv_test/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+backend/=5.0

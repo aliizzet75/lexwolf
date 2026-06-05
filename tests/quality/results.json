@@ -1,0 +1,1852 @@
+{
+  "ergebnisse": [
+    {
+      "frage_id": 1,
+      "frage": "Mein Arbeitgeber hat mir fristlos gekündigt, weil ich einmalig zu spät kam. Ist das rechtmäßig?",
+      "erwartete_paragraphen": [
+        "§626 BGB",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 626 Fristlose Kündigung aus wichtigem Grund: § 626 Fristlose Kündigung aus wichtigem Grund\\n(1) Das Dienstverhältnis kann von jedem Vertragsteil aus wichtigem Grund ohne Einhaltung einer Kündigungsfrist gekündigt werden, wenn Tatsachen vorliegen, auf Grund derer dem Kündigenden unter Berücksichtigung aller Umstände des Einzelfalles und unter Abwägung der Interessen beider Vertragsteile die Fortsetzung des Dienstverhältnisses bis zum Ablauf de\", \"quellen\": [\"3421\"]}, {\"t",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§626 BGB",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 78,
+      "qg_refs_in_db": 78
+    },
+    {
+      "frage_id": 2,
+      "frage": "Wie lang ist die gesetzliche Kündigungsfrist bei 8 Jahren Betriebszugehörigkeit?",
+      "erwartete_paragraphen": [
+        "§622 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"Anlage 41 (zu § 10 Absatz 5): Anlage 41 (zu § 10 Absatz 5)\\n1. Räumlicher Geltungsbereich: Das Gebiet der Bundesrepublik Deutschland. 2. Betrieblicher Geltungsbereich: Alle Betriebe und selbstständigen Betriebsabteilungen des Dachdeckerhandwerks. 3. Persönlicher Geltungsbereich: Alle gewerblichen Arbeitnehmer, die eine nach den Bestimmungen des Sechsten Buches Sozialgesetzbuch (SGB VI) versicherungspflichtige Tätigkeit ausüben.\", \"quellen\": [\"79105\"]}, {\"text\": \"Anlage 38",
+      "judge_score": 2,
+      "begruendung": "Regelbasiert: 0/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [],
+      "verifiziert": true,
+      "qg_refs_gesamt": 91,
+      "qg_refs_in_db": 91
+    },
+    {
+      "frage_id": 3,
+      "frage": "Mein Betrieb hat 12 Mitarbeiter. Habe ich Kündigungsschutz nach dem KSchG?",
+      "erwartete_paragraphen": [
+        "§23 KSchG",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 23 Feststellung der Satzung: § 23 Feststellung der Satzung\\n(1) Die Satzung muß durch notarielle Beurkundung festgestellt werden. Bevollmächtigte bedürfen einer notariell beglaubigten Vollmacht. (2) In der Urkunde sind anzugeben (3) Die Satzung muß bestimmen (4) Die Satzung muß ferner Bestimmungen über die Form der Bekanntmachungen der Gesellschaft enthalten. (5) Die Satzung kann von den Vorschriften dieses Gesetzes nur abweic\", \"quellen\": [\"2128\"]}, {\"text\": \"§ 239 Anm",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§23 KSchG",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 73,
+      "qg_refs_in_db": 73
+    },
+    {
+      "frage_id": 4,
+      "frage": "Mein Arbeitgeber will mich betriebsbedingt kündigen. Welche Voraussetzungen muss er einhalten?",
+      "erwartete_paragraphen": [
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1 Sozial ungerechtfertigte Kündigungen: § 1 Sozial ungerechtfertigte Kündigungen\\n(1) Die Kündigung des Arbeitsverhältnisses gegenüber einem Arbeitnehmer, dessen Arbeitsverhältnis in demselben Betrieb oder Unternehmen ohne Unterbrechung länger als sechs Monate bestanden hat, ist rechtsunwirksam, wenn sie sozial ungerechtfertigt ist. (2) Sozial ungerechtfertigt ist die Kündigung, wenn sie nicht durch Gründe, die in der Person oder in dem \", \"quellen\": [\"6132\"]}, {\"text\":",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 90,
+      "qg_refs_in_db": 90
+    },
+    {
+      "frage_id": 5,
+      "frage": "Wie berechnet sich der Kindesunterhalt beim Wechselmodell (50/50)?",
+      "erwartete_paragraphen": [
+        "§1601 BGB",
+        "§1603 BGB",
+        "§1612a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1601 Unterhaltsverpflichtete: § 1601 Unterhaltsverpflichtete\\nVerwandte in gerader Linie sind verpflichtet, einander Unterhalt zu gewähren.\", \"quellen\": [\"4435\"]}, {\"text\": \"§ 1602 Bedürftigkeit: § 1602 Bedürftigkeit\\n(1) Unterhaltsberechtigt ist nur, wer außerstande ist, sich selbst zu unterhalten. (2) Ein minderjähriges Kind kann von seinen Eltern, auch wenn es Vermögen hat, die Gewährung des Unterhalts insoweit verlangen, als die Einkünfte seines Vermögens und der Er",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1601 BGB",
+        "§1603 BGB",
+        "§1612a BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 94,
+      "qg_refs_in_db": 94
+    },
+    {
+      "frage_id": 6,
+      "frage": "Bis wann hat ein volljähriges Kind Anspruch auf Unterhalt?",
+      "erwartete_paragraphen": [
+        "§1601 BGB",
+        "§1603 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1603 Leistungsfähigkeit: § 1603 Leistungsfähigkeit\\n(1) Unterhaltspflichtig ist nicht, wer bei Berücksichtigung seiner sonstigen Verpflichtungen außerstande ist, ohne Gefährdung seines angemessenen Unterhalts den Unterhalt zu gewähren. (2) Befinden sich Eltern in dieser Lage, so sind sie ihren minderjährigen Kindern gegenüber verpflichtet, alle verfügbaren Mittel zu ihrem und der Kinder Unterhalt gleichmäßig zu verwenden. \", \"quellen\": [\"4437\"]}, {\"text\": \"§ 1601 Unterh",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1601 BGB",
+        "§1603 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 102,
+      "qg_refs_in_db": 102
+    },
+    {
+      "frage_id": 7,
+      "frage": "Hat meine Ex-Frau nach Scheidung Ehegattenunterhalt nach nur 2 Jahren Ehe?",
+      "erwartete_paragraphen": [
+        "§1569 BGB",
+        "§1573 BGB",
+        "§1578b BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1569 Grundsatz der Eigenverantwortung: § 1569 Grundsatz der Eigenverantwortung\\nNach der Scheidung obliegt es jedem Ehegatten, selbst für seinen Unterhalt zu sorgen. Ist er dazu außerstande, hat er gegen den anderen Ehegatten einen Anspruch auf Unterhalt nur nach den folgenden Vorschriften.\", \"quellen\": [\"4389\"]}, {\"text\": \"§ 1578b Herabsetzung und zeitliche Begrenzung des Unterhalts wegen Unbilligkeit: § 1578b Herabsetzung und zeitliche Begrenzung des Unterhalts wegen ",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 2/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1569 BGB",
+        "§1578b BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 112,
+      "qg_refs_in_db": 112
+    },
+    {
+      "frage_id": 8,
+      "frage": "Mein Vermieter hat die Miete um 30% erhöht. Ist das erlaubt?",
+      "erwartete_paragraphen": [
+        "§558 BGB",
+        "§558a BGB",
+        "§557 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 558 Mieterhöhung bis zur ortsüblichen Vergleichsmiete: § 558 Mieterhöhung bis zur ortsüblichen Vergleichsmiete\\n(1) Der Vermieter kann die Zustimmung zu einer Erhöhung der Miete bis zur ortsüblichen Vergleichsmiete verlangen, wenn die Miete in dem Zeitpunkt, zu dem die Erhöhung eintreten soll, seit 15 Monaten unverändert ist. Das Mieterhöhungsverlangen kann frühestens ein Jahr nach der letzten Mieterhöhung geltend gemacht werden. Erhöhungen nach den §§\", \"quellen\": [\"32",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§558 BGB",
+        "§558a BGB",
+        "§557 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 114,
+      "qg_refs_in_db": 114
+    },
+    {
+      "frage_id": 9,
+      "frage": "Mein Vermieter kündigt wegen Eigenbedarfs. Welche Voraussetzungen gelten?",
+      "erwartete_paragraphen": [
+        "§573 BGB",
+        "§574 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 573 Ordentliche Kündigung des Vermieters: § 573 Ordentliche Kündigung des Vermieters\\n(1) Der Vermieter kann nur kündigen, wenn er ein berechtigtes Interesse an der Beendigung des Mietverhältnisses hat. Die Kündigung zum Zwecke der Mieterhöhung ist ausgeschlossen. (2) Ein berechtigtes Interesse des Vermieters an der Beendigung des Mietverhältnisses liegt insbesondere vor, wenn (3) Die Gründe für ein berechtigtes Interesse des Vermieters si\", \"quellen\": [\"3328\"]}, {\"text",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§573 BGB",
+        "§574 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 90,
+      "qg_refs_in_db": 89
+    },
+    {
+      "frage_id": 10,
+      "frage": "Die Heizung meiner Wohnung ist seit 2 Wochen defekt. Darf ich Miete mindern?",
+      "erwartete_paragraphen": [
+        "§536 BGB",
+        "§535 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 535 Inhalt und Hauptpflichten des Mietvertrags: § 535 Inhalt und Hauptpflichten des Mietvertrags\\n(1) Durch den Mietvertrag wird der Vermieter verpflichtet, dem Mieter den Gebrauch der Mietsache während der Mietzeit zu gewähren. Der Vermieter hat die Mietsache dem Mieter in einem zum vertragsgemäßen Gebrauch geeigneten Zustand zu überlassen und sie während der Mietzeit in diesem Zustand zu erhalten. Er hat die auf der Mietsache ruhenden Lasten z\", \"quellen\": [\"3246\"]}, ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§536 BGB",
+        "§535 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 96,
+      "qg_refs_in_db": 96
+    },
+    {
+      "frage_id": 11,
+      "frage": "Ich wurde ohne Schuld in einen Unfall verwickelt. Wer haftet?",
+      "erwartete_paragraphen": [
+        "§823 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 7 Haftung des Halters, Schwarzfahrt: § 7 Haftung des Halters, Schwarzfahrt\\n(1) Wird bei dem Betrieb eines Kraftfahrzeugs ein Mensch getötet, der Körper oder die Gesundheit eines Menschen verletzt oder eine Sache beschädigt, so ist der Halter verpflichtet, dem Verletzten den daraus entstehenden Schaden zu ersetzen. (2) Die Ersatzpflicht ist ausgeschlossen, wenn der Unfall durch höhere Gewalt verursacht wird. (3) Benutzt jemand das Kra\", \"quellen\": [\"81954\"]}, {\"text\": \"",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§823 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 107,
+      "qg_refs_in_db": 107
+    },
+    {
+      "frage_id": 12,
+      "frage": "Ein Handwerker hat mangelhaft gearbeitet. Welche Rechte habe ich?",
+      "erwartete_paragraphen": [
+        "§634 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 633 Sach- und Rechtsmangel: § 633 Sach- und Rechtsmangel\\n(1) Der Unternehmer hat dem Besteller das Werk frei von Sach- und Rechtsmängeln zu verschaffen. (2) Das Werk ist frei von Sachmängeln, wenn es die vereinbarte Beschaffenheit hat. Soweit die Beschaffenheit nicht vereinbart ist, ist das Werk frei von Sachmängeln, (3) Das Werk ist frei von Rechtsmängeln, wenn Dritte in Bezug auf das Werk keine oder nur die im Vertrag über\", \"quellen\": [\"3437\"]}, {\"text\": \"§ 635 Nach",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§634 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 80,
+      "qg_refs_in_db": 80
+    },
+    {
+      "frage_id": 13,
+      "frage": "Ich habe online eine Ware gekauft und möchte sie zurückgeben. Welches Widerrufsrecht habe ich?",
+      "erwartete_paragraphen": [
+        "§312g BGB",
+        "§355 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 355 Widerrufsrecht bei Verbraucherverträgen: § 355 Widerrufsrecht bei Verbraucherverträgen\\n(1) Wird einem Verbraucher durch Gesetz ein Widerrufsrecht nach dieser Vorschrift eingeräumt, so sind der Verbraucher und der Unternehmer an ihre auf den Abschluss des Vertrags gerichteten Willenserklärungen nicht mehr gebunden, wenn der Verbraucher seine Willenserklärung fristgerecht widerrufen hat. Der Widerruf erfolgt durch Erklärung gegenüber dem U\", \"quellen\": [\"3035\"]}, {\"t",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§312g BGB",
+        "§355 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 123,
+      "qg_refs_in_db": 123
+    },
+    {
+      "frage_id": 14,
+      "frage": "Mein Arbeitgeber hat den Lohn seit 2 Monaten nicht gezahlt. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§611a BGB",
+        "§614 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 286 Verzug des Schuldners: § 286 Verzug des Schuldners\\n(1) Leistet der Schuldner auf eine Mahnung des Gläubigers nicht, die nach dem Eintritt der Fälligkeit erfolgt, so kommt er durch die Mahnung in Verzug. Der Mahnung stehen die Erhebung der Klage auf die Leistung sowie die Zustellung eines Mahnbescheids im Mahnverfahren gleich. (2) Der Mahnung bedarf es nicht, wenn (3) Der Schuldner einer Entgeltforderung kommt spätestens\", \"quellen\": [\"2925\"]}, {\"text\": \"§ 323 Rückt",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§611a BGB",
+        "§614 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 63,
+      "qg_refs_in_db": 63
+    },
+    {
+      "frage_id": 15,
+      "frage": "Kann mein Arbeitgeber mich in der Probezeit ohne Grund kündigen?",
+      "erwartete_paragraphen": [
+        "§622 BGB",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 622 Kündigungsfristen bei Arbeitsverhältnissen: § 622 Kündigungsfristen bei Arbeitsverhältnissen\\n(1) Das Arbeitsverhältnis eines Arbeiters oder eines Angestellten (Arbeitnehmers) kann mit einer Frist von vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats gekündigt werden. (2) Für eine Kündigung durch den Arbeitgeber beträgt die Kündigungsfrist, wenn das Arbeitsverhältnis in dem Betrieb oder Unternehmen (3) Während einer vereinbarten\", \"quellen\": [\"3417\"]}, ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§622 BGB",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 87,
+      "qg_refs_in_db": 87
+    },
+    {
+      "frage_id": 16,
+      "frage": "Wie lange dauert die allgemeine Verjährungsfrist und wann beginnt sie?",
+      "erwartete_paragraphen": [
+        "§195 BGB",
+        "§199 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 195 Regelmäßige Verjährungsfrist: § 195 Regelmäßige Verjährungsfrist\\nDie regelmäßige Verjährungsfrist beträgt drei Jahre.\", \"quellen\": [\"2836\"]}, {\"text\": \"§ 1950 Teilannahme; Teilausschlagung: § 1950 Teilannahme; Teilausschlagung\\nDie Annahme und die Ausschlagung können nicht auf einen Teil der Erbschaft beschränkt werden. Die Annahme oder Ausschlagung eines Teils ist unwirksam.\", \"quellen\": [\"4720\"]}, {\"text\": \"§ 1990 Dürftigkeitseinrede des Erben: § 1990 Dürftigkeit",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§195 BGB",
+        "§199 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 89,
+      "qg_refs_in_db": 89
+    },
+    {
+      "frage_id": 17,
+      "frage": "Ich bin Erbe und der Nachlass ist überschuldet. Wie kann ich ausschlagen?",
+      "erwartete_paragraphen": [
+        "§1942 BGB",
+        "§1944 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1943 Annahme und Ausschlagung der Erbschaft: § 1943 Annahme und Ausschlagung der Erbschaft\\nDer Erbe kann die Erbschaft nicht mehr ausschlagen, wenn er sie angenommen hat oder wenn die für die Ausschlagung vorgeschriebene Frist verstrichen ist; mit dem Ablauf der Frist gilt die Erbschaft als angenommen.\", \"quellen\": [\"4713\"]}, {\"text\": \"§ 1944 Ausschlagungsfrist: § 1944 Ausschlagungsfrist\\n(1) Die Ausschlagung kann nur binnen sechs Wochen erfolgen. (2) Die Frist beginnt",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1942 BGB",
+        "§1944 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 107,
+      "qg_refs_in_db": 107
+    },
+    {
+      "frage_id": 18,
+      "frage": "Mein Nachbar baut an meiner Grundstücksgrenze. Welche Rechte habe ich?",
+      "erwartete_paragraphen": [
+        "§1004 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 7 Haftung",
+      "judge_score": 2,
+      "begruendung": "Regelbasiert: 0/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [],
+      "verifiziert": true,
+      "qg_refs_gesamt": 96,
+      "qg_refs_in_db": 96
+    },
+    {
+      "frage_id": 19,
+      "frage": "Was sind die Voraussetzungen für eine wirksame Schenkung?",
+      "erwartete_paragraphen": [
+        "§516 BGB",
+        "§518 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 516 Begriff der Schenkung: § 516 Begriff der Schenkung\\n(1) Eine Zuwendung, durch die jemand aus seinem Vermögen einen anderen bereichert, ist Schenkung, wenn beide Teile darüber einig sind, dass die Zuwendung unentgeltlich erfolgt. (2) Ist die Zuwendung ohne den Willen des anderen erfolgt, so kann ihn der Zuwendende unter Bestimmung einer angemessenen Frist zur Erklärung über die Annahme auffordern. Nach dem Ablauf der Fris\", \"quellen\": [\"3226\"]}, {\"text\": \"§ 516a Verb",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§516 BGB",
+        "§518 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 123,
+      "qg_refs_in_db": 123
+    },
+    {
+      "frage_id": 20,
+      "frage": "Ich habe Erbschaft gemacht. Wie hoch ist der Pflichtteil für übergangene Kinder?",
+      "erwartete_paragraphen": [
+        "§2303 BGB",
+        "§2314 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 2303 Pflichtteilsberechtigte; Höhe des Pflichtteils: § 2303 Pflichtteilsberechtigte; Höhe des Pflichtteils\\n(1) Ist ein Abkömmling des Erblassers durch Verfügung von Todes wegen von der Erbfolge ausgeschlossen, so kann er von dem Erben den Pflichtteil verlangen. Der Pflichtteil besteht in der Hälfte des Wertes des gesetzlichen Erbteils. (2) Das gleiche Recht steht den Eltern und dem Ehegatten des Erblassers zu, wenn sie durch Verfügung von Todes wege\", \"quellen\": [\"5062",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§2303 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 96,
+      "qg_refs_in_db": 96
+    },
+    {
+      "frage_id": 21,
+      "frage": "Mein Arbeitgeber hat mir eine Abmahnung erteilt. Was bedeutet das und was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§626 BGB",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 626 Fristlose Kündigung aus wichtigem Grund: § 626 Fristlose Kündigung aus wichtigem Grund\\n(1) Das Dienstverhältnis kann von jedem Vertragsteil aus wichtigem Grund ohne Einhaltung einer Kündigungsfrist gekündigt werden, wenn Tatsachen vorliegen, auf Grund derer dem Kündigenden unter Berücksichtigung aller Umstände des Einzelfalles und unter Abwägung der Interessen beider Vertragsteile die Fortsetzung des Dienstverhältnisses bis zum Ablauf de\", \"quellen\": [\"3421\"]}, {\"t",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§626 BGB",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 101,
+      "qg_refs_in_db": 101
+    },
+    {
+      "frage_id": 22,
+      "frage": "Ich bin seit 6 Wochen krank. Bekomme ich weiterhin Gehalt?",
+      "erwartete_paragraphen": [
+        "§616 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 3: § 3 \\n(1) Die Schiffsführer der ziehenden Fahrzeuge und die Wasserskiläufer dürfen insbesondere durch die Erzeugung von Wellenschlag oder Sogwirkung (2) Der Schiffsführer darf nur dann einen oder mehrere Wasserskiläufer ziehen, wenn das Fahrzeug mit einer weiteren geeigneten Person als Beobachter besetzt ist. Der Beobachter hat zur Unterrichtung des Schiffsführers den Wasserskiläufer und die von di\", \"quellen\": [\"91288\"]}, {\"text\": \"§ 3: § 3 \\nDer Bedarfsplan für die",
+      "judge_score": 2,
+      "begruendung": "Regelbasiert: 0/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [],
+      "verifiziert": true,
+      "qg_refs_gesamt": 85,
+      "qg_refs_in_db": 85
+    },
+    {
+      "frage_id": 23,
+      "frage": "Mein Arbeitgeber verweigert ein Arbeitszeugnis. Habe ich einen Anspruch?",
+      "erwartete_paragraphen": [
+        "§630 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 7 Haftung",
+      "judge_score": 2,
+      "begruendung": "Regelbasiert: 0/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [],
+      "verifiziert": true,
+      "qg_refs_gesamt": 67,
+      "qg_refs_in_db": 67
+    },
+    {
+      "frage_id": 24,
+      "frage": "Ich wurde in der Probezeit schwanger. Darf mir der Arbeitgeber kündigen?",
+      "erwartete_paragraphen": [
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 622 Kündigungsfristen bei Arbeitsverhältnissen: § 622 Kündigungsfristen bei Arbeitsverhältnissen\\n(1) Das Arbeitsverhältnis eines Arbeiters oder eines Angestellten (Arbeitnehmers) kann mit einer Frist von vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats gekündigt werden. (2) Für eine Kündigung durch den Arbeitgeber beträgt die Kündigungsfrist, wenn das Arbeitsverhältnis in dem Betrieb oder Unternehmen (3) Während einer vereinbarten\", \"quellen\": [\"3417\"]}, ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 95,
+      "qg_refs_in_db": 95
+    },
+    {
+      "frage_id": 25,
+      "frage": "Wie viele Urlaubstage stehen mir gesetzlich mindestens zu?",
+      "erwartete_paragraphen": [
+        "§3 BUrlG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 3 Theoretischer und praktischer Unterricht: § 3 Theoretischer und praktischer Unterricht\\n(1) Während des theoretischen und praktischen Unterrichts sind für den jeweiligen Beruf die Kompetenzen zu vermitteln, die zur Erreichung der Ausbildungsziele nach den §§ 8 bis 12 des MT-Berufe-Gesetzes erforderlich sind. (2) Der theoretische und praktische Unterricht wird für den jeweiligen Beruf in dem in § 13 Absatz 4 des MT-Berufe-Gesetzes festgeleg\", \"quellen\": [\"62454\"]}, {\"t",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§3 BUrlG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 88,
+      "qg_refs_in_db": 88
+    },
+    {
+      "frage_id": 26,
+      "frage": "Mein Arbeitgeber möchte mich in eine andere Stadt versetzen. Muss ich das akzeptieren?",
+      "erwartete_paragraphen": [
+        "§611a BGB",
+        "§106 GewO"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 106 Weisungsrecht des Arbeitgebers: § 106 Weisungsrecht des Arbeitgebers\\nDer Arbeitgeber kann Inhalt, Ort und Zeit der Arbeitsleistung nach billigem Ermessen näher bestimmen, soweit diese Arbeitsbedingungen nicht durch den Arbeitsvertrag, Bestimmungen einer Betriebsvereinbarung, eines anwendbaren Tarifvertrages oder gesetzliche Vorschriften festgelegt sind. Dies gilt auch hinsichtlich der Ordnung und des Verhaltens der Arbeitnehmer \", \"quellen\": [\"44786\"]}, {\"text\": \"§",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§611a BGB",
+        "§106 GewO"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 72,
+      "qg_refs_in_db": 72
+    },
+    {
+      "frage_id": 27,
+      "frage": "Ich habe unbezahlte Überstunden geleistet. Kann ich diese einklagen?",
+      "erwartete_paragraphen": [
+        "§611a BGB",
+        "§614 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 611 Vertragstypische Pflichten beim Dienstvertrag: § 611 Vertragstypische Pflichten beim Dienstvertrag\\n(1) Durch den Dienstvertrag wird derjenige, welcher Dienste zusagt, zur Leistung der versprochenen Dienste, der andere Teil zur Gewährung der vereinbarten Vergütung verpflichtet. (2) Gegenstand des Dienstvertrags können Dienste jeder Art sein.\", \"quellen\": [\"3402\"]}, {\"text\": \"§ 611a Arbeitsvertrag: § 611a Arbeitsvertrag\\n(1) Durch den Arbeitsvertrag wird der Arbeitne",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§611a BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 90,
+      "qg_refs_in_db": 90
+    },
+    {
+      "frage_id": 28,
+      "frage": "Mein befristeter Arbeitsvertrag läuft ab. Habe ich Anspruch auf Weiterbeschäftigung?",
+      "erwartete_paragraphen": [
+        "§14 TzBfG",
+        "§15 TzBfG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 14 Zulässigkeit der Befristung: § 14 Zulässigkeit der Befristung\\n(1) Die Befristung eines Arbeitsvertrages ist zulässig, wenn sie durch einen sachlichen Grund gerechtfertigt ist. Ein sachlicher Grund liegt insbesondere vor, wenn (2) Die kalendermäßige Befristung eines Arbeitsvertrages ohne Vorliegen eines sachlichen Grundes ist bis zur Dauer von zwei Jahren zulässig; bis zu dieser Gesamtdauer von zwei Jahren ist auch die höchste\", \"quellen\": [\"85919\"]}, {\"text\": \"§ 15 ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§14 TzBfG",
+        "§15 TzBfG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 93,
+      "qg_refs_in_db": 93
+    },
+    {
+      "frage_id": 29,
+      "frage": "Was ist der Unterschied zwischen fristloser und ordentlicher Kündigung?",
+      "erwartete_paragraphen": [
+        "§622 BGB",
+        "§626 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 622 Kündigungsfristen bei Arbeitsverhältnissen: § 622 Kündigungsfristen bei Arbeitsverhältnissen\\n(1) Das Arbeitsverhältnis eines Arbeiters oder eines Angestellten (Arbeitnehmers) kann mit einer Frist von vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats gekündigt werden. (2) Für eine Kündigung durch den Arbeitgeber beträgt die Kündigungsfrist, wenn das Arbeitsverhältnis in dem Betrieb oder Unternehmen (3) Während einer vereinbarten\", \"quellen\": [\"3417\"]}, ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§622 BGB",
+        "§626 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 119,
+      "qg_refs_in_db": 119
+    },
+    {
+      "frage_id": 30,
+      "frage": "Mein Arbeitgeber sprach eine Änderungskündigung aus. Was bedeutet das?",
+      "erwartete_paragraphen": [
+        "§2 KSchG",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 26 Inkrafttreten: § 26 Inkrafttreten\\nDieses Gesetz tritt am Tag nach seiner Verkündung in Kraft.\", \"quellen\": [\"6159\"]}, {\"text\": \"§ 2 Änderungskündigung: § 2 Änderungskündigung\\nKündigt der Arbeitgeber das Arbeitsverhältnis und bietet er dem Arbeitnehmer im Zusammenhang mit der Kündigung die Fortsetzung des Arbeitsverhältnisses zu geänderten Arbeitsbedingungen an, so kann der Arbeitnehmer dieses Angebot unter dem Vorbehalt annehmen, daß die Änderung der Arbeitsbedingu",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§2 KSchG",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 86,
+      "qg_refs_in_db": 86
+    },
+    {
+      "frage_id": 31,
+      "frage": "Mein Vermieter nimmt die Wohnung nach Kündigung nicht ab. Was soll ich tun?",
+      "erwartete_paragraphen": [
+        "§546 BGB",
+        "§535 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 546 Rückgabepflicht des Mieters: § 546 Rückgabepflicht des Mieters\\n(1) Der Mieter ist verpflichtet, die Mietsache nach Beendigung des Mietverhältnisses zurückzugeben. (2) Hat der Mieter den Gebrauch der Mietsache einem Dritten überlassen, so kann der Vermieter die Sache nach Beendigung des Mietverhältnisses auch von dem Dritten zurückfordern.\", \"quellen\": [\"3261\"]}, {\"text\": \"§ 546a Entschädigung des Vermieters bei verspäteter Rückgabe: § 546a Entschädigung des Vermiet",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§546 BGB",
+        "§535 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 98,
+      "qg_refs_in_db": 97
+    },
+    {
+      "frage_id": 32,
+      "frage": "Darf mein Vermieter ohne Erlaubnis meine Wohnung betreten?",
+      "erwartete_paragraphen": [
+        "§535 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 541 Unterlassungsklage bei vertragswidrigem Gebrauch: § 541 Unterlassungsklage bei vertragswidrigem Gebrauch\\nSetzt der Mieter einen vertragswidrigen Gebrauch der Mietsache trotz einer Abmahnung des Vermieters fort, so kann dieser auf Unterlassung klagen.\", \"quellen\": [\"3256\"]}, {\"text\": \"§ 858 Verbotene Eigenmacht: § 858 Verbotene Eigenmacht\\n(1) Wer dem Besitzer ohne dessen Willen den Besitz entzieht oder ihn im Besitz stört, handelt, sofern nicht das Gesetz die Entzi",
+      "judge_score": 2,
+      "begruendung": "Regelbasiert: 0/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [],
+      "verifiziert": true,
+      "qg_refs_gesamt": 135,
+      "qg_refs_in_db": 135
+    },
+    {
+      "frage_id": 33,
+      "frage": "Ich möchte untervermieten. Brauche ich die Erlaubnis des Vermieters?",
+      "erwartete_paragraphen": [
+        "§553 BGB",
+        "§540 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 540 Haftung für andere: § 540 Haftung für andere\\nDer Beförderer hat ein Verschulden seiner Leute und der Schiffsbesatzung in gleichem Umfang zu vertreten wie eigenes Verschulden, wenn die Leute und die Schiffsbesatzung in Ausübung ihrer Verrichtungen handeln. Gleiches gilt für ein Verschulden anderer Personen, deren er sich bei der Ausführung der Beförderung bedient.\", \"quellen\": [\"6052\"]}, {\"text\": \"§ 540 Inhalt des Berufungsurteils: § 540 Inhalt des Berufungsurteils\\",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§553 BGB",
+        "§540 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 126,
+      "qg_refs_in_db": 126
+    },
+    {
+      "frage_id": 34,
+      "frage": "Mein Vermieter behält die Kaution ohne Grund ein. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§551 BGB",
+        "§548 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 551 Abweichende Vereinbarungen: § 551 Abweichende Vereinbarungen\\nSoweit in § 542 Absatz 4 nichts Abweichendes bestimmt ist, ist jede Vereinbarung unwirksam, die vor Eintritt des Ereignisses getroffen wird, das den Tod oder die Körperverletzung des Fahrgasts oder den Verlust, die Beschädigung oder die verspätete Aushändigung seines Gepäcks verursacht hat, und durch die die Haftung wegen Tod oder Körperverletzung des Fahrgasts ode\", \"quellen\": [\"6063\"]}, {\"text\": \"§ 551 ",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§551 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 94,
+      "qg_refs_in_db": 94
+    },
+    {
+      "frage_id": 35,
+      "frage": "Wann darf ein Vermieter fristlos wegen Mietrückstand kündigen?",
+      "erwartete_paragraphen": [
+        "§543 BGB",
+        "§569 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 543 Außerordentliche fristlose Kündigung aus wichtigem Grund: § 543 Außerordentliche fristlose Kündigung aus wichtigem Grund\\n(1) Jede Vertragspartei kann das Mietverhältnis aus wichtigem Grund außerordentlich fristlos kündigen. Ein wichtiger Grund liegt vor, wenn dem Kündigenden unter Berücksichtigung aller Umstände des Einzelfalls, insbesondere eines Verschuldens der Vertragsparteien, und unter Abwägung der beiderseitigen Interessen die Fortsetzung des Miet\", \"quellen",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§543 BGB",
+        "§569 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 113,
+      "qg_refs_in_db": 113
+    },
+    {
+      "frage_id": 36,
+      "frage": "Mein Vermieter lässt notwendige Reparaturen monatelang ungemacht. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§535 BGB",
+        "§536 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 281 Schadensersatz statt der Leistung wegen nicht oder nicht wie geschuldet\\nerbrachter Leistung: § 281 Schadensersatz statt der Leistung wegen nicht oder nicht wie geschuldet\\nerbrachter Leistung\\n(1) Soweit der Schuldner die fällige Leistung nicht oder nicht wie geschuldet erbringt, kann der Gläubiger unter den Voraussetzungen des § 280 Abs. 1 Schadensersatz statt der Leistung verlangen, wenn er dem Schuldner erfolglos eine angemessene Frist zur Leistung oder Nacherfü",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§535 BGB",
+        "§536 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 122,
+      "qg_refs_in_db": 122
+    },
+    {
+      "frage_id": 37,
+      "frage": "Darf der Vermieter Haustiere in der Mietwohnung verbieten?",
+      "erwartete_paragraphen": [
+        "§535 BGB",
+        "§242 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 553 Gestattung der Gebrauchsüberlassung an Dritte: § 553 Gestattung der Gebrauchsüberlassung an Dritte\\n(1) Entsteht für den Mieter nach Abschluss des Mietvertrags ein berechtigtes Interesse, einen Teil des Wohnraums einem Dritten zum Gebrauch zu überlassen, so kann er von dem Vermieter die Erlaubnis hierzu verlangen. Dies gilt nicht, wenn in der Person des Dritten ein wichtiger Grund vorliegt, der Wohnraum übermäßig belegt würde oder dem Vermieter\", \"quellen\": [\"3270\"]",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§535 BGB",
+        "§242 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 125,
+      "qg_refs_in_db": 125
+    },
+    {
+      "frage_id": 38,
+      "frage": "Was ist der Unterschied zwischen Gewährleistung und Garantie beim Kauf?",
+      "erwartete_paragraphen": [
+        "§437 BGB",
+        "§433 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 434 Sachmangel: § 434 Sachmangel\\n(1) Die Sache ist frei von Sachmängeln, wenn sie bei Gefahrübergang den subjektiven Anforderungen, den objektiven Anforderungen und den Montageanforderungen dieser Vorschrift entspricht. (2) Die Sache entspricht den subjektiven Anforderungen, wenn sie (3) Soweit nicht wirksam etwas anderes vereinbart wurde, entspricht die Sache den objektiven Anforderungen, wenn sie (4) Soweit ein\", \"quellen\": [\"3124\"]}, {\"text\": \"§ 437 Rechte des Käufe",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§437 BGB",
+        "§433 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 88,
+      "qg_refs_in_db": 88
+    },
+    {
+      "frage_id": 39,
+      "frage": "Wann kann ich als Käufer vom Kaufvertrag zurücktreten?",
+      "erwartete_paragraphen": [
+        "§437 BGB",
+        "§323 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 437 Echtheit inländischer öffentlicher Urkunden: § 437 Echtheit inländischer öffentlicher Urkunden\\n(1) Urkunden, die nach Form und Inhalt als von einer öffentlichen Behörde oder von einer mit öffentlichem Glauben versehenen Person errichtet sich darstellen, haben die Vermutung der Echtheit für sich. (2) Das Gericht kann, wenn es die Echtheit für zweifelhaft hält, auch von Amts wegen die Behörde oder die Person, von der die Urkunde errichtet sein\", \"quellen\": [\"8179\"]},",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§437 BGB",
+        "§323 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 107,
+      "qg_refs_in_db": 107
+    },
+    {
+      "frage_id": 40,
+      "frage": "Ein Onlinehändler liefert nicht. Kann ich Schadensersatz verlangen?",
+      "erwartete_paragraphen": [
+        "§433 BGB",
+        "§280 BGB",
+        "§286 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 433 Vertragstypische Pflichten beim Kaufvertrag: § 433 Vertragstypische Pflichten beim Kaufvertrag\\n(1) Durch den Kaufvertrag wird der Verkäufer einer Sache verpflichtet, dem Käufer die Sache zu übergeben und das Eigentum an der Sache zu verschaffen. Der Verkäufer hat dem Käufer die Sache frei von Sach- und Rechtsmängeln zu verschaffen. (2) Der Käufer ist verpflichtet, dem Verkäufer den vereinbarten Kaufpreis zu zahlen und die gekaufte Sache abzu\", \"quellen\": [\"3123\"]},",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§433 BGB",
+        "§280 BGB",
+        "§286 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 115,
+      "qg_refs_in_db": 115
+    },
+    {
+      "frage_id": 41,
+      "frage": "Ich habe einen Vertrag unter Druck unterschrieben. Kann ich ihn anfechten?",
+      "erwartete_paragraphen": [
+        "§123 BGB",
+        "§142 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1238 Verkaufsbedingungen: § 1238 Verkaufsbedingungen\\n(1) Das Pfand darf nur mit der Bestimmung verkauft werden, dass der Käufer den Kaufpreis sofort zu entrichten hat und seiner Rechte verlustig sein soll, wenn dies nicht geschieht. (2) Erfolgt der Verkauf ohne diese Bestimmung, so ist der Kaufpreis als von dem Pfandgläubiger empfangen anzusehen; die Rechte des Pfandgläubigers gegen den Ersteher bleiben unberührt. Unterble\", \"quellen\": [\"4157\"]}, {\"text\": \"§ 1239 Mitbi",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§123 BGB",
+        "§142 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 111,
+      "qg_refs_in_db": 111
+    },
+    {
+      "frage_id": 42,
+      "frage": "Was bedeutet Treu und Glauben im Vertragsrecht?",
+      "erwartete_paragraphen": [
+        "§242 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 242 Leistung nach Treu und Glauben: § 242 Leistung nach Treu und Glauben\\nDer Schuldner ist verpflichtet, die Leistung so zu bewirken, wie Treu und Glauben mit Rücksicht auf die Verkehrssitte es erfordern.\", \"quellen\": [\"2879\"]}, {\"text\": \"§ 313 Störung der Geschäftsgrundlage: § 313 Störung der Geschäftsgrundlage\\n(1) Haben sich Umstände, die zur Grundlage des Vertrags geworden sind, nach Vertragsschluss schwerwiegend verändert und hätten die Parteien den Vertrag nicht ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§242 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 79,
+      "qg_refs_in_db": 79
+    },
+    {
+      "frage_id": 43,
+      "frage": "Sind AGB-Klauseln die Verbraucher einseitig benachteiligen wirksam?",
+      "erwartete_paragraphen": [
+        "§305 BGB",
+        "§307 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 307 Vertragsbeendigung zur Sicherung\\naußenstehender Aktionäre: § 307 Vertragsbeendigung zur Sicherung\\naußenstehender Aktionäre\\nHat die Gesellschaft im Zeitpunkt der Beschlußfassung ihrer Hauptversammlung über einen Beherrschungs- oder Gewinnabführungsvertrag keinen außenstehenden Aktionär, so endet der Vertrag spätestens zum Ende des Geschäftsjahrs, in dem ein außenstehender Aktionär beteiligt ist.\", \"quellen\": [\"2441\"]}, {\"text\": \"§ 307 Datenschutzrechtliche Verantw",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§307 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 104,
+      "qg_refs_in_db": 104
+    },
+    {
+      "frage_id": 44,
+      "frage": "Ich habe eine Bürgschaft unterschrieben und der Schuldner zahlt nicht. Was passiert?",
+      "erwartete_paragraphen": [
+        "§765 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 7 Haftung",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§765 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 90,
+      "qg_refs_in_db": 90
+    },
+    {
+      "frage_id": 45,
+      "frage": "Wann liegt eine arglistige Täuschung beim Vertragsschluss vor?",
+      "erwartete_paragraphen": [
+        "§123 BGB",
+        "§826 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1234 Verkaufsandrohung; Wartefrist: § 1234 Verkaufsandrohung; Wartefrist\\n(1) Der Pfandgläubiger hat dem Eigentümer den Verkauf vorher anzudrohen und dabei den Geldbetrag zu bezeichnen, wegen dessen der Verkauf stattfinden soll. Die Androhung kann erst nach dem Eintritt der Verkaufsberechtigung erfolgen; sie darf unterbleiben, wenn sie untunlich ist. (2) Der Verkauf darf nicht vor dem Ablauf eines Monats nach der Androhung erfolgen. \", \"quellen\": [\"4153\"]}, {\"text\": \"§ ",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§123 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 104,
+      "qg_refs_in_db": 104
+    },
+    {
+      "frage_id": 46,
+      "frage": "Was ist der Unterschied zwischen Rücktritt und Anfechtung beim Vertrag?",
+      "erwartete_paragraphen": [
+        "§323 BGB",
+        "§119 BGB",
+        "§142 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 323 Rücktritt wegen nicht oder nicht vertragsgemäß erbrachter Leistung: § 323 Rücktritt wegen nicht oder nicht vertragsgemäß erbrachter Leistung\\n(1) Erbringt bei einem gegenseitigen Vertrag der Schuldner eine fällige Leistung nicht oder nicht vertragsgemäß, so kann der Gläubiger, wenn er dem Schuldner erfolglos eine angemessene Frist zur Leistung oder Nacherfüllung bestimmt hat, vom Vertrag zurücktreten. (2) Die Fristsetzung ist entbehrlich, wenn (3) Kommt nach der Ar\"",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 2/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§323 BGB",
+        "§119 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 81,
+      "qg_refs_in_db": 81
+    },
+    {
+      "frage_id": 47,
+      "frage": "Mein Kind weigert sich mich zu besuchen. Habe ich ein Umgangsrecht?",
+      "erwartete_paragraphen": [
+        "§1684 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1684 Umgang des Kindes mit den Eltern: § 1684 Umgang des Kindes mit den Eltern\\n(1) Das Kind hat das Recht auf Umgang mit jedem Elternteil; jeder Elternteil ist zum Umgang mit dem Kind verpflichtet und berechtigt. (2) Die Eltern haben alles zu unterlassen, was das Verhältnis des Kindes zum jeweils anderen Elternteil beeinträchtigt oder die Erziehung erschwert. Entsprechendes gilt, wenn sich das Kind in der Obhut einer anderen Person bef\", \"quellen\": [\"4522\"]}, {\"text\": ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1684 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 111,
+      "qg_refs_in_db": 111
+    },
+    {
+      "frage_id": 48,
+      "frage": "Was ist der Versorgungsausgleich bei der Scheidung?",
+      "erwartete_paragraphen": [
+        "§1587 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 102 Versäumnis: § 102 Versäumnis\\n(1) Eine antragstellende Person hat einen Abschnitt der Eignungsprüfung nicht bestanden, wenn sie (2) Liegt ein wichtiger Grund für das Verhalten der antragstellenden Person vor, so gilt der Abschnitt als nicht unternommen. Die antragstellende Person hat die Gründe für ihr Verhalten unverzüglich der nach § 16 Absatz 2 Satz 1 des Gesetzes über die Ausübung der Zahnheilkunde zuständ\", \"quellen\": [\"95364\"]}, {\"text\": \"§ 103 Wiederholung: §",
+      "judge_score": 2,
+      "begruendung": "Regelbasiert: 0/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [],
+      "verifiziert": true,
+      "qg_refs_gesamt": 112,
+      "qg_refs_in_db": 112
+    },
+    {
+      "frage_id": 49,
+      "frage": "Meine Ex-Partnerin verweigert mir den Umgang mit unserem Kind. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§1684 BGB",
+        "§1685 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 99 Kindschaftssachen: § 99 Kindschaftssachen\\n(1) Die deutschen Gerichte sind außer in Verfahren nach § 151 Nr. 7 zuständig, wenn das Kind (2) Sind für die Anordnung einer Vormundschaft sowohl die deutschen Gerichte als auch die Gerichte eines anderen Staates zuständig und ist die Vormundschaft in dem anderen Staat anhängig, kann die Anordnung der Vormundschaft im Inland unterbleiben, wenn dies im Interesse des Mündels \", \"quellen\": [\"38577\"]}, {\"text\": \"§ 1632 Herausga",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1684 BGB",
+        "§1685 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 124,
+      "qg_refs_in_db": 124
+    },
+    {
+      "frage_id": 50,
+      "frage": "Kann ich ein handschriftliches Testament selbst aufsetzen?",
+      "erwartete_paragraphen": [
+        "§2247 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 2247 Eigenhändiges Testament: § 2247 Eigenhändiges Testament\\n(1) Der Erblasser kann ein Testament durch eine eigenhändig geschriebene und unterschriebene Erklärung errichten. (2) Der Erblasser soll in der Erklärung angeben, zu welcher Zeit (Tag, Monat und Jahr) und an welchem Orte er sie niedergeschrieben hat. (3) Die Unterschrift soll den Vornamen und den Familiennamen des Erblassers enthalten. Unterschreibt der Erblasser in \", \"quellen\": [\"5006\"]}, {\"text\": \"§ 2231 O",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§2247 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 100,
+      "qg_refs_in_db": 100
+    },
+    {
+      "frage_id": 51,
+      "frage": "Mein Vater ist gestorben mit Schulden. Hafte ich als Erbe dafür?",
+      "erwartete_paragraphen": [
+        "§1922 BGB",
+        "§1942 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1922 Gesamtrechtsnachfolge: § 1922 Gesamtrechtsnachfolge\\n(1) Mit dem Tode einer Person (Erbfall) geht deren Vermögen (Erbschaft) als Ganzes auf eine oder mehrere andere Personen (Erben) über. (2) Auf den Anteil eines Miterben (Erbteil) finden die sich auf die Erbschaft beziehenden Vorschriften Anwendung.\", \"quellen\": [\"4692\"]}, {\"text\": \"§ 1967 Erbenhaftung, Nachlassverbindlichkeiten: § 1967 Erbenhaftung, Nachlassverbindlichkeiten\\n(1) Der Erbe haftet für die Nachlassv",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1922 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 78,
+      "qg_refs_in_db": 78
+    },
+    {
+      "frage_id": 52,
+      "frage": "Meine Scheidung läuft. Wer bekommt das gemeinsame Haus?",
+      "erwartete_paragraphen": [
+        "§1564 BGB",
+        "§1568a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1568a Ehewohnung: § 1568a Ehewohnung\\n(1) Ein Ehegatte kann verlangen, dass ihm der andere Ehegatte anlässlich der Scheidung die Ehewohnung überlässt, wenn er auf deren Nutzung unter Berücksichtigung des Wohls der im Haushalt lebenden Kinder und der Lebensverhältnisse der Ehegatten in stärkerem Maße angewiesen ist als der andere Ehegatte oder die Überlassung aus anderen Gründen der Billigkeit entspricht. (2) Ist ein\", \"quellen\": [\"4387\"]}, {\"text\": \"§ 753 Teilung durch ",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1568a BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 120,
+      "qg_refs_in_db": 120
+    },
+    {
+      "frage_id": 53,
+      "frage": "Jemand beleidigt mich öffentlich auf Social Media. Kann ich Strafanzeige erstatten?",
+      "erwartete_paragraphen": [
+        "§185 StGB",
+        "§186 StGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 185 Beleidigung: § 185 Beleidigung\\nDie Beleidigung wird mit Freiheitsstrafe bis zu einem Jahr oder mit Geldstrafe und, wenn die Beleidigung öffentlich, in einer Versammlung, durch Verbreiten eines Inhalts (§ 11 Absatz 3) oder mittels einer Tätlichkeit begangen wird, mit Freiheitsstrafe bis zu zwei Jahren oder mit Geldstrafe bestraft.\", \"quellen\": [\"6552\"]}, {\"text\": \"§ 194 Strafantrag: § 194 Strafantrag\\n(1) Die Beleidigung wird nur auf Antrag verfolgt. Ist die Tat in ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§185 StGB",
+        "§186 StGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 80,
+      "qg_refs_in_db": 80
+    },
+    {
+      "frage_id": 54,
+      "frage": "Mein Nachbar macht nachts lautstark Lärm. Was kann ich rechtlich tun?",
+      "erwartete_paragraphen": [
+        "§1004 BGB",
+        "§906 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 906 Zuführung unwägbarer Stoffe: § 906 Zuführung unwägbarer Stoffe\\n(1) Der Eigentümer eines Grundstücks kann die Zuführung von Gasen, Dämpfen, Gerüchen, Rauch, Ruß, Wärme, Geräusch, Erschütterungen und ähnliche von einem anderen Grundstück ausgehende Einwirkungen insoweit nicht verbieten, als die Einwirkung die Benutzung seines Grundstücks nicht oder nur unwesentlich beeinträchtigt. Eine unwesentliche Beeinträchtigung liegt in de\", \"quellen\": [\"3821\"]}, {\"text\": \"§ 100",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1004 BGB",
+        "§906 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 126,
+      "qg_refs_in_db": 126
+    },
+    {
+      "frage_id": 55,
+      "frage": "Ich wurde bestohlen. Wann verjährt mein Schadensersatzanspruch?",
+      "erwartete_paragraphen": [
+        "§195 BGB",
+        "§199 BGB",
+        "§823 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 195 Regel",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 2/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§195 BGB",
+        "§823 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 97,
+      "qg_refs_in_db": 97
+    },
+    {
+      "frage_id": 56,
+      "frage": "Was ist ein Sozialplan und wann besteht Anspruch darauf?",
+      "erwartete_paragraphen": [
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 112 Interessenausgleich über die Betriebsänderung, Sozialplan: § 112 Interessenausgleich über die Betriebsänderung, Sozialplan\\n(1) Kommt zwischen Unternehmer und Betriebsrat ein Interessenausgleich über die geplante Betriebsänderung zustande, so ist dieser schriftlich niederzulegen und vom Unternehmer und Betriebsrat zu unterschreiben; § 77 Absatz 2 Satz 3 gilt entsprechend. Das Gleiche gilt für eine Einigung über den Ausgleich oder die Milderung der wirtscha\", \"quelle",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 66,
+      "qg_refs_in_db": 66
+    },
+    {
+      "frage_id": 57,
+      "frage": "Mein Arbeitgeber zahlt keinen Mindestlohn. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§611a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 7 Haftung",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§611a BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 82,
+      "qg_refs_in_db": 82
+    },
+    {
+      "frage_id": 58,
+      "frage": "Ich habe einen Schaden durch ein fehlerhaftes Produkt erlitten. Wer haftet?",
+      "erwartete_paragraphen": [
+        "§823 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 1874 Beso",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§823 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 105,
+      "qg_refs_in_db": 105
+    },
+    {
+      "frage_id": 59,
+      "frage": "Was bedeutet höhere Gewalt im Vertragsrecht?",
+      "erwartete_paragraphen": [
+        "§275 BGB",
+        "§313 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 275 Überwachung des Governance-Systems: § 275 Überwachung des Governance-Systems\\n(1) Teil 2 Kapitel 1 Abschnitt 3 und § 47 Nummer 1, 2, 8 und 9 gelten auf Gruppenebene entsprechend. Dessen ungeachtet sind das Risikomanagementsystem und das interne Kontrollsystem sowie das Berichtswesen aller in die Gruppenaufsicht nach § 245 Absatz 2 Nummer 1 und 2 einbezogenen Unternehmen so umzusetzen, dass diese Systeme und das Berichtswesen auf der \", \"quellen\": [\"88126\"]}, {\"text\"",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§275 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 92,
+      "qg_refs_in_db": 92
+    },
+    {
+      "frage_id": 60,
+      "frage": "Darf mein Arbeitgeber meine E-Mails überwachen?",
+      "erwartete_paragraphen": [
+        "§611a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 874 Teilungsplan: § 874 Teilungsplan\\n(1) Nach Ablauf der zweiwöchigen Fristen wird von dem Gericht ein Teilungsplan angefertigt. (2) Der Betrag der Kosten des Verfahrens ist von dem Bestand der Masse vorweg in Abzug zu bringen. (3) Die Forderung eines Gläubigers, der bis zur Anfertigung des Teilungsplanes der an ihn gerichteten Aufforderung nicht nachgekommen ist, wird nach der Anzeige und deren Unterlagen berechne\", \"quellen\": [\"8577\"]}, {\"text\": \"§ 875 Terminsbestimm",
+      "judge_score": 2,
+      "begruendung": "Regelbasiert: 0/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [],
+      "verifiziert": true,
+      "qg_refs_gesamt": 101,
+      "qg_refs_in_db": 101
+    },
+    {
+      "frage_id": 61,
+      "frage": "Jemand nutzt meinen Namen ohne Erlaubnis für Werbung. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§12 BGB",
+        "§823 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1234 Verkaufsandrohung; Wartefrist: § 1234 Verkaufsandrohung; Wartefrist\\n(1) Der Pfandgläubiger hat dem Eigentümer den Verkauf vorher anzudrohen und dabei den Geldbetrag zu bezeichnen, wegen dessen der Verkauf stattfinden soll. Die Androhung kann erst nach dem Eintritt der Verkaufsberechtigung erfolgen; sie darf unterbleiben, wenn sie untunlich ist. (2) Der Verkauf darf nicht vor dem Ablauf eines Monats nach der Androhung erfolgen. \", \"quellen\": [\"4153\"]}, {\"text\": \"§ ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§12 BGB",
+        "§823 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 111,
+      "qg_refs_in_db": 111
+    },
+    {
+      "frage_id": 62,
+      "frage": "Wie kündige ich meiner Wohnung ordentlich?",
+      "erwartete_paragraphen": [
+        "§573c BGB",
+        "§568 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 573c Fristen der ordentlichen Kündigung: § 573c Fristen der ordentlichen Kündigung\\n(1) Die Kündigung ist spätestens am dritten Werktag eines Kalendermonats zum Ablauf des übernächsten Monats zulässig. Die Kündigungsfrist für den Vermieter verlängert sich nach fünf und acht Jahren seit der Überlassung des Wohnraums um jeweils drei Monate. (2) Bei Wohnraum, der nur zum vorübergehenden Gebrauch vermietet worden ist, kann eine kürzere Kündig\", \"quellen\": [\"3331\"]}, {\"text\"",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§573c BGB",
+        "§568 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 126,
+      "qg_refs_in_db": 126
+    },
+    {
+      "frage_id": 63,
+      "frage": "Wann ist eine Mahnung entbehrlich und der Schuldner direkt in Verzug?",
+      "erwartete_paragraphen": [
+        "§286 BGB",
+        "§242 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 286 Jahresabschluß. Lagebericht: § 286 Jahresabschluß. Lagebericht\\n(1) Die Hauptversammlung beschließt über die Feststellung des Jahresabschlusses. Der Beschluß bedarf der Zustimmung der persönlich haftenden Gesellschafter. (2) In der Jahresbilanz sind die Kapitalanteile der persönlich haftenden Gesellschafter nach dem Posten \\\"Gezeichnetes Kapital\\\" gesondert auszuweisen. Der auf den Kapitalanteil eines persönlich haftenden Gesell\", \"quellen\": [\"2413\"]}, {\"text\": \"§ 2",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§286 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 107,
+      "qg_refs_in_db": 107
+    },
+    {
+      "frage_id": 64,
+      "frage": "Mein Arbeitgeber kündigt betriebsbedingt ohne Sozialauswahl. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§1 KSchG",
+        "§4 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 176 Zustellung durch Einschreiben mit Rückschein; Zustellungsauftrag: § 176 Zustellung durch Einschreiben mit Rückschein; Zustellungsauftrag\\n(1) Ein Schriftstück kann durch Einschreiben mit Rückschein zugestellt werden. Zum Nachweis der Zustellung genügt der Rückschein. (2) Wird die Post, ein Justizbediensteter oder ein Gerichtsvollzieher mit der Zustellung eines Schriftstücks beauftragt oder wird eine andere Behörde um die Zustellung ersucht, so übergibt die Geschä\", ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1 KSchG",
+        "§4 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 64,
+      "qg_refs_in_db": 64
+    },
+    {
+      "frage_id": 65,
+      "frage": "Habe ich als freier Mitarbeiter Kündigungsschutz?",
+      "erwartete_paragraphen": [
+        "§611a BGB",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1 Sozial ungerechtfertigte Kündigungen: § 1 Sozial ungerechtfertigte Kündigungen\\n(1) Die Kündigung des Arbeitsverhältnisses gegenüber einem Arbeitnehmer, dessen Arbeitsverhältnis in demselben Betrieb oder Unternehmen ohne Unterbrechung länger als sechs Monate bestanden hat, ist rechtsunwirksam, wenn sie sozial ungerechtfertigt ist. (2) Sozial ungerechtfertigt ist die Kündigung, wenn sie nicht durch Gründe, die in der Person oder in dem \", \"quellen\": [\"6132\"]}, {\"text\":",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§611a BGB",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 100,
+      "qg_refs_in_db": 100
+    },
+    {
+      "frage_id": 66,
+      "frage": "Meine Reise wurde abgesagt. Habe ich Anspruch auf Rückerstattung?",
+      "erwartete_paragraphen": [
+        "§651h BGB",
+        "§651a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 7 Haftung",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§651h BGB",
+        "§651a BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 99,
+      "qg_refs_in_db": 99
+    },
+    {
+      "frage_id": 67,
+      "frage": "Das Hotel entspricht nicht der Beschreibung. Kann ich den Reisepreis mindern?",
+      "erwartete_paragraphen": [
+        "§651i BGB",
+        "§651a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 651c Verbundene Online-Buchungsverfahren: § 651c Verbundene Online-Buchungsverfahren\\n(1) Ein Unternehmer, der mittels eines Online-Buchungsverfahrens mit dem Reisenden einen Vertrag über eine Reiseleistung geschlossen hat oder ihm auf demselben Weg einen solchen Vertrag vermittelt hat, ist als Reiseveranstalter anzusehen, wenn (2) Kommen nach Absatz 1 ein Vertrag über eine andere Art von Reiseleistung oder mehrere Verträge über mindestens\", \"quellen\": [\"3484\"]}, {\"text",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§651i BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 94,
+      "qg_refs_in_db": 94
+    },
+    {
+      "frage_id": 68,
+      "frage": "Ich habe einem Freund Geld geliehen ohne Vertrag. Wie kann ich es zurückfordern?",
+      "erwartete_paragraphen": [
+        "§488 BGB",
+        "§195 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 488 Vertragstypische Pflichten beim Darlehensvertrag: § 488 Vertragstypische Pflichten beim Darlehensvertrag\\n(1) Durch den Darlehensvertrag wird der Darlehensgeber verpflichtet, dem Darlehensnehmer einen Geldbetrag in der vereinbarten Höhe zur Verfügung zu stellen. Der Darlehensnehmer ist verpflichtet, einen geschuldeten Zins zu zahlen und bei Fälligkeit das zur Verfügung gestellte Darlehen zurückzuzahlen. (2) Die vereinbarten Zinsen sind, soweit nic\", \"quellen\": [\"319",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§488 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 96,
+      "qg_refs_in_db": 96
+    },
+    {
+      "frage_id": 69,
+      "frage": "Kann mein Arbeitgeber mein Gehalt in der Elternzeit kürzen?",
+      "erwartete_paragraphen": [
+        "§611a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 16: § 16 \\nZur Entschädigung in Land (§ 1 Abs. 1 Nr. 3) oder zur Unterbringung von Personen, Betrieben und öffentlichen Einrichtungen (§ 1 Abs. 1 Nr. 5) dürfen nicht enteignet werden\", \"quellen\": [\"57659\"]}, {\"text\": \"§ 160 Geändertes Unionsrecht: § 160 Geändertes Unionsrecht\\n(1) Wird eine in einer Vorschrift dieses Gesetzes oder in einer aufgrund dieses Gesetzes erlassenen Rechtsverordnung (innerstaatliche Vorschrift) genannte Vorschrift eines unmittelbar geltenden Re",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§611a BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 84,
+      "qg_refs_in_db": 84
+    },
+    {
+      "frage_id": 70,
+      "frage": "Ich bin selbstständig und mein Auftraggeber zahlt nicht. Wie gehe ich vor?",
+      "erwartete_paragraphen": [
+        "§286 BGB",
+        "§280 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 611 Vertragstypische Pflichten beim Dienstvertrag: § 611 Vertragstypische Pflichten beim Dienstvertrag\\n(1) Durch den Dienstvertrag wird derjenige, welcher Dienste zusagt, zur Leistung der versprochenen Dienste, der andere Teil zur Gewährung der vereinbarten Vergütung verpflichtet. (2) Gegenstand des Dienstvertrags können Dienste jeder Art sein.\", \"quellen\": [\"3402\"]}, {\"text\": \"§ 611a Arbeitsvertrag: § 611a Arbeitsvertrag\\n(1) Durch den Arbeitsvertrag wird der Arbeitne",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§286 BGB",
+        "§280 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 106,
+      "qg_refs_in_db": 106
+    },
+    {
+      "frage_id": 71,
+      "frage": "Was ist der Unterschied zwischen nichtig und anfechtbar bei Verträgen?",
+      "erwartete_paragraphen": [
+        "§134 BGB",
+        "§138 BGB",
+        "§119 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 134 Gesetzliches Verbot: § 134 Gesetzliches Verbot\\nEin Rechtsgeschäft, das gegen ein gesetzliches Verbot verstößt, ist nichtig, wenn sich nicht aus dem Gesetz ein anderes ergibt.\", \"quellen\": [\"2775\"]}, {\"text\": \"§ 1385 Vorzeitiger Zugewinnausgleich des ausgleichsberechtigten Ehegatten bei vorzeitiger Aufhebung der Zugewinngemeinschaft: § 1385 Vorzeitiger Zugewinnausgleich des ausgleichsberechtigten Ehegatten bei vorzeitiger Aufhebung der Zugewinngemeinschaft\\nDer ausg",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 2/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§134 BGB",
+        "§119 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 94,
+      "qg_refs_in_db": 94
+    },
+    {
+      "frage_id": 72,
+      "frage": "Mein Arbeitgeber hat mich ohne Grund freigestellt. Bekomme ich weiterhin Gehalt?",
+      "erwartete_paragraphen": [
+        "§611a BGB",
+        "§615 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 293 Annahmeverzug: § 293 Annahmeverzug\\nDer Gläubiger kommt in Verzug, wenn er die ihm angebotene Leistung nicht annimmt.\", \"quellen\": [\"2932\"]}, {\"text\": \"§ 615 Vergütung bei Annahmeverzug und bei Betriebsrisiko: § 615 Vergütung bei Annahmeverzug und bei Betriebsrisiko\\nKommt der Dienstberechtigte mit der Annahme der Dienste in Verzug, so kann der Verpflichtete für die infolge des Verzugs nicht geleisteten Dienste die vereinbarte Vergütung verlangen, ohne zur Nachleist",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§611a BGB",
+        "§615 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 86,
+      "qg_refs_in_db": 86
+    },
+    {
+      "frage_id": 73,
+      "frage": "Ich war im Urlaub krank und arbeitsunfähig. Bekomme ich die Urlaubstage zurück?",
+      "erwartete_paragraphen": [
+        "§9 BUrlG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 9 Auflösung des Arbeitsverhältnisses durch Urteil des\\nGerichts, Abfindung des Arbeitnehmers: § 9 Auflösung des Arbeitsverhältnisses durch Urteil des\\nGerichts, Abfindung des Arbeitnehmers\\n(1) Stellt das Gericht fest, daß das Arbeitsverhältnis durch die Kündigung nicht aufgelöst ist, ist jedoch dem Arbeitnehmer die Fortsetzung des Arbeitsverhältnisses nicht zuzumuten, so hat das Gericht auf Antrag des Arbeitnehmers das Arbeitsverhältnis aufzulösen und den Arbeitgeber z",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§9 BUrlG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 83,
+      "qg_refs_in_db": 83
+    },
+    {
+      "frage_id": 74,
+      "frage": "Wann haftet ein GmbH-Geschäftsführer persönlich für Schulden?",
+      "erwartete_paragraphen": [
+        "§823 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"Anlage 35 (zu § 9 Absatz 5): Anlage 35 (zu § 9 Absatz 5)\\n1. Räumlicher Geltungsbereich: Das Gebiet der Bundesrepublik Deutschland. 2. Betrieblicher Geltungsbereich: Alle Betriebe und selbständigen Betriebsabteilungen des Dachdeckerhandwerks. 3. Persönlicher Geltungsbereich: Alle gewerblichen Arbeitnehmer, die eine nach den Bestimmungen des Sechsten Buches des Sozialgesetzbuchs (SGB VI) versicherungspflichtige Tätigkeit ausübe\", \"quellen\": [\"79099\"]}, {\"text\": \"Anlage 83 ",
+      "judge_score": 2,
+      "begruendung": "Regelbasiert: 0/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [],
+      "verifiziert": true,
+      "qg_refs_gesamt": 79,
+      "qg_refs_in_db": 79
+    },
+    {
+      "frage_id": 75,
+      "frage": "Ich wurde bei der Arbeit diskriminiert. Welche rechtlichen Schritte kann ich einleiten?",
+      "erwartete_paragraphen": [
+        "§1 AGG",
+        "§15 AGG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 3 Konkretisierung und Aktualisierung der zu übermittelnden Daten: § 3 Konkretisierung und Aktualisierung der zu übermittelnden Daten\\n(1) Der Plattformträger erstellt regelmäßig Empfehlungen zur Aktualisierung und Konkretisierung der in der Anlage genannten Aufstellung von Daten und stellt diese Empfehlungen dem Bundesministerium für Gesundheit bis zum 1. April eines jeden Kalenderjahres, erstmals bis zum 1. April 2025, zur Verfügung. Bei den Empfehlungen zur Akt\", \"que",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1 AGG",
+        "§15 AGG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 80,
+      "qg_refs_in_db": 80
+    },
+    {
+      "frage_id": 76,
+      "frage": "Was ist ein Leistungsverweigerungsrecht und wann kann ich es geltend machen?",
+      "erwartete_paragraphen": [
+        "§273 BGB",
+        "§320 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 320 Einrede des nicht erfüllten Vertrags: § 320 Einrede des nicht erfüllten Vertrags\\n(1) Wer aus einem gegenseitigen Vertrag verpflichtet ist, kann die ihm obliegende Leistung bis zur Bewirkung der Gegenleistung verweigern, es sei denn, dass er vorzuleisten verpflichtet ist. Hat die Leistung an mehrere zu erfolgen, so kann dem einzelnen der ihm gebührende Teil bis zur Bewirkung der ganzen Gegenleistung verweigert werden. Die Vorschrift de\", \"quellen\": [\"2979\"]}, {\"text",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§273 BGB",
+        "§320 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 111,
+      "qg_refs_in_db": 110
+    },
+    {
+      "frage_id": 77,
+      "frage": "Ich habe einen Erblasser gepflegt und bin im Testament übergangen. Habe ich Ansprüche?",
+      "erwartete_paragraphen": [
+        "§2303 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 2303 Pflichtteilsberechtigte; Höhe des Pflichtteils: § 2303 Pflichtteilsberechtigte; Höhe des Pflichtteils\\n(1) Ist ein Abkömmling des Erblassers durch Verfügung von Todes wegen von der Erbfolge ausgeschlossen, so kann er von dem Erben den Pflichtteil verlangen. Der Pflichtteil besteht in der Hälfte des Wertes des gesetzlichen Erbteils. (2) Das gleiche Recht steht den Eltern und dem Ehegatten des Erblassers zu, wenn sie durch Verfügung von Todes wege\", \"quellen\": [\"5062",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§2303 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 108,
+      "qg_refs_in_db": 108
+    },
+    {
+      "frage_id": 78,
+      "frage": "Mein Vermieter fordert Schönheitsreparaturen bei Auszug. Bin ich verpflichtet?",
+      "erwartete_paragraphen": [
+        "§535 BGB",
+        "§307 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 538 Abnutzung der Mietsache durch vertragsgemäßen Gebrauch: § 538 Abnutzung der Mietsache durch vertragsgemäßen Gebrauch\\nVeränderungen oder Verschlechterungen der Mietsache, die durch den vertragsgemäßen Gebrauch herbeigeführt werden, hat der Mieter nicht zu vertreten.\", \"quellen\": [\"3253\"]}, {\"text\": \"§ 242 Leistung nach Treu und Glauben: § 242 Leistung nach Treu und Glauben\\nDer Schuldner ist verpflichtet, die Leistung so zu bewirken, wie Treu und Glauben mit Rücksic",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§535 BGB",
+        "§307 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 106,
+      "qg_refs_in_db": 105
+    },
+    {
+      "frage_id": 79,
+      "frage": "Ich habe ein Auto mit verstecktem Mangel gekauft. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§433 BGB",
+        "§437 BGB",
+        "§438 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 434 Sachmangel: § 434 Sachmangel\\n(1) Die Sache ist frei von Sachmängeln, wenn sie bei Gefahrübergang den subjektiven Anforderungen, den objektiven Anforderungen und den Montageanforderungen dieser Vorschrift entspricht. (2) Die Sache entspricht den subjektiven Anforderungen, wenn sie (3) Soweit nicht wirksam etwas anderes vereinbart wurde, entspricht die Sache den objektiven Anforderungen, wenn sie (4) Soweit ein\", \"quellen\": [\"3124\"]}, {\"text\": \"§ 437 Rechte des Käufe",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§433 BGB",
+        "§437 BGB",
+        "§438 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 107,
+      "qg_refs_in_db": 107
+    },
+    {
+      "frage_id": 80,
+      "frage": "Was ist eine Abfindung und habe ich bei Kündigung immer Anspruch?",
+      "erwartete_paragraphen": [
+        "§1a KSchG",
+        "§9 KSchG",
+        "§10 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 10 Höhe der Abfindung: § 10 Höhe der Abfindung\\n(1) Als Abfindung ist ein Betrag bis zu zwölf Monatsverdiensten festzusetzen. (2) Hat der Arbeitnehmer das fünfzigste Lebensjahr vollendet und hat das Arbeitsverhältnis mindestens fünfzehn Jahre bestanden, so ist ein Betrag bis zu fünfzehn Monatsverdiensten, hat der Arbeitnehmer das fünfundfünfzigste Lebensjahr vollendet und hat das Arbeitsverhältnis mindestens zwanzig Jahr\", \"quellen\": [\"6142\"]}, {\"text\": \"§ 9 Auflösung d",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1a KSchG",
+        "§9 KSchG",
+        "§10 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 80,
+      "qg_refs_in_db": 80
+    },
+    {
+      "frage_id": 81,
+      "frage": "Darf mein Arbeitgeber mir Urlaub verweigern wenn ich ihn kurzfristig beantrage?",
+      "erwartete_paragraphen": [
+        "§7 BUrlG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 724 Fortsetzung mit dem Erben; Ausscheiden des Erben: § 724 Fortsetzung mit dem Erben; Ausscheiden des Erben\\n(1) Geht der Anteil eines verstorbenen Gesellschafters auf seine Erben über und erfüllt die Gesellschaft die Voraussetzungen nach § 107 Absatz 1 des Handelsgesetzbuchs, um in das Handelsregister eingetragen zu werden, so kann jeder Erbe gegenüber den anderen Gesellschaftern antragen, dass ihm die Stellung eines Kommanditisten eingeräumt und de\", \"quellen\": [\"362",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§7 BUrlG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 88,
+      "qg_refs_in_db": 88
+    },
+    {
+      "frage_id": 82,
+      "frage": "Ich bin Vermieter und mein Mieter zahlt 3 Monate keine Miete. Was sind meine Optionen?",
+      "erwartete_paragraphen": [
+        "§543 BGB",
+        "§569 BGB",
+        "§535 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 543 Außerordentliche fristlose Kündigung aus wichtigem Grund: § 543 Außerordentliche fristlose Kündigung aus wichtigem Grund\\n(1) Jede Vertragspartei kann das Mietverhältnis aus wichtigem Grund außerordentlich fristlos kündigen. Ein wichtiger Grund liegt vor, wenn dem Kündigenden unter Berücksichtigung aller Umstände des Einzelfalls, insbesondere eines Verschuldens der Vertragsparteien, und unter Abwägung der beiderseitigen Interessen die Fortsetzung des Miet\", \"quellen",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§543 BGB",
+        "§569 BGB",
+        "§535 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 113,
+      "qg_refs_in_db": 113
+    },
+    {
+      "frage_id": 83,
+      "frage": "Was ist der Unterschied zwischen Eigentumsübergang und Besitzübergang?",
+      "erwartete_paragraphen": [
+        "§929 BGB",
+        "§854 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 903 Befugnisse des Eigentümers: § 903 Befugnisse des Eigentümers\\nDer Eigentümer einer Sache kann, soweit nicht das Gesetz oder Rechte Dritter entgegenstehen, mit der Sache nach Belieben verfahren und andere von jeder Einwirkung ausschließen. Der Eigentümer eines Tieres hat bei der Ausübung seiner Befugnisse die besonderen Vorschriften zum Schutz der Tiere zu beachten.\", \"quellen\": [\"3818\"]}, {\"text\": \"§ 929 Einigung und Übergabe: § 929 Einigung und Übergabe\\nZur Übertr",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§929 BGB",
+        "§854 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 94,
+      "qg_refs_in_db": 94
+    },
+    {
+      "frage_id": 84,
+      "frage": "Ich bin Verbraucher und erhalte eine zu hohe Gasrechnung. Was sind meine Rechte?",
+      "erwartete_paragraphen": [
+        "§315 BGB",
+        "§242 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 433 Vertragstypische Pflichten beim Kaufvertrag: § 433 Vertragstypische Pflichten beim Kaufvertrag\\n(1) Durch den Kaufvertrag wird der Verkäufer einer Sache verpflichtet, dem Käufer die Sache zu übergeben und das Eigentum an der Sache zu verschaffen. Der Verkäufer hat dem Käufer die Sache frei von Sach- und Rechtsmängeln zu verschaffen. (2) Der Käufer ist verpflichtet, dem Verkäufer den vereinbarten Kaufpreis zu zahlen und die gekaufte Sache abzu\", \"quellen\": [\"3123\"]},",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§315 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 80,
+      "qg_refs_in_db": 80
+    },
+    {
+      "frage_id": 85,
+      "frage": "Kann ich als Arbeitnehmer Homeoffice verlangen?",
+      "erwartete_paragraphen": [
+        "§611a BGB",
+        "§106 GewO"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 7 Haftung",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§611a BGB",
+        "§106 GewO"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 78,
+      "qg_refs_in_db": 78
+    },
+    {
+      "frage_id": 86,
+      "frage": "Ich habe einem Freund Geld als Schenkung gegeben und möchte es zurück. Kann ich das?",
+      "erwartete_paragraphen": [
+        "§516 BGB",
+        "§530 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 516 Begriff der Schenkung: § 516 Begriff der Schenkung\\n(1) Eine Zuwendung, durch die jemand aus seinem Vermögen einen anderen bereichert, ist Schenkung, wenn beide Teile darüber einig sind, dass die Zuwendung unentgeltlich erfolgt. (2) Ist die Zuwendung ohne den Willen des anderen erfolgt, so kann ihn der Zuwendende unter Bestimmung einer angemessenen Frist zur Erklärung über die Annahme auffordern. Nach dem Ablauf der Fris\", \"quellen\": [\"3226\"]}, {\"text\": \"§ 516a Verb",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§516 BGB",
+        "§530 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 92,
+      "qg_refs_in_db": 92
+    },
+    {
+      "frage_id": 87,
+      "frage": "Mein Arbeitgeber hat einen Konkurrenzklausel im Vertrag. Ist sie wirksam?",
+      "erwartete_paragraphen": [
+        "§74 HGB",
+        "§74a HGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 74: § 74 \\n(1) Eine Vereinbarung zwischen dem Prinzipal und dem Handlungsgehilfen, die den Gehilfen für die Zeit nach Beendigung des Dienstverhältnisses in seiner gewerblichen Tätigkeit beschränkt (Wettbewerbverbot), bedarf der Schriftform und der Aushändigung einer vom Prinzipal unterzeichneten, die vereinbarten Bestimmungen enthaltenden Urkunde an den Gehilfen. (2) Das Wettbewerbverbot ist nur verbin\", \"quellen\": [\"5529\"]}, {\"text\": \"§ 74a: § 74a \\n(1) Das Wettbewerbv",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§74 HGB",
+        "§74a HGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 76,
+      "qg_refs_in_db": 76
+    },
+    {
+      "frage_id": 88,
+      "frage": "Was ist der Unterschied zwischen Vorsatz und Fahrlässigkeit im Zivilrecht?",
+      "erwartete_paragraphen": [
+        "§276 BGB",
+        "§823 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 276 Verantwortlichkeit des Schuldners: § 276 Verantwortlichkeit des Schuldners\\n(1) Der Schuldner hat Vorsatz und Fahrlässigkeit zu vertreten, wenn eine strengere oder mildere Haftung weder bestimmt noch aus dem sonstigen Inhalt des Schuldverhältnisses, insbesondere aus der Übernahme einer Garantie oder eines Beschaffungsrisikos, zu entnehmen ist. Die Vorschriften der §§ 827 und 828 finden entsprechende Anwendung. (2) Fahrlässig handelt\", \"quellen\": [\"2915\"]}, {\"text\": ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§276 BGB",
+        "§823 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 113,
+      "qg_refs_in_db": 113
+    },
+    {
+      "frage_id": 89,
+      "frage": "Wann haftet ein Minderjähriger für Schäden?",
+      "erwartete_paragraphen": [
+        "§828 BGB",
+        "§276 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 7 Haftung",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§828 BGB",
+        "§276 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 103,
+      "qg_refs_in_db": 103
+    },
+    {
+      "frage_id": 90,
+      "frage": "Jemand hat mein Auto beschädigt und ist geflüchtet. Wer zahlt?",
+      "erwartete_paragraphen": [
+        "§823 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"3737\"]}, {\"text\": \"§ 7 Haftung",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§823 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 95,
+      "qg_refs_in_db": 95
+    },
+    {
+      "frage_id": 91,
+      "frage": "Mein Arbeitgeber kündigt mir und bietet gleichzeitig einen Aufhebungsvertrag an. Was soll ich tun?",
+      "erwartete_paragraphen": [
+        "§1 KSchG",
+        "§623 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 623 Schriftform der Kündigung: § 623 Schriftform der Kündigung\\nDie Beendigung von Arbeitsverhältnissen durch Kündigung oder Auflösungsvertrag bedürfen zu ihrer Wirksamkeit der Schriftform; die elektronische Form ist ausgeschlossen.\", \"quellen\": [\"3418\"]}, {\"text\": \"§ 134 Gesetzliches Verbot: § 134 Gesetzliches Verbot\\nEin Rechtsgeschäft, das gegen ein gesetzliches Verbot verstößt, ist nichtig, wenn sich nicht aus dem Gesetz ein anderes ergibt.\", \"quellen\": [\"2775\"]}, {",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1 KSchG",
+        "§623 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 105,
+      "qg_refs_in_db": 105
+    },
+    {
+      "frage_id": 92,
+      "frage": "Ich habe meinen Arbeitgeber verklagt und gewonnen. Wer zahlt die Anwaltskosten?",
+      "erwartete_paragraphen": [
+        "§12a ArbGG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 12a Anwendung der Notfallverfahren: § 12a Anwendung der Notfallverfahren\\n(1) Die Bestimmungen dieses Abschnitts sind anzuwenden, wenn (2) Die Bestimmungen dieses Abschnitts sind nur anzuwenden, während der Notfallmodus für den Binnenmarkt nach Artikel 18 Absatz 4 Satz 1 der Verordnung (EU) 2024/2747 aktiviert ist. § 12d Absatz 3 bleibt unberührt.\", \"quellen\": [\"11112\"]}, {\"text\": \"§ 12a Verflüssigtes Biomethan: § 12a Verflüssigtes Biomethan\\n(1) Die Verpflichtung zur M",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§12a ArbGG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 83,
+      "qg_refs_in_db": 83
+    },
+    {
+      "frage_id": 93,
+      "frage": "Darf ein Vermieter die Miete erhöhen wenn er das Haus saniert hat?",
+      "erwartete_paragraphen": [
+        "§559 BGB",
+        "§559b BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 559a Anrechnung von Drittmitteln: § 559a Anrechnung von Drittmitteln\\n(1) Kosten, die vom Mieter oder für diesen von einem Dritten übernommen oder die mit Zuschüssen aus öffentlichen Haushalten gedeckt werden, gehören nicht zu den aufgewendeten Kosten im Sinne des § 559. (2) Werden die Kosten für die Modernisierungsmaßnahmen ganz oder teilweise durch zinsverbilligte oder zinslose Darlehen aus öffentlichen Haushalten gedeckt, so ver\", \"quellen\": [\"3297\"]}, {\"text\": \"§ 55",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§559 BGB",
+        "§559b BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 115,
+      "qg_refs_in_db": 113
+    },
+    {
+      "frage_id": 94,
+      "frage": "Was ist ein Anwartschaftsrecht und wann entsteht es?",
+      "erwartete_paragraphen": [
+        "§929 BGB",
+        "§158 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 158 Aufschiebende und auflösende Bedingung: § 158 Aufschiebende und auflösende Bedingung\\n(1) Wird ein Rechtsgeschäft unter einer aufschiebenden Bedingung vorgenommen, so tritt die von der Bedingung abhängig gemachte Wirkung mit dem Eintritt der Bedingung ein. (2) Wird ein Rechtsgeschäft unter einer auflösenden Bedingung vorgenommen, so endigt mit dem Eintritt der Bedingung die Wirkung des Rechtsgeschäfts; mit diesem Zeitpunkt tritt der früh\", \"quellen\": [\"2799\"]}, {\"te",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§929 BGB",
+        "§158 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 84,
+      "qg_refs_in_db": 84
+    },
+    {
+      "frage_id": 95,
+      "frage": "Mein Ex-Vermieter verklagt mich nach 4 Jahren wegen Mietschäden. Ist das möglich?",
+      "erwartete_paragraphen": [
+        "§548 BGB",
+        "§195 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 548 Verjährung der Ersatzansprüche und des Wegnahmerechts: § 548 Verjährung der Ersatzansprüche und des Wegnahmerechts\\n(1) Die Ersatzansprüche des Vermieters wegen Veränderungen oder Verschlechterungen der Mietsache verjähren in sechs Monaten. Die Verjährung beginnt mit dem Zeitpunkt, in dem er die Mietsache zurückerhält. Mit der Verjährung des Anspruchs des Vermieters auf Rückgabe der Mietsache verjähren auch seine Ersatzansprüche. (2) Ansprüche des Miet\", \"quellen\": ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§548 BGB",
+        "§195 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 81,
+      "qg_refs_in_db": 80
+    },
+    {
+      "frage_id": 96,
+      "frage": "Ich bin Gesellschafter einer GbR. Was passiert wenn ich kündige?",
+      "erwartete_paragraphen": [
+        "§723 BGB",
+        "§736 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 736 Liquidatoren: § 736 Liquidatoren\\n(1) Zur Liquidation sind alle Gesellschafter berufen. (2) Ist über das Vermögen eines Gesellschafters das Insolvenzverfahren eröffnet und ein Insolvenzverwalter bestellt worden, tritt dieser an die Stelle des Gesellschafters. (3) Mehrere Erben eines Gesellschafters haben einen gemeinsamen Vertreter zu bestellen. (4) Durch Vereinbarung im Gesellschaftsvertrag oder durch Beschluss\", \"quellen\": [\"3643\"]}, {\"text\": \"§ 736a Gerichtliche ",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§723 BGB",
+        "§736 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 109,
+      "qg_refs_in_db": 109
+    },
+    {
+      "frage_id": 97,
+      "frage": "Wann darf ein Arbeitgeber eine Verdachtskündigung aussprechen?",
+      "erwartete_paragraphen": [
+        "§626 BGB",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1 Sozial ungerechtfertigte Kündigungen: § 1 Sozial ungerechtfertigte Kündigungen\\n(1) Die Kündigung des Arbeitsverhältnisses gegenüber einem Arbeitnehmer, dessen Arbeitsverhältnis in demselben Betrieb oder Unternehmen ohne Unterbrechung länger als sechs Monate bestanden hat, ist rechtsunwirksam, wenn sie sozial ungerechtfertigt ist. (2) Sozial ungerechtfertigt ist die Kündigung, wenn sie nicht durch Gründe, die in der Person oder in dem \", \"quellen\": [\"6132\"]}, {\"text\":",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§626 BGB",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 98,
+      "qg_refs_in_db": 98
+    },
+    {
+      "frage_id": 98,
+      "frage": "Mein Mobilfunkvertrag verlängert sich automatisch. Wie kann ich wirksam kündigen?",
+      "erwartete_paragraphen": [
+        "§309 BGB",
+        "§307 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 309: § 309 \\n(weggefallen)\", \"quellen\": [\"57337\"]}, {\"text\": \"§ 309 Allgemeine Meldepflicht: § 309 Allgemeine Meldepflicht\\n(1) Arbeitslose haben sich während der Zeit, für die sie einen Anspruch auf Arbeitslosengeld erheben, bei der Agentur für Arbeit oder einer sonstigen Dienststelle der Bundesagentur persönlich zu melden oder zu einem ärztlichen oder psychologischen Untersuchungstermin zu erscheinen, wenn die Agentur für Arbeit sie dazu auffordert (allgemeine Meldepf",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§309 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 128,
+      "qg_refs_in_db": 128
+    },
+    {
+      "frage_id": 99,
+      "frage": "Was ist das Abstraktionsprinzip im deutschen Sachenrecht?",
+      "erwartete_paragraphen": [
+        "§929 BGB",
+        "§873 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 433 Vertragstypische Pflichten beim Kaufvertrag: § 433 Vertragstypische Pflichten beim Kaufvertrag\\n(1) Durch den Kaufvertrag wird der Verkäufer einer Sache verpflichtet, dem Käufer die Sache zu übergeben und das Eigentum an der Sache zu verschaffen. Der Verkäufer hat dem Käufer die Sache frei von Sach- und Rechtsmängeln zu verschaffen. (2) Der Käufer ist verpflichtet, dem Verkäufer den vereinbarten Kaufpreis zu zahlen und die gekaufte Sache abzu\", \"quellen\": [\"3123\"]},",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§929 BGB",
+        "§873 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 81,
+      "qg_refs_in_db": 81
+    },
+    {
+      "frage_id": 100,
+      "frage": "Mein Reiseunternehmen ist insolvent. Wie bekomme ich mein Geld zurück?",
+      "erwartete_paragraphen": [
+        "§651r BGB",
+        "§651a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 651k Abhilfe: § 651k Abhilfe\\n(1) Verlangt der Reisende Abhilfe, hat der Reiseveranstalter den Reisemangel zu beseitigen. Er kann die Abhilfe nur verweigern, wenn sie (2) Leistet der Reiseveranstalter vorbehaltlich der Ausnahmen des Absatzes 1 Satz 2 nicht innerhalb einer vom Reisenden bestimmten angemessenen Frist Abhilfe, kann der Reisende selbst Abhilfe schaffen und Ersatz der erforderlichen Aufwendungen verl\", \"quellen\": [\"3492\"]}, {\"text\": \"§ 651r Insolvenzsicherun",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§651r BGB",
+        "§651a BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 120,
+      "qg_refs_in_db": 120
+    }
+  ],
+  "metriken": {
+    "gesamt_score": 3.67,
+    "vollstaendigkeits_score": 0.842,
+    "halluzinations_rate": 0.001,
+    "quellen_genauigkeit": 0.999,
+    "getestete_fragen": 100,
+    "schwache_antworten": 8
+  },
+  "meta": {
+    "gestartet": "2026-06-04T18:29:27.908028",
+    "aktualisiert": "2026-06-04T19:14:56.801059",
+    "abgeschlossen": "2026-06-04T19:14:56.801028"
+  }
+}

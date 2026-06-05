@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-06-04T15:50Z",
+  "baseline_model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+  "baseline_mrr": 0.25,
+  "candidate_models": [
+    "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+  ],
+  "results": {
+    "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": {
+      "mrr": 0.25,
+      "reason": "Baseline-Modell, zeigt hohen Distanzwert (0.84+) auch bei guten Treffern",
+      "status": "evaluiert"
+    }
+  },
+  "recommendation": {
+    "change_model": false,
+    "reason": "Kein signifikanter Gewinn (<+0.15 MRR)\nAktuelles Modell: MRR=0.25\nAndere Modelle: entweder nicht verfügbar oder nur geringfügig besser"
+  }
+}

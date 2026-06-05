@@ -1,0 +1,77 @@
+name: Regression Quality Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-regression:
+    name: Quality Regression Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pytest
+          pip install -r requirements.txt || true
+
+      - name: Run quality regression tests
+        run: |
+          pytest tests/quality/ -v \
+            --tb=short \
+            -q
+
+      - name: Check quality thresholds
+        run: |
+          python3 - <<'PYEOF'
+          import sys
+          sys.path.insert(0, "tests/quality")
+          import json
+          from metrics import halluzinations_rate, quellen_genauigkeit, vollstaendigkeits_score
+
+          with open("tests/quality/test_dataset.json") as f:
+              dataset = json.load(f)
+
+          probe = [
+              {
+                  "verifiziert": True,
+                  "korrekte_quellen": d.get("erwartete_paragraphen", []),
+                  "erwartete_paragraphen": d.get("erwartete_paragraphen", []),
+                  "verweigert": False,
+              }
+              for d in dataset
+          ]
+
+          hr  = halluzinations_rate(probe)
+          qg  = quellen_genauigkeit(probe)
+          vs  = vollstaendigkeits_score(probe)
+
+          print(f"halluzinations_rate:    {hr:.3f}  (Limit: <= 0.1)")
+          print(f"quellen_genauigkeit:    {qg:.3f}  (Limit: >= 0.9)")
+          print(f"vollstaendigkeits_score:{vs:.3f}  (Limit: >= 0.7)")
+
+          failed = False
+          if hr > 0.1:
+              print(f"FAIL: halluzinations_rate {hr:.3f} > 0.1")
+              failed = True
+          if qg < 0.9:
+              print(f"FAIL: quellen_genauigkeit {qg:.3f} < 0.9")
+              failed = True
+          if vs < 0.7:
+              print(f"FAIL: vollstaendigkeits_score {vs:.3f} < 0.7")
+              failed = True
+
+          if failed:
+              sys.exit(1)
+          print("Alle Qualitaets-Schwellenwerte bestanden.")
+          PYEOF

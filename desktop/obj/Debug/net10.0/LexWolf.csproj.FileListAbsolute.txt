@@ -1,0 +1,16 @@
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/bin/Debug/net10.0/MainWindow.xaml
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/bin/Debug/net10.0/LexWolf
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/bin/Debug/net10.0/LexWolf.deps.json
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/bin/Debug/net10.0/LexWolf.runtimeconfig.json
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/bin/Debug/net10.0/LexWolf.dll
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/bin/Debug/net10.0/LexWolf.pdb
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/LexWolf.GeneratedMSBuildEditorConfig.editorconfig
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/LexWolf.AssemblyInfoInputs.cache
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/LexWolf.AssemblyInfo.cs
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/LexWolf.csproj.CoreCompileInputs.cache
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/LexWolf.sourcelink.json
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/LexWolf.dll
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/refint/LexWolf.dll
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/LexWolf.pdb
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/LexWolf.genruntimeconfig.cache
+/data/.openclaw/workspace-codex/projects/lexwolf/desktop/obj/Debug/net10.0/ref/LexWolf.dll

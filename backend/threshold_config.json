@@ -1,0 +1,7 @@
+{
+  "confidence_threshold": 0.4,
+  "verweigerungsrate": 0.27,
+  "fehlerrate": 0.02,
+  "f1_score": 0.9861,
+  "calibrated_with": "calibrate_threshold.py"
+}
