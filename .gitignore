@@ -79,3 +79,7 @@ backend/venv_test/
 *.pyc
 .pytest_cache/
 backend/=5.0
+
+# .NET build artifacts
+desktop/bin/
+desktop/obj/
