@@ -16,6 +16,10 @@
                          Fill="#555" Margin="0,0,6,0"/>
                 <TextBlock x:Name="StatusText" Text="Verbinde..." Foreground="#8b949e"
                            VerticalAlignment="Center" FontSize="12"/>
+                <Button x:Name="ReconnectBtn" Content="↻" Click="OnReconnect"
+                        DockPanel.Dock="Right" HorizontalAlignment="Right"
+                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
+                        FontSize="16" Cursor="Hand" Padding="8,0" ToolTip="Verbindung prüfen"/>
             </DockPanel>
         </Border>
 

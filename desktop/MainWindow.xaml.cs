@@ -11,38 +11,55 @@ namespace LexWolf;
 public partial class MainWindow : Window
 {
     private const string BackendUrl = "http://212.227.180.66:8000";
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(30) };
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
     public MainWindow()
     {
         InitializeComponent();
-        _ = CheckConnectionAsync();
+        _ = CheckConnectionAsync(showConnecting: true);
+        _ = PeriodicHealthCheckAsync();
     }
 
-    private async Task CheckConnectionAsync()
+    private async Task PeriodicHealthCheckAsync()
     {
-        SetStatus(false, "Verbinde...");
+        while (true)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30));
+            await CheckConnectionAsync(showConnecting: false);
+        }
+    }
+
+    private async Task CheckConnectionAsync(bool showConnecting = false)
+    {
+        if (showConnecting) SetStatus(null, "Verbinde...");
         try
         {
             await _http.GetStringAsync($"{BackendUrl}/health");
             SetStatus(true, $"Verbunden — {BackendUrl}");
         }
-        catch (Exception ex)
+        catch
         {
-            var msg = ex.Message.Length > 60 ? ex.Message[..60] : ex.Message;
-            SetStatus(false, $"Nicht erreichbar: {msg}");
+            SetStatus(false, "Backend nicht erreichbar");
         }
     }
 
-    private void SetStatus(bool online, string message)
+    private void SetStatus(bool? online, string message)
     {
         Dispatcher.Invoke(() =>
         {
-            StatusDot.Fill = online
-                ? new SolidColorBrush(Color.FromRgb(63, 185, 80))
-                : new SolidColorBrush(Color.FromRgb(248, 81, 73));
+            StatusDot.Fill = online switch
+            {
+                true  => new SolidColorBrush(Color.FromRgb(63, 185, 80)),
+                false => new SolidColorBrush(Color.FromRgb(248, 81, 73)),
+                null  => new SolidColorBrush(Color.FromRgb(100, 110, 120)),
+            };
             StatusText.Text = message;
         });
+    }
+
+    private async void OnReconnect(object sender, RoutedEventArgs e)
+    {
+        await CheckConnectionAsync(showConnecting: true);
     }
 
     private void OnInputKeyDown(object sender, KeyEventArgs e)
@@ -89,9 +106,12 @@ public partial class MainWindow : Window
             var intent = root.TryGetProperty("intent", out var i) ? i.GetString() ?? "" : "";
             var ms = root.TryGetProperty("duration_ms", out var d) ? d.GetInt32() : 0;
             MetaText.Text = $"{intent}  •  {ms} ms";
+
+            SetStatus(true, $"Verbunden — {BackendUrl}");
         }
         catch (Exception ex)
         {
+            SetStatus(false, "Backend nicht erreichbar");
             ReasoningPanel.Children.Clear();
             AddReasoning("❌", $"Fehler: {ex.Message}");
             ResultBox.Text = $"Verbindungsfehler:\n{ex.Message}";
