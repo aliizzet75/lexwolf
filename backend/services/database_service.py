@@ -1,10 +1,22 @@
 import os
-from sqlalchemy import create_engine, text
+import logging
+from sqlalchemy import create_engine, text, func
 from sqlalchemy.orm import sessionmaker
 from models import Base, LegalDocument, LegalChunk, StyleProfile
 from datetime import datetime
 import hashlib
-import json
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_date(date_str: str):
+    """Parst DD.MM.YYYY und YYYY-MM-DD."""
+    for fmt in ('%Y-%m-%d', '%d.%m.%Y', '%Y-%m-%dT%H:%M:%S', '%d.%m.%Y %H:%M'):
+        try:
+            return datetime.strptime(date_str.strip(), fmt)
+        except ValueError:
+            continue
+    return None
 
 class DatabaseService:
     """
@@ -13,7 +25,7 @@ class DatabaseService:
     
     def __init__(self):
         # Database setup - use PostgreSQL for production, SQLite for testing
-        self.DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/lexwolf")
+        self.DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@host.docker.internal:5432/lexwolf")
         self.engine = create_engine(self.DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in self.DATABASE_URL else {})
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         
@@ -53,22 +65,15 @@ class DatabaseService:
                 db.add(document)
                 db.flush()  # Get document ID
             
-            # Handle vector field - convert to JSON string for SQLite
-            vector_data = chunk_data.get('vector')
-            if vector_data:
-                vector_json = json.dumps(vector_data)
-            else:
-                vector_json = None
-            
             # Create chunk
             chunk = LegalChunk(
                 document_id=document.id,
                 text=chunk_data.get('text', ''),
-                vector=vector_json,  # Store as JSON string
+                vector=chunk_data.get('vector'),  # pgvector list[float]
                 title=chunk_data.get('title', ''),
                 court=chunk_data.get('court', ''),
                 case_number=chunk_data.get('case_number', ''),
-                date=datetime.strptime(chunk_data.get('date', ''), '%Y-%m-%d') if chunk_data.get('date') else None,
+                date=_parse_date(chunk_data.get('date')) if chunk_data.get('date') else None,
                 legal_field=chunk_data.get('legal_field', ''),
                 tags=chunk_data.get('tags', ''),
                 chunk_hash=chunk_data.get('chunk_hash', ''),
@@ -78,14 +83,27 @@ class DatabaseService:
             )
             
             db.add(chunk)
+            db.flush()
+            # ts_vector direkt per SQL befüllen (PostgreSQL to_tsvector)
+            db.execute(
+                text("UPDATE legal_chunks SET ts_vector = to_tsvector('german', :t) WHERE id = :id"),
+                {"t": (chunk_data.get('text') or '')[:100000], "id": chunk.id}
+            )
             db.commit()
-            print(f"Stored chunk: {chunk.title}")
-            
+            db.refresh(chunk)
+            return {"id": chunk.id, "title": chunk.title}
+
         except Exception as e:
             db.rollback()
-            print(f"Error storing chunk: {e}")
+            logger.error(f"Error storing chunk: {e}")
+            return None
         finally:
             db.close()
+    
+    def save_chunk(self, chunk_data: dict, embedding: list):
+        """Save a chunk with embedding and return dict with id."""
+        chunk_data['vector'] = embedding
+        return self.store_chunk(chunk_data)
     
     def search_chunks_hybrid(self, query: str, limit: int = 10) -> list:
         """

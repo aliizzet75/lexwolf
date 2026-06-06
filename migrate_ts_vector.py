@@ -16,7 +16,7 @@ def migrate_database():
     """Migrate the database to add ts_vector column and populate it"""
     try:
         # Database setup - use the DATABASE_URL from environment or default to test database
-        DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+        DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/lexwolf")
         engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
         

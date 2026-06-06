@@ -47,7 +47,7 @@ class HybridSearchService:
                     data=payload,
                     headers={'Content-Type': 'application/json'},
                 )
-                with _urlreq.urlopen(req, timeout=45) as resp:
+                with _urlreq.urlopen(req, timeout=20) as resp:
                     data = _json.loads(resp.read())
                 msg = data.get('choices', [{}])[0].get('message', {})
                 content = msg.get('content', '')

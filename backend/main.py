@@ -10,6 +10,10 @@ from api.documents import router as documents_router
 from api.knowledge import router as knowledge_router
 from api.quality import router as quality_router
 from api.ask import router as ask_router
+from api.subscription import router as subscription_router
+
+# Import Neo4j service
+from services.neo4j_service import Neo4jService
 
 app = FastAPI(
     title="LexWolf Legal Database API",
@@ -26,6 +30,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize Neo4j service
+neo4j_service = Neo4jService()
+
+# Connect to Neo4j and set up schema on startup
+@app.on_event("startup")
+async def startup_event():
+    if neo4j_service.connect():
+        if neo4j_service.setup_schema():
+            print("Neo4j schema setup completed successfully")
+        else:
+            print("Failed to set up Neo4j schema")
+    else:
+        print("Failed to connect to Neo4j database")
+
+# Close Neo4j connection on shutdown
+@app.on_event("shutdown")
+async def shutdown_event():
+    neo4j_service.close()
+    print("Neo4j connection closed")
+
 # Include routers
 app.include_router(legal_db_router)
 app.include_router(email_router)
@@ -34,6 +58,7 @@ app.include_router(documents_router)
 app.include_router(knowledge_router)
 app.include_router(quality_router)
 app.include_router(ask_router)
+app.include_router(subscription_router)
 
 @app.get("/")
 async def root():

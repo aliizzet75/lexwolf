@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Boolean, Date, Enum
+from sqlalchemy.dialects.postgresql import TSVECTOR
+import enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, mapped_column
 from datetime import datetime
@@ -31,7 +33,7 @@ class LegalChunk(Base):
     text = Column(Text)
     
     # Use real pgvector Vector column
-    vector = mapped_column(Vector(1536))  # Using text-embedding-3-small with 1536 dimensions
+    vector = mapped_column(Vector(768))  # paraphrase-multilingual-mpnet-base-v2, lokal
     
     title = Column(String)
     court = Column(String)  # For judgments
@@ -45,7 +47,7 @@ class LegalChunk(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Full-text search vector column
-    ts_vector = mapped_column("ts_vector", Text)  # Will be populated with tsvector data
+    ts_vector = mapped_column("ts_vector", TSVECTOR, nullable=True)
     
     # Relationship back to document
     document = relationship("LegalDocument", back_populates="chunks")
@@ -57,17 +59,35 @@ class StyleProfile(Base):
     profile_id = Column(String, unique=True)  # e.g., "sp_a7f3b2"
     
     # Use real pgvector Vector column
-    vector = mapped_column(Vector(1536))  # Stil-Vektor-Repräsentation
+    vector = mapped_column(Vector(768))  # paraphrase-multilingual-mpnet-base-v2, lokal
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class SearchResult(Base):
     __tablename__ = 'search_results'
-    
+
     id = Column(Integer, primary_key=True, index=True)
     query = Column(String)
     chunk_id = Column(Integer)
     relevance_score = Column(Float)
     search_type = Column(String)  # 'hyde', 'dense', 'sparse', 'rrf'
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class SubscriptionStatus(str, enum.Enum):
+    active = "active"
+    inactive = "inactive"
+    trial = "trial"
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    subscription_status = Column(
+        Enum(SubscriptionStatus, name='subscription_status_enum', create_type=True),
+        nullable=False,
+        default=SubscriptionStatus.inactive
+    )
+    paid_until = Column(Date, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

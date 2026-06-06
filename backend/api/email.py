@@ -2,7 +2,11 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
-from services.email_service import EmailService, EmailConfig, EmailMessage, EmailDraft
+from services.email_service import (
+    EmailService, EmailConfig, EmailMessage, EmailDraft,
+    AutoReplyCase, select_auto_reply_case, build_auto_reply,
+    detect_ausschreibung,
+)
 
 router = APIRouter(prefix="/email", tags=["email"])
 
@@ -301,3 +305,116 @@ async def health_check():
     Health check endpoint
     """
     return {"status": "healthy", "service": "email_integration"}
+
+
+# ─── Auto-Reply endpoints ────────────────────────────────────────────────────
+
+class AutoReplyRequest(BaseModel):
+    config: EmailConfigRequest
+    recipient: str
+    original_subject: str
+    original_message_id: Optional[str] = None
+    body_text: str = ""
+    subscription_status: str  # "ACTIVE" | "INACTIVE" | "UNKNOWN"
+
+
+class AutoReplyResponse(BaseModel):
+    case: str
+    success: bool
+    subject_sent: str
+
+
+class TemplatePreviewRequest(BaseModel):
+    original_subject: str
+    body_text: str = ""
+    subscription_status: str  # "ACTIVE" | "INACTIVE" | "UNKNOWN"
+    recipient: str = "unknown@example.com"
+
+
+class TemplatePreviewResponse(BaseModel):
+    case: str
+    subject: str
+    body: str
+    html_body: str
+    is_ausschreibung: bool
+
+
+@router.post("/auto-reply", response_model=AutoReplyResponse)
+async def send_auto_reply(request: AutoReplyRequest):
+    """
+    Select the correct auto-reply template for an incoming email and send it.
+
+    Template selection:
+    - CASE 1 (BEKANNT_BEZAHLT): known + active subscription + Ausschreibung → confirmation
+    - CASE 2 (UNBEKANNT_AUSSCHREIBUNG): unknown sender → free 1-month registration offer
+    - CASE 3 (BEKANNT_NICHT_BEZAHLT): known + inactive subscription → reactivation
+    - CASE 4 (BEKANNT_KEINE_AUSSCHREIBUNG): known + active + no Ausschreibung → support forward
+    """
+    try:
+        service = get_email_service(request.config)
+        result = service.send_auto_reply(
+            recipient=request.recipient,
+            original_subject=request.original_subject,
+            original_message_id=request.original_message_id,
+            subscription_status=request.subscription_status,
+            body_text=request.body_text,
+        )
+        return AutoReplyResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Auto-reply error: {str(e)}")
+
+
+@router.post("/auto-reply/preview", response_model=TemplatePreviewResponse)
+async def preview_auto_reply_template(request: TemplatePreviewRequest):
+    """
+    Preview which template would be selected and its rendered content — no email is sent.
+    """
+    try:
+        case = select_auto_reply_case(
+            sender_email=request.recipient,
+            subject=request.original_subject,
+            body=request.body_text,
+            subscription_status=request.subscription_status,
+        )
+        rendered = build_auto_reply(case, request.original_subject)
+        is_ausschreibung = detect_ausschreibung(request.original_subject, request.body_text)
+        return TemplatePreviewResponse(
+            case=case.value,
+            subject=rendered["subject"],
+            body=rendered["body"],
+            html_body=rendered["html_body"],
+            is_ausschreibung=is_ausschreibung,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Preview error: {str(e)}")
+
+
+@router.get("/auto-reply/templates")
+async def list_auto_reply_templates():
+    """
+    List all available auto-reply templates with their trigger conditions.
+    """
+    return {
+        "templates": [
+            {
+                "case": AutoReplyCase.BEKANNT_BEZAHLT.value,
+                "trigger": "Known sender with active subscription + Ausschreibung detected",
+                "description": "Confirmation: offer is being processed"
+            },
+            {
+                "case": AutoReplyCase.UNBEKANNT_AUSSCHREIBUNG.value,
+                "trigger": "Unknown sender (not in DB)",
+                "description": "Registration offer: 1 month free trial"
+            },
+            {
+                "case": AutoReplyCase.BEKANNT_NICHT_BEZAHLT.value,
+                "trigger": "Known sender with inactive/expired subscription",
+                "description": "Reactivation: account paused"
+            },
+            {
+                "case": AutoReplyCase.BEKANNT_KEINE_AUSSCHREIBUNG.value,
+                "trigger": "Known sender with active subscription + no Ausschreibung",
+                "description": "Support-Forward: ticket created"
+            },
+        ]
+    }

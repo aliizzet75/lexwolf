@@ -11,7 +11,7 @@ namespace LexWolf;
 public partial class MainWindow : Window
 {
     private const string BackendUrl = "http://212.227.180.66:8000";
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(30) };
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(120) };
 
     public MainWindow()
     {
