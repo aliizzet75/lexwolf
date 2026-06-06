@@ -83,3 +83,19 @@ backend/=5.0
 # .NET build artifacts
 desktop/bin/
 desktop/obj/
+
+# Aligator-generierte Test- und Debug-Dateien (root-level)
+aligator.py
+test_*.py
+verify_*.py
+final_verification_*.py
+migrate_*.py
+debug_*.py
+backend/api/routes/
+backend/crawlers/ris_crawler.py
+backend/llm_judge.py
+backend/scripts/
+backend/services/content_detector.py
+backend/services/create_fts_index.py
+backend/services/search_service_keywords.py
+backend/services/test_fts.py

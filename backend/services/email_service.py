@@ -12,10 +12,188 @@ import json
 import base64
 from datetime import datetime
 import re
+import enum
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ─── Auto-Reply Templates ───────────────────────────────────────────────────
+
+class AutoReplyCase(str, enum.Enum):
+    BEKANNT_BEZAHLT = "BEKANNT_BEZAHLT"           # Case 1: known + paid
+    UNBEKANNT_AUSSCHREIBUNG = "UNBEKANNT_AUSSCHREIBUNG"  # Case 2: unknown + tender
+    BEKANNT_NICHT_BEZAHLT = "BEKANNT_NICHT_BEZAHLT"     # Case 3: known + not paid
+    BEKANNT_KEINE_AUSSCHREIBUNG = "BEKANNT_KEINE_AUSSCHREIBUNG"  # Case 4: known + no tender
+
+
+AUTO_REPLY_TEMPLATES: Dict[AutoReplyCase, Dict[str, str]] = {
+    AutoReplyCase.BEKANNT_BEZAHLT: {
+        "subject": "Re: {original_subject} – Ihr Angebot wird bearbeitet",
+        "body": """Sehr geehrte Damen und Herren,
+
+vielen Dank für Ihre Anfrage.
+
+Wir haben Ihre Ausschreibungsunterlagen erhalten und bestätigen die Eingang Ihres Angebots. Unser Team bearbeitet Ihre Anfrage umgehend und wird sich in Kürze mit einem detaillierten Angebot bei Ihnen melden.
+
+Als geschätzter Kunde profitieren Sie von unserer bevorzugten Bearbeitung.
+
+Mit freundlichen Grüßen
+Ihr LexWolf-Team""",
+        "html_body": """<p>Sehr geehrte Damen und Herren,</p>
+<p>vielen Dank für Ihre Anfrage.</p>
+<p>Wir haben Ihre Ausschreibungsunterlagen erhalten und <strong>bestätigen den Eingang Ihres Angebots</strong>. Unser Team bearbeitet Ihre Anfrage umgehend und wird sich in Kürze mit einem detaillierten Angebot bei Ihnen melden.</p>
+<p>Als geschätzter Kunde profitieren Sie von unserer bevorzugten Bearbeitung.</p>
+<p>Mit freundlichen Grüßen<br>Ihr <strong>LexWolf-Team</strong></p>"""
+    },
+    AutoReplyCase.UNBEKANNT_AUSSCHREIBUNG: {
+        "subject": "Re: {original_subject} – Kostenloser Testzugang für 1 Monat",
+        "body": """Sehr geehrte Damen und Herren,
+
+vielen Dank für Ihr Interesse an LexWolf.
+
+Wir haben Ihre Ausschreibungsanfrage erhalten und freuen uns, Ihnen ein besonderes Angebot machen zu können: Registrieren Sie sich jetzt bei LexWolf und erhalten Sie einen kostenlosen Testzugang für 1 Monat.
+
+Mit LexWolf haben Sie Zugriff auf:
+- Umfassende Rechtsdatenbank
+- KI-gestützte Dokumentenanalyse
+- Automatische Ausschreibungsverarbeitung
+
+Zur Registrierung besuchen Sie bitte: https://lexwolf.de/registrierung
+
+Unser Team hilft Ihnen gerne bei der Einrichtung Ihres Accounts.
+
+Mit freundlichen Grüßen
+Ihr LexWolf-Team""",
+        "html_body": """<p>Sehr geehrte Damen und Herren,</p>
+<p>vielen Dank für Ihr Interesse an LexWolf.</p>
+<p>Wir haben Ihre Ausschreibungsanfrage erhalten und freuen uns, Ihnen ein besonderes Angebot machen zu können: <strong>Registrieren Sie sich jetzt bei LexWolf und erhalten Sie einen kostenlosen Testzugang für 1 Monat.</strong></p>
+<p>Mit LexWolf haben Sie Zugriff auf:</p>
+<ul>
+  <li>Umfassende Rechtsdatenbank</li>
+  <li>KI-gestützte Dokumentenanalyse</li>
+  <li>Automatische Ausschreibungsverarbeitung</li>
+</ul>
+<p>Zur Registrierung besuchen Sie bitte: <a href="https://lexwolf.de/registrierung">https://lexwolf.de/registrierung</a></p>
+<p>Unser Team hilft Ihnen gerne bei der Einrichtung Ihres Accounts.</p>
+<p>Mit freundlichen Grüßen<br>Ihr <strong>LexWolf-Team</strong></p>"""
+    },
+    AutoReplyCase.BEKANNT_NICHT_BEZAHLT: {
+        "subject": "Re: {original_subject} – Ihr Account wurde pausiert",
+        "body": """Sehr geehrte Damen und Herren,
+
+vielen Dank für Ihre Nachricht.
+
+Wir haben festgestellt, dass Ihr LexWolf-Account derzeit pausiert ist, da kein aktives Abonnement vorliegt. Um Ihre Anfrage bearbeiten zu können, ist eine Reaktivierung Ihres Accounts erforderlich.
+
+Reaktivieren Sie Ihren Account jetzt und profitieren Sie von allen LexWolf-Funktionen:
+- Sofortiger Zugang nach Reaktivierung
+- Nahtlose Fortsetzung Ihrer bisherigen Arbeit
+- Zugriff auf alle gespeicherten Dokumente
+
+Zur Reaktivierung wenden Sie sich bitte an: support@lexwolf.de oder besuchen Sie https://lexwolf.de/reaktivierung
+
+Mit freundlichen Grüßen
+Ihr LexWolf-Team""",
+        "html_body": """<p>Sehr geehrte Damen und Herren,</p>
+<p>vielen Dank für Ihre Nachricht.</p>
+<p>Wir haben festgestellt, dass Ihr LexWolf-Account derzeit <strong>pausiert</strong> ist, da kein aktives Abonnement vorliegt. Um Ihre Anfrage bearbeiten zu können, ist eine Reaktivierung Ihres Accounts erforderlich.</p>
+<p>Reaktivieren Sie Ihren Account jetzt und profitieren Sie von allen LexWolf-Funktionen:</p>
+<ul>
+  <li>Sofortiger Zugang nach Reaktivierung</li>
+  <li>Nahtlose Fortsetzung Ihrer bisherigen Arbeit</li>
+  <li>Zugriff auf alle gespeicherten Dokumente</li>
+</ul>
+<p>Zur Reaktivierung wenden Sie sich bitte an: <a href="mailto:support@lexwolf.de">support@lexwolf.de</a> oder besuchen Sie <a href="https://lexwolf.de/reaktivierung">https://lexwolf.de/reaktivierung</a></p>
+<p>Mit freundlichen Grüßen<br>Ihr <strong>LexWolf-Team</strong></p>"""
+    },
+    AutoReplyCase.BEKANNT_KEINE_AUSSCHREIBUNG: {
+        "subject": "Re: {original_subject} – Ihre Anfrage wurde an den Support weitergeleitet",
+        "body": """Sehr geehrte Damen und Herren,
+
+vielen Dank für Ihre Nachricht.
+
+Wir haben Ihre Anfrage erhalten und an unser Support-Team weitergeleitet. Ein Mitarbeiter wird sich so schnell wie möglich bei Ihnen melden.
+
+Referenznummer Ihrer Anfrage: {reference_id}
+
+Für dringende Angelegenheiten erreichen Sie uns unter:
+- E-Mail: support@lexwolf.de
+- Telefon: +49 (0) 30 123456789
+
+Mit freundlichen Grüßen
+Ihr LexWolf-Team""",
+        "html_body": """<p>Sehr geehrte Damen und Herren,</p>
+<p>vielen Dank für Ihre Nachricht.</p>
+<p>Wir haben Ihre Anfrage erhalten und an unser <strong>Support-Team weitergeleitet</strong>. Ein Mitarbeiter wird sich so schnell wie möglich bei Ihnen melden.</p>
+<p>Referenznummer Ihrer Anfrage: <strong>{reference_id}</strong></p>
+<p>Für dringende Angelegenheiten erreichen Sie uns unter:</p>
+<ul>
+  <li>E-Mail: <a href="mailto:support@lexwolf.de">support@lexwolf.de</a></li>
+  <li>Telefon: +49 (0) 30 123456789</li>
+</ul>
+<p>Mit freundlichen Grüßen<br>Ihr <strong>LexWolf-Team</strong></p>"""
+    },
+}
+
+AUSSCHREIBUNG_KEYWORDS = [
+    "ausschreibung", "vergabe", "vergabeverfahren", "tender", "angebot",
+    "ausschreibungsunterlagen", "leistungsverzeichnis", "bieter", "submission",
+    "rfp", "request for proposal", "angebotsanfrage", "angebotsaufforderung",
+    "public tender", "öffentliche ausschreibung", "beschaffung",
+]
+
+
+def detect_ausschreibung(subject: str, body: str) -> bool:
+    """Return True if the email appears to be about a tender/Ausschreibung."""
+    text = (subject + " " + body).lower()
+    return any(kw in text for kw in AUSSCHREIBUNG_KEYWORDS)
+
+
+def select_auto_reply_case(
+    sender_email: str,
+    subject: str,
+    body: str,
+    subscription_status: str,  # "ACTIVE", "INACTIVE", "UNKNOWN"
+) -> AutoReplyCase:
+    """
+    Determine the correct auto-reply case based on sender status and email content.
+
+    Decision logic:
+      UNKNOWN + Ausschreibung  → CASE 2
+      UNKNOWN + no Ausschreibung → CASE 2 (still try to onboard)
+      KNOWN  + ACTIVE + Ausschreibung → CASE 1
+      KNOWN  + ACTIVE + no Ausschreibung → CASE 4 (support forward)
+      KNOWN  + INACTIVE → CASE 3
+    """
+    is_known = subscription_status != "UNKNOWN"
+    is_paid = subscription_status == "ACTIVE"
+    is_ausschreibung = detect_ausschreibung(subject, body)
+
+    if not is_known:
+        return AutoReplyCase.UNBEKANNT_AUSSCHREIBUNG
+
+    if not is_paid:
+        return AutoReplyCase.BEKANNT_NICHT_BEZAHLT
+
+    if is_ausschreibung:
+        return AutoReplyCase.BEKANNT_BEZAHLT
+
+    return AutoReplyCase.BEKANNT_KEINE_AUSSCHREIBUNG
+
+
+def build_auto_reply(
+    case: AutoReplyCase,
+    original_subject: str,
+    reference_id: Optional[str] = None,
+) -> Dict[str, str]:
+    """Render a template for the given case and return subject/body/html_body."""
+    template = AUTO_REPLY_TEMPLATES[case]
+    ref = reference_id or datetime.utcnow().strftime("LW-%Y%m%d-%H%M%S")
+    subject = template["subject"].format(original_subject=original_subject)
+    body = template["body"].format(original_subject=original_subject, reference_id=ref)
+    html_body = template["html_body"].format(original_subject=original_subject, reference_id=ref)
+    return {"subject": subject, "body": body, "html_body": html_body}
 
 class EmailConfig(BaseModel):
     """Email configuration model"""
@@ -344,6 +522,33 @@ class EmailService:
             logger.error(f"Error sending email: {e}")
             return False
     
+    def send_auto_reply(
+        self,
+        recipient: str,
+        original_subject: str,
+        original_message_id: Optional[str],
+        subscription_status: str,
+        body_text: str = "",
+    ) -> Dict:
+        """
+        Select the correct auto-reply template, render it, send via SMTP,
+        and return the case + success flag.
+        """
+        case = select_auto_reply_case(recipient, original_subject, body_text, subscription_status)
+        rendered = build_auto_reply(case, original_subject)
+
+        draft = EmailDraft(
+            to=[recipient],
+            subject=rendered["subject"],
+            body=rendered["body"],
+            html_body=rendered["html_body"],
+            in_reply_to=original_message_id,
+            references=original_message_id,
+        )
+
+        success = self.send_email(draft)
+        return {"case": case.value, "success": success, "subject_sent": rendered["subject"]}
+
     def extract_entities(self, email_text: str) -> Dict:
         """Extract relevant entities from email text"""
         entities = {

@@ -1,79 +1,55 @@
-import openai
 import os
 import numpy as np
-from typing import List, Union
+from typing import List
+from sentence_transformers import SentenceTransformer
+
+MODEL_NAME = os.getenv(
+    "EMBEDDING_MODEL",
+    "paraphrase-multilingual-mpnet-base-v2"  # 768-dim, Deutsch-fähig, lokal
+)
+DIMENSIONS = 768
+
 
 class EmbeddingService:
-    """
-    Service for generating text embeddings
-    """
-    
+    """Lokale Embeddings via sentence-transformers — kein API-Key nötig."""
+
+    _model: SentenceTransformer | None = None  # lazy singleton
+
     def __init__(self):
-        # Initialize OpenAI client
-        openai.api_key = os.getenv("OPENAI_API_KEY", "your_openai_api_key_here")
-        self.model = "text-embedding-3-small"  # 1536-dim embeddings
-        self.dimensions = 1536
-    
+        self.dimensions = DIMENSIONS
+
+    @property
+    def model(self) -> SentenceTransformer:
+        if EmbeddingService._model is None:
+            EmbeddingService._model = SentenceTransformer(MODEL_NAME)
+        return EmbeddingService._model
+
     def generate_embedding(self, text: str) -> List[float]:
-        """
-        Generate embedding for text using OpenAI API
-        """
         try:
-            # Truncate text to avoid token limits
-            truncated_text = text[:8000]  # Max tokens for text-embedding-3-small
-            
-            response = openai.embeddings.create(
-                input=truncated_text,
-                model=self.model,
-                dimensions=self.dimensions
-            )
-            
-            embedding = response.data[0].embedding
-            return embedding
+            vec = self.model.encode(text[:8000], normalize_embeddings=True)
+            return vec.tolist()
         except Exception as e:
-            print(f"Error generating embedding: {e}")
-            # Return zero vector as fallback
+            print(f"Embedding error: {e}")
             return [0.0] * self.dimensions
-    
+
     def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
-        """
-        Generate embeddings for a batch of texts
-        """
         try:
-            # Truncate texts to avoid token limits
-            truncated_texts = [text[:8000] for text in texts]
-            
-            response = openai.embeddings.create(
-                input=truncated_texts,
-                model=self.model,
-                dimensions=self.dimensions
-            )
-            
-            embeddings = [item.embedding for item in response.data]
-            return embeddings
+            truncated = [t[:8000] for t in texts]
+            vecs = self.model.encode(truncated, normalize_embeddings=True, batch_size=32)
+            return [v.tolist() for v in vecs]
         except Exception as e:
-            print(f"Error generating batch embeddings: {e}")
-            # Return zero vectors as fallback
+            print(f"Batch embedding error: {e}")
             return [[0.0] * self.dimensions for _ in texts]
 
-# For local testing without OpenAI API
+
 class MockEmbeddingService:
-    """
-    Mock service for generating random embeddings (for testing)
-    """
-    
+    """Für Tests — zufällige Vektoren, kein Modell nötig."""
+
     def __init__(self):
-        self.dimensions = 1536
-    
+        self.dimensions = DIMENSIONS
+
     def generate_embedding(self, text: str) -> List[float]:
-        """
-        Generate random embedding (for testing)
-        """
-        # Return random vector for testing
         return np.random.rand(self.dimensions).tolist()
-    
+
     def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
-        """
-        Generate random embeddings for a batch of texts (for testing)
-        """
         return [np.random.rand(self.dimensions).tolist() for _ in texts]

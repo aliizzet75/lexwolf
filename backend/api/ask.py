@@ -10,10 +10,18 @@ import time
 import re
 
 from services.database_service import DatabaseService
+from services.search_service import HybridSearchService
 
 router = APIRouter(prefix="/ask", tags=["ask"])
 
 db = DatabaseService()
+_search_service = None
+
+def _get_search():
+    global _search_service
+    if _search_service is None:
+        _search_service = HybridSearchService()
+    return _search_service
 
 
 class AskRequest(BaseModel):
@@ -144,11 +152,28 @@ async def ask(request: AskRequest):
         text=f"Suche in Rechtsdatenbank nach: *{query}*"
     ))
 
-    # 3. DB-Suche
+    # 3. Echte Hybrid-Suche (HyDE + pgvector + FTS + Rechtsgebiet-Boosting)
     chunks = []
     try:
-        raw = db.search_chunks_hybrid(query, limit=8)
-        chunks = raw if isinstance(raw, list) else []
+        search = _get_search()
+        raw = search.hybrid_search_with_graph(query, limit=8)
+        # Distanz → Score: bester Treffer = 100%, Rest relativ dazu normalisiert
+        distances = [float(r.get("dense_score", r.get("score", 1.0))) for r in raw]
+        min_dist = min(distances) if distances else 1.0
+        max_dist = max(distances) if distances else 1.0
+        dist_range = max_dist - min_dist if max_dist != min_dist else 1.0
+        for r, dist in zip(raw, distances):
+            score = 1.0 - (dist - min_dist) / dist_range  # bester=1.0, schlechtester=0.0
+            # Skaliere auf 60-100% da alle Treffer bereits relevant sind
+            score = 0.60 + score * 0.40
+            chunks.append({
+                "id": r.get("id"),
+                "text": r.get("text", ""),
+                "title": r.get("title", ""),
+                "score": round(score, 2),
+                "source": r.get("tags", ""),
+                "url": "",
+            })
         reasoning.append(ReasoningStep(
             emoji="📚",
             text=f"{len(chunks)} relevante Einträge gefunden"
@@ -156,7 +181,7 @@ async def ask(request: AskRequest):
     except Exception as e:
         reasoning.append(ReasoningStep(
             emoji="⚠️",
-            text=f"Datenbankfehler: {str(e)[:120]}"
+            text=f"Suchfehler: {str(e)[:120]}"
         ))
 
     # 4. Konfidenz prüfen
