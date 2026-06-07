@@ -156,7 +156,7 @@ async def ask(request: AskRequest):
     chunks = []
     try:
         search = _get_search()
-        raw = search.hybrid_search_with_graph(query, limit=8)
+        raw = search.hybrid_search_with_graph(query, limit=8, fast_mode=True)
         # Distanz → Score: bester Treffer = 100%, Rest relativ dazu normalisiert
         distances = [float(r.get("dense_score", r.get("score", 1.0))) for r in raw]
         min_dist = min(distances) if distances else 1.0
