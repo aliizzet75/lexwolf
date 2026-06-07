@@ -20,12 +20,12 @@ class HybridSearchService:
         self.embedding_service = EmbeddingService()
         self.database_service = DatabaseService()
 
-    def _call_ollama(self, prompt: str, max_tokens: int = 2048) -> str:
-        """Call Ollama LLM and return the response content. Tries localhost if env URL fails.
-        kimi-k2.5:cloud uses chain-of-thought: needs 2048+ tokens and may put answer in reasoning."""
+    def _call_ollama(self, prompt: str, max_tokens: int = 200) -> str:
+        """Call Ollama LLM für HyDE — nutzt deepseek-v3.2:cloud (schnell, ~3s).
+        Fallback auf HYDE_MODEL env var falls gesetzt."""
         import urllib.request as _urlreq
         import json as _json
-        model = os.environ.get('HYDE_MODEL', os.environ.get('OLLAMA_MODEL', 'kimi-k2.5:cloud'))
+        model = os.environ.get('HYDE_MODEL', 'deepseek-v3.2:cloud')
         # Try configured URL first, then localhost fallback
         urls_to_try = []
         configured = os.environ.get('OLLAMA_URL', '')
@@ -95,7 +95,7 @@ class HybridSearchService:
             logger.debug(f"Query rewrite failed: {e}")
         return query
 
-    def hybrid_search_with_graph(self, query: str, limit: int = 10) -> List[Dict]:
+    def hybrid_search_with_graph(self, query: str, limit: int = 10, fast_mode: bool = False) -> List[Dict]:
         """
         Perform hybrid search with optional graph traversal based on query complexity.
         Simple queries use only pgvector; complex queries add Neo4j graph traversal.
@@ -103,7 +103,7 @@ class HybridSearchService:
         query_type = route_query(query)
         logger.info(f"Query routed as: {query_type}")
 
-        base_results = self.search(query, limit)
+        base_results = self.search(query, limit, fast_mode=fast_mode)
 
         if query_type != 'complex':
             return base_results
@@ -282,19 +282,25 @@ class HybridSearchService:
             logger.warning(f"_kimi_direct_lookup failed: {e}")
             return []
 
-    def search(self, query: str, limit: int = 10) -> List[Dict]:
+    def search(self, query: str, limit: int = 10, fast_mode: bool = False) -> List[Dict]:
         """
         Perform hybrid search combining dense vector search, sparse keyword search, and tag-boosted search.
-        Enhanced with Kimi-guided direct paragraph lookup for reliable retrieval.
+        fast_mode=True: überspringt alle LLM-Calls (kein HyDE, kein Kimi-Lookup) für <5s Antwortzeit.
+        fast_mode=False (default): vollständige Pipeline mit HyDE + Kimi-Lookup für maximale Qualität.
         """
         try:
-            logger.info(f"Performing hybrid search for query: {query}")
+            logger.info(f"Performing hybrid search for query: {query} (fast_mode={fast_mode})")
 
-            # Kimi direct lookup: ask which §§ are relevant, look up those chunks directly
-            direct_chunks = self._kimi_direct_lookup(query)
+            # Kimi direct lookup — nur im vollständigen Modus
+            direct_chunks = [] if fast_mode else self._kimi_direct_lookup(query)
 
-            query_embedding = self.hyde_embed(query)
-            logger.info("Generated HyDE query embedding")
+            # Embedding: HyDE im vollen Modus, direktes Query-Embedding im Fast-Modus
+            if fast_mode:
+                query_embedding = self.embedding_service.generate_embedding(query)
+                logger.info("Fast-mode: direktes Query-Embedding (kein HyDE)")
+            else:
+                query_embedding = self.hyde_embed(query)
+                logger.info("Generated HyDE query embedding")
 
             dense_results = self._dense_search(query_embedding, limit * 2)
             logger.info(f"Dense search returned {len(dense_results)} results")
