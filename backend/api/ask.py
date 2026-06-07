@@ -49,25 +49,86 @@ class AskResponse(BaseModel):
     duration_ms: int
 
 
-# ── Intent-Erkennung ──────────────────────────────────────────────────────────
+# ── Intent-Erkennung via semantische Ähnlichkeit ─────────────────────────────
+# Kein Keyword-Matching — das Embedding-Modell versteht den Sinn der Anfrage.
+# Jeder Intent hat Beispielsätze. Zur Laufzeit wird die Cosine-Ähnlichkeit
+# zwischen Nutzeranfrage und Beispielen berechnet. Schnell (~50ms), robust.
 
-_INTENT_PATTERNS = [
-    # Dokumenterstellung: erstellen, schreiben, formulieren, zusammenstellen, aufsetzen, entwerfen
-    ("erstelle", r"\b(erstell\w*|schreib\w*|formulier\w*|verfass\w*|entwerf\w*|aufsetze\w*|zusammenstell\w*|generier\w*|erarbeite\w*)\b|stell\w*\b.{0,60}\bzusammen\b|mach\s+mir"),
-    # Erklärung: was ist, erkläre, definiere, bedeutet
-    ("erklaere", r"\b(erkl[äa]r|was (ist|bedeutet|versteht man unter)|definier|erl[äa]uter|beschreib)\b"),
-    # Suche: finde, suche, gibt es, zeige, Rechtsprechung
-    ("suche",    r"\b(such|find|gibt es|zeig|welche urteile|rechtsprechung|urteil)\b"),
-    # Frage: Fragezeichen oder Fragewörter
-    ("frage",    r"\?|^(wie|wann|warum|wer|wo|welche[rs]?|darf|muss|kann|habe ich)\b"),
-]
+_INTENT_EXAMPLES = {
+    "erstelle": [
+        "Erstelle mir ein Kündigungsschreiben",
+        "Schreib eine Abmahnung für meinen Mitarbeiter",
+        "Ich brauche einen Mietvertrag",
+        "Formuliere ein Schreiben an meinen Vermieter",
+        "Kannst du mir einen Brief aufsetzen",
+        "Ich möchte eine Vollmacht haben",
+        "Hilf mir ein Dokument zu verfassen",
+        "Setze eine Mahnung auf",
+        "Ich benötige ein Kündigungsschreiben",
+        "Bereite mir eine Klage vor",
+    ],
+    "erklaere": [
+        "Was ist Kündigungsschutz?",
+        "Was bedeutet eine fristlose Kündigung?",
+        "Erkläre mir den Unterschied zwischen ordentlicher und außerordentlicher Kündigung",
+        "Was versteht man unter Elternzeit?",
+        "Was ist eine Abmahnung?",
+        "Definiere Mietminderung",
+    ],
+    "suche": [
+        "Gibt es Urteile zum Kündigungsschutz?",
+        "Zeig mir Rechtsprechung zur Mietminderung",
+        "Suche Urteile zum Thema Abfindung",
+        "Welche Gerichtsurteile gibt es zu Eigenbedarfskündigung?",
+    ],
+    "frage": [
+        "Wie kündige ich einem Arbeitnehmer fristgerecht?",
+        "Darf mein Vermieter einfach die Miete erhöhen?",
+        "Habe ich Anspruch auf Elternzeit?",
+        "Wann kann ich einen Mietvertrag kündigen?",
+        "Muss ich eine Abfindung zahlen?",
+        "Welche Rechte habe ich als Arbeitnehmer?",
+        "Kann ich Überstunden einklagen?",
+        "Wie lange dauert die Kündigungsfrist?",
+    ],
+}
+
+_intent_embeddings: dict | None = None
+
+def _get_intent_embeddings():
+    """Lazy-load: Beispiel-Embeddings einmalig beim ersten Aufruf berechnen."""
+    global _intent_embeddings
+    if _intent_embeddings is not None:
+        return _intent_embeddings
+    from services.embedding_service import EmbeddingService
+    import numpy as np
+    es = EmbeddingService()
+    _intent_embeddings = {}
+    for intent, examples in _INTENT_EXAMPLES.items():
+        vecs = [np.array(es.generate_embedding(ex)) for ex in examples]
+        _intent_embeddings[intent] = np.mean(vecs, axis=0)  # Durchschnitt der Beispiele
+    return _intent_embeddings
+
+def _cosine_sim(a, b):
+    import numpy as np
+    na, nb = np.linalg.norm(a), np.linalg.norm(b)
+    if na == 0 or nb == 0:
+        return 0.0
+    return float(np.dot(a, b) / (na * nb))
 
 def _detect_intent(text: str) -> str:
-    lower = text.lower().strip()
-    for intent, pattern in _INTENT_PATTERNS:
-        if re.search(pattern, lower):
-            return intent
-    return "frage"  # Default: als Frage behandeln, nicht als leere Suche
+    """Semantische Intent-Klassifizierung via Embedding-Ähnlichkeit."""
+    try:
+        import numpy as np
+        from services.embedding_service import EmbeddingService
+        es = EmbeddingService()
+        query_vec = np.array(es.generate_embedding(text))
+        archetypes = _get_intent_embeddings()
+        scores = {intent: _cosine_sim(query_vec, vec) for intent, vec in archetypes.items()}
+        best = max(scores, key=scores.get)
+        return best
+    except Exception:
+        return "frage"
 
 
 # ── Schlüsselwort-Extraktion für DB-Query ────────────────────────────────────
