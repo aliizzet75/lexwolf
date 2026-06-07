@@ -131,6 +131,47 @@ def _detect_intent(text: str) -> str:
         return "frage"
 
 
+# ── Query-Erweiterung: Themenkontext für präzisere Suche ─────────────────────
+# Wenn eine Anfrage thematisch eindeutig ist, aber ohne Fachkontext formuliert,
+# wird der Kontext ergänzt damit die Suche nicht in Nischenbereichen landet.
+# z.B. "wie kündige ich" → ohne "Arbeitnehmer" findet die Suche Pachtrecht statt Arbeitsrecht.
+
+_THEMA_KONTEXT = [
+    # (Erkennungs-Pattern, Kontext-Präzisierung, nur wenn NICHT schon spezifisch)
+    (r"kündig\w+|kündige",
+     r"arbeitnehm|arbeitgeb|arbeit|mitarbeit|angestellt|betrieb|beschäftigt",
+     "Kündigung Arbeitsverhältnis Arbeitnehmer Arbeitgeber"),
+
+    (r"miete?|vermieter|mietvertrag|wohnung\w*",
+     r"pacht|landwirt|acker|grundstück",
+     "Mietrecht Wohnraum Mieter Vermieter"),
+
+    (r"unterhalt",
+     r"rente|sozial|alters",
+     "Kindesunterhalt Familienrecht Unterhaltspflicht"),
+
+    (r"erbschaft|erbe|erben|erbrecht",
+     r"steuer",
+     "Erbrecht Erbfall Erblasser Testament"),
+
+    (r"abmahn\w+",
+     r"",  # kein Ausschluss-Pattern
+     "Abmahnung Arbeitnehmer Pflichtverletzung Kündigung"),
+]
+
+def _enrich_query(query: str) -> str:
+    """Ergänzt generische Anfragen mit thematischem Kontext für präzisere Suche."""
+    lower = query.lower()
+    for topic_pattern, exclude_pattern, context in _THEMA_KONTEXT:
+        if re.search(topic_pattern, lower):
+            # Nur ergänzen wenn spezifischer Kontext NICHT schon vorhanden
+            if not exclude_pattern or not re.search(exclude_pattern, lower):
+                # Nur wenn der Kontext nicht schon im Query steckt
+                first_context_word = context.split()[0].lower()
+                if first_context_word not in lower:
+                    return f"{query} {context}"
+    return query
+
 # ── Schlüsselwort-Extraktion für DB-Query ────────────────────────────────────
 
 _STOP = {"mir", "eine", "einen", "einer", "der", "die", "das", "ein", "und", "oder",
@@ -319,7 +360,8 @@ async def ask(request: AskRequest):
                     db.close()
             raw = direct + search.hybrid_search_with_graph(embed_q, limit=max(0, 8-len(direct)), fast_mode=True)
         else:
-            raw = search.hybrid_search_with_graph(embed_query, limit=8, fast_mode=True)
+            enriched = _enrich_query(embed_query)
+            raw = search.hybrid_search_with_graph(enriched, limit=8, fast_mode=True)
         # Distanz → Score: bester Treffer = 100%, Rest relativ dazu normalisiert
         distances = [float(r.get("dense_score", r.get("score", 1.0))) for r in raw]
         min_dist = min(distances) if distances else 1.0
