@@ -53,7 +53,7 @@ class AskResponse(BaseModel):
 
 _INTENT_PATTERNS = [
     # Dokumenterstellung: erstellen, schreiben, formulieren, zusammenstellen, aufsetzen, entwerfen
-    ("erstelle", r"\b(erstell|schreib|formulier|verfass|entwerf|aufsetzen|aufsetze|setz.*auf|stell.*zusammen|zusammenstell|mach.*mir|erarbeite|generier)\b"),
+    ("erstelle", r"\b(erstell\w*|schreib\w*|formulier\w*|verfass\w*|entwerf\w*|aufsetze\w*|zusammenstell\w*|generier\w*|erarbeite\w*)\b|stell\w*\b.{0,60}\bzusammen\b|mach\s+mir"),
     # Erklärung: was ist, erkläre, definiere, bedeutet
     ("erklaere", r"\b(erkl[äa]r|was (ist|bedeutet|versteht man unter)|definier|erl[äa]uter|beschreib)\b"),
     # Suche: finde, suche, gibt es, zeige, Rechtsprechung
@@ -84,7 +84,7 @@ _DOKUMENT_TYPEN = {
     "kündigungsschreiben": ("Kündigung Arbeitsverhältnis Kündigungsfrist",  ["kschg", "bgb"], "Kündigung"),
     "kündigung":           ("Kündigung Arbeitsverhältnis Kündigungsfrist",  ["kschg", "bgb"], "Kündigung"),
     "mietvertrag":         ("Mietvertrag Wohnraum Miete Vermieter",         ["bgb"],          "Mietvertrag"),
-    "abmahnung":           ("Abmahnung Arbeitnehmer Pflichtverletzung",     ["kschg", "bgb"], "Abmahnung"),
+    "abmahnung":           ("Pflichtverletzung Arbeitnehmer Kündigung außerordentlich", ["kschg", "bgb"], "Kündigung"),
     "kaufvertrag":         ("Kaufvertrag Kaufpreis Eigentumsübertragung",   ["bgb"],          "Kaufvertrag"),
     "vollmacht":           ("Vollmacht Bevollmächtigung Vertretung",         ["bgb"],          "Vollmacht"),
     "widerspruch":         ("Widerspruch Verwaltungsakt Einspruch",          [],               "Widerspruch"),
@@ -258,7 +258,7 @@ async def ask(request: AskRequest):
                     db.close()
             raw = direct + search.hybrid_search_with_graph(embed_q, limit=max(0, 8-len(direct)), fast_mode=True)
         else:
-            raw = search.hybrid_search_with_graph(query, limit=8, fast_mode=True)
+            raw = search.hybrid_search_with_graph(embed_query, limit=8, fast_mode=True)
         # Distanz → Score: bester Treffer = 100%, Rest relativ dazu normalisiert
         distances = [float(r.get("dense_score", r.get("score", 1.0))) for r in raw]
         min_dist = min(distances) if distances else 1.0
