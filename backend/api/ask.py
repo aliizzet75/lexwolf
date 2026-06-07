@@ -57,15 +57,25 @@ class AskResponse(BaseModel):
 _INTENT_EXAMPLES = {
     "erstelle": [
         "Erstelle mir ein Kündigungsschreiben",
-        "Schreib eine Abmahnung für meinen Mitarbeiter",
-        "Ich brauche einen Mietvertrag",
-        "Formuliere ein Schreiben an meinen Vermieter",
+        "Schreib eine Abmahnung",
+        "Formuliere ein Schreiben",
         "Kannst du mir einen Brief aufsetzen",
         "Ich möchte eine Vollmacht haben",
-        "Hilf mir ein Dokument zu verfassen",
-        "Setze eine Mahnung auf",
         "Ich benötige ein Kündigungsschreiben",
-        "Bereite mir eine Klage vor",
+        "Bereite mir eine Klageschrift vor",
+        "Ich brauche eine Befristungsvereinbarung",
+        "Stell mir einen Vergleich zusammen",
+        "Schreibe einen Einspruch",
+        "Ich möchte eine Kündigung formuliert haben",
+        "Kannst du eine Kündigung formulieren",
+        "Ich benötige einen Lizenzvertrag",
+        "Schreibe einen Schriftsatz",
+        "Bereite einen Vergleich vor",
+        "Ich brauche eine Scheidungsfolgenvereinbarung",
+        "Ich benötige einen Mietvertrag",
+        "Formuliere mir einen Vergleich",
+        "Setze einen Arbeitsvertrag auf",
+        "Verfasse ein Abmahnungsschreiben",
     ],
     "erklaere": [
         "Was ist Kündigungsschutz?",
@@ -73,13 +83,18 @@ _INTENT_EXAMPLES = {
         "Erkläre mir den Unterschied zwischen ordentlicher und außerordentlicher Kündigung",
         "Was versteht man unter Elternzeit?",
         "Was ist eine Abmahnung?",
-        "Definiere Mietminderung",
+        "Was ist der Unterschied zwischen GmbH und UG?",
+        "Was versteht man unter dem AGG?",
+        "Was ist der Versorgungsausgleich?",
+        "Was ist ein Pflichtteil?",
+        "Was ist eine AGB-Klausel?",
     ],
     "suche": [
         "Gibt es Urteile zum Kündigungsschutz?",
         "Zeig mir Rechtsprechung zur Mietminderung",
         "Suche Urteile zum Thema Abfindung",
         "Welche Gerichtsurteile gibt es zu Eigenbedarfskündigung?",
+        "Finde Urteile zum Arbeitsrecht",
     ],
     "frage": [
         "Wie kündige ich einem Arbeitnehmer fristgerecht?",
@@ -88,8 +103,24 @@ _INTENT_EXAMPLES = {
         "Wann kann ich einen Mietvertrag kündigen?",
         "Muss ich eine Abfindung zahlen?",
         "Welche Rechte habe ich als Arbeitnehmer?",
-        "Kann ich Überstunden einklagen?",
-        "Wie lange dauert die Kündigungsfrist?",
+        "Was sind die Voraussetzungen für eine Eigenbedarfskündigung?",
+        "Was sind die Voraussetzungen für eine betriebsbedingte Kündigung?",
+        "Wann greift der Kündigungsschutz?",
+        "Welche Rechte hat mein Mandant bei fristloser Entlassung?",
+        "Wann hat man Anspruch auf Abfindung?",
+        "Mein Mandant wurde fristlos entlassen. Was sind seine Rechte?",
+        "Mein Mandant hat Überstunden nicht bezahlt bekommen. Was kann er tun?",
+        "Mein Mandant möchte das Sorgerecht alleine haben. Was sind die Voraussetzungen?",
+        "Mein Mandant wurde bei einem Verkehrsunfall verletzt. Wer haftet?",
+        "Mein Mandant möchte gegen seinen Nachbarn vorgehen wegen Lärm.",
+        "Wie läuft das Scheidungsverfahren ab?",
+        "Was passiert wenn jemand ohne Testament stirbt?",
+        "Was sind die Gewährleistungsrechte beim Autokauf?",
+        "Wann macht sich jemand strafbar?",
+        "Wie gründe ich eine GmbH?",
+        "Was sind die Rechte von Arbeitnehmern bei Insolvenz?",
+        "Wie berechnet sich der Kindesunterhalt?",
+        "Was sind Schönheitsreparaturen und wer muss sie durchführen?",
     ],
 }
 
@@ -137,26 +168,65 @@ def _detect_intent(text: str) -> str:
 # z.B. "wie kündige ich" → ohne "Arbeitnehmer" findet die Suche Pachtrecht statt Arbeitsrecht.
 
 _THEMA_KONTEXT = [
-    # (Erkennungs-Pattern, Kontext-Präzisierung, nur wenn NICHT schon spezifisch)
     (r"kündig\w+|kündige",
-     r"arbeitnehm|arbeitgeb|arbeit|mitarbeit|angestellt|betrieb|beschäftigt",
+     r"arbeitnehm|arbeitgeb|arbeit|mitarbeit|angestellt|betrieb|beschäftigt|pacht|mietvertrag",
      "Kündigung Arbeitsverhältnis Arbeitnehmer Arbeitgeber"),
 
-    (r"miete?|vermieter|mietvertrag|wohnung\w*",
+    (r"miete?|vermieter|mietvertrag|wohnung\w*|untervermiet\w+|schönheitsrep\w+",
      r"pacht|landwirt|acker|grundstück",
-     "Mietrecht Wohnraum Mieter Vermieter"),
+     "Mietrecht Wohnraum Mieter Vermieter BGB"),
 
     (r"unterhalt",
      r"rente|sozial|alters",
-     "Kindesunterhalt Familienrecht Unterhaltspflicht"),
+     "Kindesunterhalt Familienrecht Unterhaltspflicht BGB"),
 
-    (r"erbschaft|erbe|erben|erbrecht",
-     r"steuer",
-     "Erbrecht Erbfall Erblasser Testament"),
+    (r"erbschaft|erbe|erben|erbrecht|pflichtteil|erbvertrag|testament",
+     r"",
+     "Erbrecht Erbfall Erblasser Testament BGB"),
 
     (r"abmahn\w+",
-     r"",  # kein Ausschluss-Pattern
-     "Abmahnung Arbeitnehmer Pflichtverletzung Kündigung"),
+     r"",
+     "Abmahnung Arbeitnehmer Pflichtverletzung Kündigung BGB"),
+
+    (r"sorgerecht|sorgefalt|elternteil|kindeswohl",
+     r"",
+     "Sorgerecht Kind Eltern Familienrecht BGB"),
+
+    (r"gmbh|geschäftsführer|gesellschaftsrecht|gesellschafter",
+     r"",
+     "GmbH Gesellschaft Haftung Geschäftsführer GmbHG"),
+
+    (r"agb|allgemeine geschäftsbeding\w+|klausel",
+     r"",
+     "AGB Verbraucher Klausel unwirksam BGB §307"),
+
+    (r"insolvenz|arbeitnehmer.*insolvenz|insolvenz.*arbeitnehmer",
+     r"",
+     "Insolvenz Arbeitnehmer Lohn Gehalt InsO"),
+
+    (r"versetzung|direktionsrecht",
+     r"",
+     "Versetzung Direktionsrecht Arbeitnehmer Arbeitsvertrag"),
+
+    (r"scheidung|scheidungsverfahren|ehegattenunterhalt|versorgungsausgleich",
+     r"",
+     "Scheidung Familienrecht Unterhalt Versorgungsausgleich BGB"),
+
+    (r"zwangsvollstreck\w+|pfändung",
+     r"",
+     "Zwangsvollstreckung ZPO Gläubiger Schuldner"),
+
+    (r"einstweilig\w+|verfügung",
+     r"",
+     "einstweilige Verfügung ZPO Unterlassung Gericht"),
+
+    (r"verkehrsunfall|unfallschaden|schadenersatz.*unfall",
+     r"",
+     "Verkehrsunfall Haftung Schadensersatz BGB"),
+
+    (r"gewährleistung|mangel|nacherfüllung",
+     r"",
+     "Gewährleistung Mangel Nacherfüllung Kaufvertrag BGB"),
 ]
 
 def _enrich_query(query: str) -> str:
@@ -193,6 +263,57 @@ _DOKUMENT_TYPEN = {
     "klage":               ("Klage Zivilprozess Gericht Antrag",            ["zpo"],          "Klage"),
     "mahnung":             ("Mahnung Zahlungsverzug Forderung",             ["bgb"],          "Mahnung"),
 }
+
+_TOPIC_TAGS = {
+    r"gmbh|geschäftsführer":          ("gmbhg", None),
+    r"insolvenz":                       ("inso",  None),
+    r"sorgerecht|elterliche sorge":    ("bgb",   "Sorgerecht"),
+    r"pflichtteil":                     ("bgb",   "Pflichtteil"),
+    r"agb|allgemeine geschäftsbeding": ("bgb",   "§ 307"),
+    r"zwangsvollstreck":               ("zpo",   None),
+    r"einstweilig.*verfügung":         ("zpo",   None),
+    r"handelsrecht|kaufmann":          ("hgb",   None),
+    r"trennungsunterhalt|ehegattenunterhalt": ("bgb", "Unterhalt"),
+    r"wohnungsmiet|mietwohnung|kündigungsfrist.*miete?": ("bgb", "§ 573"),
+    r"untervermiet":                   ("bgb",   "Untervermietung"),
+    r"schönheitsreparatur":            ("bgb",   "§ 535"),
+    r"verkehrsunfall|straßenverkehr":  ("stvo_2013", None),
+    r"arbeitnehmer.*insolvenz|insolvenz.*arbeitnehmer": ("inso", "Arbeitnehmer"),
+}
+
+def _direct_tag_search(query: str, db_svc, limit: int = 3) -> list:
+    """Direkte DB-Suche für erkannte Rechtsgebiete — umgeht RRF-Verwässerung."""
+    lower = query.lower()
+    found_tag = None
+    fts_term = None
+    for pattern, (tag, term) in _TOPIC_TAGS.items():
+        if re.search(pattern, lower):
+            found_tag = tag
+            fts_term = term
+            break
+    if not found_tag:
+        return []
+    try:
+        from sqlalchemy import text as sqltxt
+        db = db_svc.SessionLocal()
+        try:
+            if fts_term:
+                rows = db.execute(sqltxt(
+                    "SELECT id, title, text, tags FROM legal_chunks "
+                    "WHERE tags = :tag AND (title ILIKE :term OR text ILIKE :term) LIMIT :n"
+                ), {"tag": found_tag, "term": f"%{fts_term}%", "n": limit}).fetchall()
+            else:
+                rows = db.execute(sqltxt(
+                    "SELECT id, title, text, tags FROM legal_chunks "
+                    "WHERE tags = :tag LIMIT :n"
+                ), {"tag": found_tag, "n": limit}).fetchall()
+            return [{"id": r.id, "title": r.title, "text": r.text,
+                     "tags": r.tags, "score": 0.95, "source": r.tags} for r in rows]
+        finally:
+            db.close()
+    except Exception:
+        return []
+
 
 def _get_dokument_info(text: str):
     """Gibt (embed_query, tags, fts) für bekannte Dokumenttypen zurück, sonst None."""
@@ -361,7 +482,12 @@ async def ask(request: AskRequest):
             raw = direct + search.hybrid_search_with_graph(embed_q, limit=max(0, 8-len(direct)), fast_mode=True)
         else:
             enriched = _enrich_query(embed_query)
-            raw = search.hybrid_search_with_graph(enriched, limit=8, fast_mode=True)
+            # Direkte Tag-Suche für erkannte Rechtsgebiete (verhindert Nischenrecht)
+            direct = _direct_tag_search(enriched, search.database_service, limit=3)
+            rest_limit = max(0, 8 - len(direct))
+            fused = search.hybrid_search_with_graph(enriched, limit=rest_limit, fast_mode=True)
+            direct_ids = {c.get("id") for c in direct}
+            raw = direct + [r for r in fused if r.get("id") not in direct_ids]
         # Distanz → Score: bester Treffer = 100%, Rest relativ dazu normalisiert
         distances = [float(r.get("dense_score", r.get("score", 1.0))) for r in raw]
         min_dist = min(distances) if distances else 1.0

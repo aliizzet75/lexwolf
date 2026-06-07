@@ -461,33 +461,57 @@ class HybridSearchService:
         
         # Registrierte Gesetzes-Tags (Kurzbezeichnungen für SQL tags-Column)
         TAGS = {
+            # Arbeitsrecht
             'kschg': 'KSchG',
-            'bgb': 'BGB',
-            'tzfbg': 'TZfG',
             'burlg': 'BUrlG',
+            'tzbfg': 'TzBfG',
+            'arbgg': 'ArbGG',
+            'betrvg': 'BetrVG',
+            'entgfg': 'EntgFG',
+            'muschg': 'MuSchG',
+            # Zivilrecht
+            'bgb': 'BGB',
+            'zpo': 'ZPO',
+            'hgb': 'HGB',
+            # Gesellschaftsrecht
+            'gmbhg': 'GmbHG',
+            'aktg': 'AktG',
+            # Familienrecht / Erbrecht
+            'famfg': 'FamFG',
+            # Strafrecht
             'stgb': 'StGB',
-            'gwpo': 'GWpo',
-            'lvwg': 'LVWG',
-            'vg': 'VG',
-            'ao': 'AO',
-            'stPO': 'StPO',
-            'kStG': 'KStG',
-            'eStG': 'EStG',
-            'aG': 'AG',
-            'gG': 'gG',
-            'gGK': 'gGK',
-            'SGB I': 'SGB I',
-            'SGB II': 'SGB II',
-            'SGB III': 'SGB III',
-            'SGB IV': 'SGB IV',
-            'SGB V': 'SGB V',
-            'SGB VIII': 'SGB VIII',
-            'SGB IX': 'SGB IX',
-            'SGB X': 'SGB X',
-            'SGB XI': 'SGB XI',
-            'SGB XII': 'SGB XII',
-            'SGB XIII': 'SGB XIII',
-            'SGB XIV': 'SGB XIV',
+            'stpo': 'StPO',
+            # Insolvenzrecht
+            'inso': 'InsO',
+            'insolvenzordnung': 'InsO',
+            # Steuerrecht
+            'ao_1977': 'AO',
+            # Verwaltungsrecht
+            'vwgo': 'VwGO',
+            # SGB
+            'sgb_3': 'SGB III',
+            'sgb_4': 'SGB IV',
+            'sgb_5': 'SGB V',
+            'sgb_6': 'SGB VI',
+            'sgb_9': 'SGB IX',
+            'sgb_11': 'SGB XI',
+            'sgb_12': 'SGB XII',
+        }
+
+        # Keyword → Tags Mapping: erkennt Rechtsgebiet aus Themen-Stichwörtern
+        KEYWORD_TAGS = {
+            'gmbh': ['gmbhg'],
+            'geschäftsführer': ['gmbhg'],
+            'aktiengesellschaft': ['aktg'],
+            'insolvenz': ['inso'],
+            'zwangsvollstreckung': ['zpo'],
+            'einstweilige verfügung': ['zpo'],
+            'mietrecht': ['bgb'],
+            'arbeitsrecht': ['kschg', 'bgb'],
+            'erbrecht': ['bgb'],
+            'familienrecht': ['bgb', 'famfg'],
+            'strafrecht': ['stgb'],
+            'handelsrecht': ['hgb'],
         }
         
         # Finde alle vorkommenden Gesetzes-Abkürzungen im Query (Regex für §\d+ [A-Z][a-z]+)
@@ -500,10 +524,16 @@ class HybridSearchService:
             if tag_abbr in TAGS:
                 found_tags.add(tag_abbr)
         
-        # Fallback: Suche auch nach Gesetzesnamen
+        # Fallback: Suche nach Gesetzesnamen im Query
         for tag_key, tag_val in TAGS.items():
             if tag_val.lower() in query.lower():
                 found_tags.add(tag_key)
+
+        # Keyword-basierter Tag-Lookup
+        query_lower = query.lower()
+        for keyword, tags in KEYWORD_TAGS.items():
+            if keyword in query_lower:
+                found_tags.update(tags)
         
         # SECONDARY: Extrahiere Rechtsgebiet aus Query-Text basierend auf Stichworten
         # (wenn Regex-basierte Suche kein Ergebnis liefert)
