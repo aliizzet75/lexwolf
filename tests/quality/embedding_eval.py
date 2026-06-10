@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Tuple
 
-WORKSPACE = Path("/data/.openclaw/workspace-codex/projects/lexwolf.disabled")
+WORKSPACE = Path("/data/.openclaw/workspace-codex/projects/lexwolf")
 OUTPUT_PATH = WORKSPACE / "tests/quality/embedding_eval.json"
 DATASET_PATH = WORKSPACE / "tests/quality/test_dataset.json"
 

@@ -1,7 +1,7 @@
 import sys, os, json, importlib.util, tempfile
 from pathlib import Path
 
-_BASE = Path("/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf.disabled")
+_BASE = Path("/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf")
 if not _BASE.exists():
     _BASE = Path("/data/.openclaw/workspace-codex/projects/lexwolf")
 ROUTE_FILE = _BASE / "backend/api/routes/quality.py"

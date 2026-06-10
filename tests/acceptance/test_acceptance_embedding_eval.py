@@ -12,7 +12,7 @@ def test_acceptance_embedding_eval():
     print("Running Acceptance Test for Task #178")
 
     eval_path = Path(
-        "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf.disabled"
+        "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf"
         "/tests/quality/embedding_eval.json"
     )
     assert eval_path.exists(), "embedding_eval.json existiert nicht"

@@ -9,8 +9,8 @@ import socket
 import sys
 from pathlib import Path
 
-_BASE = "/data/.openclaw/workspace-codex/projects/lexwolf.disabled"
-_BASE_HOST = "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf.disabled"
+_BASE = "/data/.openclaw/workspace-codex/projects/lexwolf"
+_BASE_HOST = "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf"
 _ROOT = _BASE if os.path.isdir(_BASE) else _BASE_HOST
 sys.path.insert(0, os.path.join(_ROOT, "backend"))
 

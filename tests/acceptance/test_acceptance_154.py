@@ -5,9 +5,9 @@ import sys
 import pytest
 
 _BASE = "/data/.openclaw/workspace-codex/projects/lexwolf"
-_BASE_DISABLED = "/data/.openclaw/workspace-codex/projects/lexwolf.disabled"
+_BASE_DISABLED = "/data/.openclaw/workspace-codex/projects/lexwolf"
 _BASE_HOST = "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf"
-_BASE_HOST_DISABLED = "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf.disabled"
+_BASE_HOST_DISABLED = "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf"
 _ROOT = (
     _BASE if os.path.isdir(_BASE) else
     _BASE_DISABLED if os.path.isdir(_BASE_DISABLED) else
