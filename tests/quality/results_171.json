@@ -1,0 +1,392 @@
+{
+  "ergebnisse": [
+    {
+      "frage_id": 1,
+      "frage": "Mein Arbeitgeber hat mir fristlos gekündigt, weil ich einmalig zu spät kam. Ist das rechtmäßig?",
+      "erwartete_paragraphen": [
+        "§626 BGB",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 626 Fristlose Kündigung aus wichtigem Grund: § 626 Fristlose Kündigung aus wichtigem Grund\\n(1) Das Dienstverhältnis kann von jedem Vertragsteil aus wichtigem Grund ohne Einhaltung einer Kündigungsfrist gekündigt werden, wenn Tatsachen vorliegen, auf Grund derer dem Kündigenden unter Berücksichtigung aller Umstände des Einzelfalles und unter Abwägung der Interessen beider Vertragsteile die Fortsetzung des Dienstverhältnisses bis zum Ablauf de\", \"quellen\": [\"107021\"]}, {",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§626 BGB",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 79,
+      "qg_refs_in_db": 68
+    },
+    {
+      "frage_id": 3,
+      "frage": "Mein Betrieb hat 12 Mitarbeiter. Habe ich Kündigungsschutz nach dem KSchG?",
+      "erwartete_paragraphen": [
+        "§23 KSchG",
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"SOKASIG_2 - Anlage 32 (zu § 9 Absatz 2): Anlage 32 (zu § 9 Absatz 2)\\n1. Räumlicher Geltungsbereich: Das Gebiet der Bundesrepublik Deutschland. 2. Betrieblicher Geltungsbereich: Alle Betriebe und selbständigen Betriebsabteilungen des Dachdeckerhandwerks. 3. Persönlicher Geltungsbereich: Alle gewerblichen Arbeitnehmer, die eine nach den Bestimmungen des Sechsten Buches des Sozialgesetzbuchs (SGB VI) versicherungspflichtige Tätigkeit ausübe\", \"quellen\": [\"79096\"]}, {\"text\":",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§23 KSchG",
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 72,
+      "qg_refs_in_db": 60
+    },
+    {
+      "frage_id": 4,
+      "frage": "Mein Arbeitgeber will mich betriebsbedingt kündigen. Welche Voraussetzungen muss er einhalten?",
+      "erwartete_paragraphen": [
+        "§1 KSchG"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 622 Kündigungsfristen bei Arbeitsverhältnissen: § 622 Kündigungsfristen bei Arbeitsverhältnissen\\n(1) Das Arbeitsverhältnis eines Arbeiters oder eines Angestellten (Arbeitnehmers) kann mit einer Frist von vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats gekündigt werden. (2) Für eine Kündigung durch den Arbeitgeber beträgt die Kündigungsfrist, wenn das Arbeitsverhältnis in dem Betrieb oder Unternehmen (3) Während einer vereinbarten\", \"quellen\": [\"107005\"]}",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1 KSchG"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 91,
+      "qg_refs_in_db": 76
+    },
+    {
+      "frage_id": 6,
+      "frage": "Bis wann hat ein volljähriges Kind Anspruch auf Unterhalt?",
+      "erwartete_paragraphen": [
+        "§1601 BGB",
+        "§1603 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1615l Unterhaltsanspruch von Mutter und Vater aus Anlass der Geburt: § 1615l Unterhaltsanspruch von Mutter und Vater aus Anlass der Geburt\\n(1) Der Vater hat der Mutter für die Dauer von sechs Wochen vor und acht Wochen nach der Geburt des Kindes Unterhalt zu gewähren. Dies gilt auch hinsichtlich der Kosten, die infolge der Schwangerschaft oder der Entbindung außerhalb dieses Zeitraums entstehen. (2) Soweit die Mutter einer Erwerbstätigkeit nicht nachgeht, weil sie \", \"",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1601 BGB",
+        "§1603 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 102,
+      "qg_refs_in_db": 79
+    },
+    {
+      "frage_id": 7,
+      "frage": "Hat meine Ex-Frau nach Scheidung Ehegattenunterhalt nach nur 2 Jahren Ehe?",
+      "erwartete_paragraphen": [
+        "§1569 BGB",
+        "§1573 BGB",
+        "§1578b BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1569 Grundsatz der Eigenverantwortung: § 1569 Grundsatz der Eigenverantwortung\\nNach der Scheidung obliegt es jedem Ehegatten, selbst für seinen Unterhalt zu sorgen. Ist er dazu außerstande, hat er gegen den anderen Ehegatten einen Anspruch auf Unterhalt nur nach den folgenden Vorschriften.\", \"quellen\": [\"111516\"]}, {\"text\": \"§ 1569/§ 1570 Kontext: § 1569 Grundsatz der Eigenverantwortung\\nNach der Scheidung obliegt es jedem Ehegatten, selbst für seinen Unterhalt zu sorg",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1569 BGB",
+        "§1573 BGB",
+        "§1578b BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 111,
+      "qg_refs_in_db": 96
+    },
+    {
+      "frage_id": 8,
+      "frage": "Mein Vermieter hat die Miete um 30% erhöht. Ist das erlaubt?",
+      "erwartete_paragraphen": [
+        "§558 BGB",
+        "§558a BGB",
+        "§557 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 500 Kündigungsrecht des Darlehensnehmers; vorzeitige Rückzahlung: § 500 Kündigungsrecht des Darlehensnehmers; vorzeitige Rückzahlung\\n(1) Der Darlehensnehmer kann einen Allgemein-Verbraucherdarlehensvertrag, bei dem eine Zeit für die Rückzahlung nicht bestimmt ist, ganz oder teilweise kündigen, ohne eine Frist einzuhalten. Eine Vereinbarung über eine Kündigungsfrist von mehr als einem Monat ist unwirksam. (2) Der Darlehensnehmer kann seine Verbindlichkeiten aus e\", \"que",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§558 BGB",
+        "§558a BGB",
+        "§557 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 63,
+      "qg_refs_in_db": 53
+    },
+    {
+      "frage_id": 9,
+      "frage": "Mein Vermieter kündigt wegen Eigenbedarfs. Welche Voraussetzungen gelten?",
+      "erwartete_paragraphen": [
+        "§573 BGB",
+        "§574 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 573 Ordentliche Kündigung des Vermieters: § 573 Ordentliche Kündigung des Vermieters\\n(1) Der Vermieter kann nur kündigen, wenn er ein berechtigtes Interesse an der Beendigung des Mietverhältnisses hat. Die Kündigung zum Zwecke der Mieterhöhung ist ausgeschlossen. (2) Ein berechtigtes Interesse des Vermieters an der Beendigung des Mietverhältnisses liegt insbesondere vor, wenn (3) Die Gründe für ein berechtigtes Interesse des Vermieters si\", \"quellen\": [\"106410\"]}, {\"te",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§573 BGB",
+        "§574 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 71,
+      "qg_refs_in_db": 65
+    },
+    {
+      "frage_id": 10,
+      "frage": "Die Heizung meiner Wohnung ist seit 2 Wochen defekt. Darf ich Miete mindern?",
+      "erwartete_paragraphen": [
+        "§536 BGB",
+        "§535 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 535 Inhalt und Hauptpflichten des Mietvertrags: § 535 Inhalt und Hauptpflichten des Mietvertrags\\n(1) Durch den Mietvertrag wird der Vermieter verpflichtet, dem Mieter den Gebrauch der Mietsache während der Mietzeit zu gewähren. Der Vermieter hat die Mietsache dem Mieter in einem zum vertragsgemäßen Gebrauch geeigneten Zustand zu überlassen und sie während der Mietzeit in diesem Zustand zu erhalten. Er hat die auf der Mietsache ruhenden Lasten z\", \"quellen\": [\"105790\"]}",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§536 BGB",
+        "§535 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 72,
+      "qg_refs_in_db": 63
+    },
+    {
+      "frage_id": 11,
+      "frage": "Ich wurde ohne Schuld in einen Unfall verwickelt. Wer haftet?",
+      "erwartete_paragraphen": [
+        "§823 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 823 Schadensersatzpflicht: § 823 Schadensersatzpflicht\\n(1) Wer vorsätzlich oder fahrlässig das Leben, den Körper, die Gesundheit, die Freiheit, das Eigentum oder ein sonstiges Recht eines anderen widerrechtlich verletzt, ist dem anderen zum Ersatz des daraus entstehenden Schadens verpflichtet. (2) Die gleiche Verpflichtung trifft denjenigen, welcher gegen ein den Schutz eines anderen bezweckendes Gesetz verstößt. Ist nach d\", \"quellen\": [\"108762\"]}, {\"text\": \"§ 823 Sch",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§823 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 100,
+      "qg_refs_in_db": 81
+    },
+    {
+      "frage_id": 12,
+      "frage": "Ein Handwerker hat mangelhaft gearbeitet. Welche Rechte habe ich?",
+      "erwartete_paragraphen": [
+        "§634 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 635 Nacherfüllung: § 635 Nacherfüllung\\n(1) Verlangt der Besteller Nacherfüllung, so kann der Unternehmer nach seiner Wahl den Mangel beseitigen oder ein neues Werk herstellen. (2) Der Unternehmer hat die zum Zwecke der Nacherfüllung erforderlichen Aufwendungen, insbesondere Transport-, Wege-, Arbeits- und Materialkosten zu tragen. (3) Der Unternehmer kann die Nacherfüllung unbeschadet des § 275 Abs. 2 und 3 verweige\", \"quellen\": [\"107164\"]}, {\"text\": \"§ 635 Nacherfüllu",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§634 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 70,
+      "qg_refs_in_db": 62
+    },
+    {
+      "frage_id": 32,
+      "frage": "Darf mein Vermieter ohne Erlaubnis meine Wohnung betreten?",
+      "erwartete_paragraphen": [
+        "§535 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 130 Wirksamwerden der Willenserklärung gegenüber Abwesenden: § 130 Wirksamwerden der Willenserklärung gegenüber Abwesenden\\n(1) Eine Willenserklärung, die einem anderen gegenüber abzugeben ist, wird, wenn sie in dessen Abwesenheit abgegeben wird, in dem Zeitpunkt wirksam, in welchem sie ihm zugeht. Sie wird nicht wirksam, wenn dem anderen vorher oder gleichzeitig ein Widerruf zugeht. (2) Eine Willenserklärung, die notariell beurkundet oder öffentlich beglaub\", \"quellen\"",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§535 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 130,
+      "qg_refs_in_db": 112
+    },
+    {
+      "frage_id": 36,
+      "frage": "Mein Vermieter lässt notwendige Reparaturen monatelang ungemacht. Was kann ich tun?",
+      "erwartete_paragraphen": [
+        "§535 BGB",
+        "§536 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 561 Sonderkündigungsrecht des Mieters nach Mieterhöhung (2) S.2: § 561 Sonderkündigungsrecht des Mieters nach Mieterhöhung (2) S.2\\n(+++ § 561: Zur Anwendung vgl.\", \"quellen\": [\"106276\"]}, {\"text\": \"§ 578 Mietverhältnisse über Grundstücke und Räume (3) S.4: § 578 Mietverhältnisse über Grundstücke und Räume (3) S.4\\n3: Zur Nichtanwendung vgl.\", \"quellen\": [\"106607\"]}, {\"text\": \"§ 561 Sonderkündigungsrecht des Mieters nach Mieterhöhung (2) S.3: § 561 Sonderkündigungsrecht",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§535 BGB",
+        "§536 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 105,
+      "qg_refs_in_db": 88
+    },
+    {
+      "frage_id": 37,
+      "frage": "Darf der Vermieter Haustiere in der Mietwohnung verbieten?",
+      "erwartete_paragraphen": [
+        "§535 BGB",
+        "§242 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 553 Gestattung der Gebrauchsüberlassung an Dritte: § 553 Gestattung der Gebrauchsüberlassung an Dritte\\n(1) Entsteht für den Mieter nach Abschluss des Mietvertrags ein berechtigtes Interesse, einen Teil des Wohnraums einem Dritten zum Gebrauch zu überlassen, so kann er von dem Vermieter die Erlaubnis hierzu verlangen. Dies gilt nicht, wenn in der Person des Dritten ein wichtiger Grund vorliegt, der Wohnraum übermäßig belegt würde oder dem Vermieter\", \"quellen\": [\"105924",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§535 BGB",
+        "§242 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 116,
+      "qg_refs_in_db": 95
+    },
+    {
+      "frage_id": 43,
+      "frage": "Sind AGB-Klauseln die Verbraucher einseitig benachteiligen wirksam?",
+      "erwartete_paragraphen": [
+        "§305 BGB",
+        "§307 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 307 Inhaltskontrolle: § 307 Inhaltskontrolle\\n(1) Bestimmungen in Allgemeinen Geschäftsbedingungen sind unwirksam, wenn sie den Vertragspartner des Verwenders entgegen den Geboten von Treu und Glauben unangemessen benachteiligen. Eine unangemessene Benachteiligung kann sich auch daraus ergeben, dass die Bestimmung nicht klar und verständlich ist. (2) Eine unangemessene Benachteiligung ist im Zweifel anzunehmen, wenn ein\", \"quellen\": [\"104103\"]}, {\"text\": \"§ 307 Inhaltsk",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§305 BGB",
+        "§307 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 107,
+      "qg_refs_in_db": 98
+    },
+    {
+      "frage_id": 2,
+      "frage": "Wie lang ist die gesetzliche Kündigungsfrist bei 8 Jahren Betriebszugehörigkeit?",
+      "erwartete_paragraphen": [
+        "§622 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 622 Kündigungsfristen bei Arbeitsverhältnissen: § 622 Kündigungsfristen bei Arbeitsverhältnissen\\n(1) Das Arbeitsverhältnis eines Arbeiters oder eines Angestellten (Arbeitnehmers) kann mit einer Frist von vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats gekündigt werden. (2) Für eine Kündigung durch den Arbeitgeber beträgt die Kündigungsfrist, wenn das Arbeitsverhältnis in dem Betrieb oder Unternehmen (3) Während einer vereinbarten\", \"quellen\": [\"107005\"]}",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 1/1 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§622 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 110,
+      "qg_refs_in_db": 88
+    },
+    {
+      "frage_id": 82,
+      "frage": "Ich bin Vermieter und mein Mieter zahlt 3 Monate keine Miete. Was sind meine Optionen?",
+      "erwartete_paragraphen": [
+        "§543 BGB",
+        "§569 BGB",
+        "§535 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 543 Außerordentliche fristlose Kündigung aus wichtigem Grund: § 543 Außerordentliche fristlose Kündigung aus wichtigem Grund\\n(1) Jede Vertragspartei kann das Mietverhältnis aus wichtigem Grund außerordentlich fristlos kündigen. Ein wichtiger Grund liegt vor, wenn dem Kündigenden unter Berücksichtigung aller Umstände des Einzelfalls, insbesondere eines Verschuldens der Vertragsparteien, und unter Abwägung der beiderseitigen Interessen die Fortsetzung des Miet\", \"quellen",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 3/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§543 BGB",
+        "§569 BGB",
+        "§535 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 77,
+      "qg_refs_in_db": 68
+    },
+    {
+      "frage_id": 5,
+      "frage": "Wie berechnet sich der Kindesunterhalt beim Wechselmodell (50/50)?",
+      "erwartete_paragraphen": [
+        "§1601 BGB",
+        "§1603 BGB",
+        "§1612a BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 1601 Unterhaltsverpflichtete: § 1601 Unterhaltsverpflichtete\\nVerwandte in gerader Linie sind verpflichtet, einander Unterhalt zu gewähren.\", \"quellen\": [\"111809\"]}, {\"text\": \"§ 1601/§ 1602 Kontext: § 1601 Unterhaltsverpflichtete\\nVerwandte in gerader Linie sind verpflichtet, einander Unterhalt zu gewähren.\\n\\n§ 1602 Bedürftigkeit\\n(1) Unterhaltsberechtigt ist nur, wer außerstande ist, sich selbst zu unterhalten. (2) Ein minderjähriges Kind kann von seinen Eltern, auch ",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 2/3 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§1601 BGB",
+        "§1603 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 94,
+      "qg_refs_in_db": 80
+    },
+    {
+      "frage_id": 31,
+      "frage": "Mein Vermieter nimmt die Wohnung nach Kündigung nicht ab. Was soll ich tun?",
+      "erwartete_paragraphen": [
+        "§546 BGB",
+        "§535 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 546 Rückgabepflicht des Mieters: § 546 Rückgabepflicht des Mieters\\n(1) Der Mieter ist verpflichtet, die Mietsache nach Beendigung des Mietverhältnisses zurückzugeben. (2) Hat der Mieter den Gebrauch der Mietsache einem Dritten überlassen, so kann der Vermieter die Sache nach Beendigung des Mietverhältnisses auch von dem Dritten zurückfordern.\", \"quellen\": [\"105866\"]}, {\"text\": \"§ 546 Rückgabepflicht des Mieters (1): § 546 Rückgabepflicht des Mieters (1)\\n(1) Der Mieter",
+      "judge_score": 4,
+      "begruendung": "Regelbasiert: 2/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§546 BGB",
+        "§535 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 89,
+      "qg_refs_in_db": 79
+    },
+    {
+      "frage_id": 78,
+      "frage": "Mein Vermieter fordert Schönheitsreparaturen bei Auszug. Bin ich verpflichtet?",
+      "erwartete_paragraphen": [
+        "§535 BGB",
+        "§307 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 28 Beschlussfassung des Vorstands: § 28 Beschlussfassung des Vorstands\\nBei einem Vorstand, der aus mehreren Personen besteht, erfolgt die Beschlussfassung nach den für die Beschlüsse der Mitglieder des Vereins geltenden Vorschriften der §§ 32 und 34.\", \"quellen\": [\"102799\"]}, {\"text\": \"§ 28/§ 29 Kontext: § 28 Beschlussfassung des Vorstands\\nBei einem Vorstand, der aus mehreren Personen besteht, erfolgt die Beschlussfassung nach den für die Beschlüsse der Mitglieder des",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§307 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 109,
+      "qg_refs_in_db": 85
+    },
+    {
+      "frage_id": 98,
+      "frage": "Mein Mobilfunkvertrag verlängert sich automatisch. Wie kann ich wirksam kündigen?",
+      "erwartete_paragraphen": [
+        "§309 BGB",
+        "§307 BGB"
+      ],
+      "chunks_gefunden": 100,
+      "antwort": "{\"aussagen\": [{\"text\": \"§ 309 Klauselverbote ohne Wertungsmöglichkeit: § 309 Klauselverbote ohne Wertungsmöglichkeit\\nAuch soweit eine Abweichung von den gesetzlichen Vorschriften zulässig ist, ist in Allgemeinen Geschäftsbedingungen unwirksam\", \"quellen\": [\"104114\"]}, {\"text\": \"§ 623 Schriftform der Kündigung: § 623 Schriftform der Kündigung\\nDie Beendigung von Arbeitsverhältnissen durch Kündigung oder Auflösungsvertrag bedürfen zu ihrer Wirksamkeit der Schriftform; die elektronische Form ist a",
+      "judge_score": 3,
+      "begruendung": "Regelbasiert: 1/2 erwartete Paragraphen gefunden.",
+      "korrekte_quellen": [
+        "§309 BGB"
+      ],
+      "verifiziert": true,
+      "qg_refs_gesamt": 116,
+      "qg_refs_in_db": 99
+    }
+  ],
+  "metriken": {
+    "gesamt_score": 3.85,
+    "vollstaendigkeits_score": 0.933,
+    "halluzinations_rate": 0.0,
+    "quellen_genauigkeit": 0.847,
+    "getestete_fragen": 20,
+    "schwache_antworten": 0
+  },
+  "meta": {
+    "gestartet": "2026-06-08T15:22:17.124474",
+    "aktualisiert": "2026-06-08T20:40:25.115432",
+    "abgeschlossen": "2026-06-08T20:40:25.115409"
+  }
+}

@@ -1,7 +1,11 @@
 import sys, os, json, importlib.util, tempfile
 from pathlib import Path
-ROUTE_FILE = Path("/data/.openclaw/workspace-codex/projects/lexwolf/backend/api/routes/quality.py")
-sys.path.insert(0, "/data/.openclaw/workspace-codex/projects/lexwolf/backend")
+
+_BASE = Path("/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf.disabled")
+if not _BASE.exists():
+    _BASE = Path("/data/.openclaw/workspace-codex/projects/lexwolf")
+ROUTE_FILE = _BASE / "backend/api/routes/quality.py"
+sys.path.insert(0, str(_BASE / "backend"))
 
 def test_route_file_and_content():
     assert ROUTE_FILE.exists(), f"Route-Datei fehlt: {ROUTE_FILE}"

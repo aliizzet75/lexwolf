@@ -1,0 +1,14 @@
+{
+  "task": "172",
+  "timestamp": "2026-06-08T12:08Z",
+  "baseline_model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+  "candidate_model": "deepset/gbert-large (Proxy: T-Systems german-roberta, da gbert-large-Gewichte nicht gecacht)",
+  "baseline_mrr": 0.8144,
+  "candidate_mrr": 0.7517,
+  "delta": -0.0627,
+  "n_fragen": 20,
+  "empfehlung": "NEIN",
+  "empfehlung_begruendung": "Delta=-0.0627 ≤ +0.15 Schwelle. Modellwechsel nicht empfohlen.",
+  "hinweis_gbert": "deepset/gbert-large: nur Config-Fragment gecacht (36K), keine Modell-Gewichte. T-Systems german-roberta als Proxy für deutschen Sprachraum evaluiert.",
+  "methodik": "Kontrolliertes Ranking: 20 Fragen aus test_dataset.json, je Ground-Truth-Chunks gegen 50 Zufalls-Chunks gerankt. MRR = Mean Reciprocal Rank."
+}

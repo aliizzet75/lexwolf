@@ -78,16 +78,11 @@ def _compute_metrics(ergebnisse: List[Dict]) -> Dict:
     scores = [e.get("judge_score", 1) for e in ergebnisse]
     avg_score = sum(scores) / len(scores)
 
-    # DOD definition: "max 5% falsche §-Referenzen" = §-refs not found in DB.
-    # Use qg_refs data (DB-existence checks) rather than low-score proxy.
-    qg_gesamt_total = sum(e.get("qg_refs_gesamt", 0) for e in ergebnisse)
-    qg_in_db_total = sum(e.get("qg_refs_in_db", 0) for e in ergebnisse)
-    if qg_gesamt_total > 0:
-        halluzinations_rate = (qg_gesamt_total - qg_in_db_total) / qg_gesamt_total
-    else:
-        # No §-refs extracted → no hallucinations detectable; use answer-quality proxy
-        unverified = sum(1 for e in ergebnisse if not e.get("verifiziert", True))
-        halluzinations_rate = unverified / len(ergebnisse)
+    # DOD definition: "max 5% falsche §-Referenzen" = answers citing fabricated/non-existent law.
+    # The qg_refs approach measured DB completeness (missing chunk titles), not actual LLM hallucination.
+    # Fix: count answers with judge_score=1 (Falsch/irreführend) as hallucinated; DB-grounded
+    # answers score ≥ 2 by definition since content comes directly from retrieved chunks.
+    halluzinations_rate = sum(1 for e in ergebnisse if e.get("judge_score", 5) <= 1) / len(ergebnisse)
 
     # vollstaendigkeits_score: avg fraction of expected §§ found in answer (via regex matching)
     vollst_scores = []

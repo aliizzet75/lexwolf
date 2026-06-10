@@ -3,7 +3,7 @@ import os
 import socket
 import pytest
 
-_ROOT = "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf"
+_ROOT = "/docker/openclaw-oo5q/data/.openclaw/workspace-codex/projects/lexwolf.disabled"
 _RESULTS = f"{_ROOT}/tests/quality/results_171.json"
 
 

@@ -65,6 +65,22 @@ class DatabaseService:
                 db.add(document)
                 db.flush()  # Get document ID
             
+            # Versioning: close previous active version of same title/paragraph
+            valid_from_val = chunk_data.get('valid_from')
+            valid_until_val = chunk_data.get('valid_until')
+            if valid_from_val and not valid_until_val and chunk_data.get('title'):
+                from datetime import date as date_type
+                if isinstance(valid_from_val, str):
+                    from datetime import datetime as dt
+                    valid_from_val = dt.strptime(valid_from_val, '%Y-%m-%d').date()
+                db.execute(
+                    text(
+                        "UPDATE legal_chunks SET valid_until = :vf "
+                        "WHERE title = :t AND valid_until IS NULL AND valid_from IS NOT NULL"
+                    ),
+                    {"vf": valid_from_val, "t": chunk_data.get('title', '')}
+                )
+
             # Create chunk
             chunk = LegalChunk(
                 document_id=document.id,
@@ -79,7 +95,9 @@ class DatabaseService:
                 chunk_hash=chunk_data.get('chunk_hash', ''),
                 parent_id=chunk_data.get('parent_id'),
                 is_parent=chunk_data.get('is_parent', False),
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
+                valid_from=valid_from_val,
+                valid_until=valid_until_val,
             )
             
             db.add(chunk)

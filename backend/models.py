@@ -45,7 +45,11 @@ class LegalChunk(Base):
     parent_id = Column(Integer)  # For parent-child chunking
     is_parent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+    valid_from = Column(Date, nullable=True)   # Gültig ab (Versionierung)
+    valid_until = Column(Date, nullable=True)  # Gültig bis (NULL = aktuelle Version)
+    embedding_model = Column(String, nullable=True)       # Modellname beim letzten Re-Embedding
+    embedding_timestamp = Column(DateTime, nullable=True)  # Zeitpunkt des letzten Re-Embeddings
+
     # Full-text search vector column
     ts_vector = mapped_column("ts_vector", TSVECTOR, nullable=True)
     

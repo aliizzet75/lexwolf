@@ -47,7 +47,7 @@ class HybridSearchService:
                     data=payload,
                     headers={'Content-Type': 'application/json'},
                 )
-                with _urlreq.urlopen(req, timeout=20) as resp:
+                with _urlreq.urlopen(req, timeout=90) as resp:
                     data = _json.loads(resp.read())
                 msg = data.get('choices', [{}])[0].get('message', {})
                 content = msg.get('content', '')
@@ -227,7 +227,9 @@ class HybridSearchService:
                     lookup_targets.append((nr, None))
 
             if not lookup_targets:
-                return []
+                # Fallback: use keyword-based detection when Kimi extraction fails
+                logger.info("Kimi direct lookup: no § references found, using keyword-based fallback")
+                return self._keyword_direct_lookup(query)
 
             logger.info(f"Kimi direct lookup targets: {lookup_targets[:8]}")
             db = self.database_service.SessionLocal()
@@ -280,6 +282,75 @@ class HybridSearchService:
 
         except Exception as e:
             logger.warning(f"_kimi_direct_lookup failed: {e}")
+            return []
+
+    def _keyword_direct_lookup(self, query: str) -> List[Dict]:
+        """Fallback direct lookup using keyword-based legal field detection.
+        When Kimi can't extract § references, use keywords to identify the legal area
+        and search for general relevant chunks in that area."""
+        try:
+            # Import the keyword extraction service
+            try:
+                from services.search_service_keywords import extract_legal_fields
+            except Exception:
+                # Fallback if import fails
+                return []
+            
+            # Extract legal field tags from query using keywords
+            found_tags = extract_legal_fields(query)
+            if not found_tags:
+                logger.info("Keyword direct lookup: no legal fields detected")
+                return []
+            
+            logger.info(f"Keyword direct lookup detected tags: {found_tags}")
+            
+            # Get top chunks for each detected legal field
+            db = self.database_service.SessionLocal()
+            direct_chunks = []
+            seen_ids = set()
+            
+            # For each detected legal field, search for general chunks
+            for tag in found_tags:
+                try:
+                    # Search for chunks in this legal field by tag
+                    q = text("""
+                        SELECT *, vector <-> CAST(:vec AS vector) AS score
+                        FROM legal_chunks
+                        WHERE tags = :tag
+                        ORDER BY score
+                        LIMIT 5
+                    """)
+                    rows = db.execute(q, {"vec": str(self.embedding_service.generate_embedding("Recht")), "tag": tag}).fetchall()
+                    
+                    for row in rows:
+                        if row.id not in seen_ids:
+                            seen_ids.add(row.id)
+                            direct_chunks.append({
+                                "id": row.id,
+                                "document_id": row.document_id,
+                                "text": row.text,
+                                "title": row.title,
+                                "court": row.court,
+                                "case_number": row.case_number,
+                                "date": row.date.isoformat() if row.date else None,
+                                "legal_field": row.legal_field,
+                                "tags": row.tags,
+                                "chunk_hash": row.chunk_hash,
+                                "parent_id": row.parent_id,
+                                "is_parent": row.is_parent,
+                                "dense_rank": 1,
+                                "direct_hit": True,
+                                "score": 800.0,
+                            })
+                except Exception as e_inner:
+                    logger.debug(f"Keyword direct lookup failed for tag {tag}: {e_inner}")
+            
+            db.close()
+            logger.info(f"Keyword direct lookup returned {len(direct_chunks)} chunks")
+            return direct_chunks
+            
+        except Exception as e:
+            logger.warning(f"_keyword_direct_lookup failed: {e}")
             return []
 
     def search(self, query: str, limit: int = 10, fast_mode: bool = False) -> List[Dict]:
@@ -512,6 +583,38 @@ class HybridSearchService:
             'familienrecht': ['bgb', 'famfg'],
             'strafrecht': ['stgb'],
             'handelsrecht': ['hgb'],
+            # Arbeitsrecht
+            'kündigung': ['bgb', 'kschg'],
+            'kündigungsfrist': ['bgb', 'kschg'],
+            'betriebszugehörigkeit': ['bgb'],
+            'arbeitsverhältnis': ['bgb', 'kschg'],
+            'fristlose kündigung': ['bgb'],
+            'fristlos': ['bgb'],
+            'betriebsbedingt': ['kschg', 'bgb'],
+            'kündigungsschutz': ['kschg'],
+            # Familienrecht / Unterhaltsrecht
+            'unterhalt': ['bgb'],
+            'kindesunterhalt': ['bgb'],
+            'ehegattenunterhalt': ['bgb'],
+            'wechselmodell': ['bgb'],
+            'scheidung': ['bgb'],
+            'unterhaltspflicht': ['bgb'],
+            # Mietrecht
+            'mieter': ['bgb'],
+            'vermieter': ['bgb'],
+            'mietvertrag': ['bgb'],
+            'mietminderung': ['bgb'],
+            'miete': ['bgb'],
+            'eigenbedarf': ['bgb'],
+            'schönheitsreparatur': ['bgb'],
+            'mietschulden': ['bgb'],
+            'mietrückstand': ['bgb'],
+            # AGB / Vertragsrecht
+            'agb': ['bgb'],
+            'allgemeine geschäftsbedingungen': ['bgb'],
+            'vertrag': ['bgb'],
+            'kündigung vertrag': ['bgb'],
+            'mobilfunk': ['bgb'],
         }
         
         # Finde alle vorkommenden Gesetzes-Abkürzungen im Query (Regex für §\d+ [A-Z][a-z]+)
@@ -600,6 +703,87 @@ class HybridSearchService:
         finally:
             db.close()
     
+    def _boost_by_recognized_paragraphs(self, query: str, limit: int = 10) -> List[Dict]:
+        """
+        Paragraph-Boosting: Erkennt §<number> <LawAbbr> Muster in Query und gibt
+        direkte Paragraph-Treffer zurück (id, title, tags, ...).
+        KSchG §23 bei 'kündigungsschutz §23 KSchG' landet so in Top-5 statt Rang 200+.
+        """
+        import re
+
+        TAG_MAP = {
+            'kschg': 'kschg', 'bgb': 'bgb', 'stgb': 'stgb', 'zpo': 'zpo',
+            'hgb': 'hgb', 'gmbhg': 'gmbhg', 'aktg': 'aktg', 'stpo': 'stpo',
+            'inso': 'inso', 'arbgg': 'arbgg', 'betrvg': 'betrvg',
+            'tzbfg': 'tzbfg', 'tzfbg': 'tzbfg', 'burlg': 'burlg',
+            'muschg': 'muschg', 'famfg': 'famfg', 'vwgo': 'vwgo',
+            'ao': 'ao_1977', 'sgb': 'sgb',
+        }
+
+        found_paras = []
+        for pattern in (r'§\s*(\d+[a-z]?)\s+([A-Za-z]{2,8})', r'([A-Za-z]{2,8})\s*§\s*(\d+[a-z]?)'):
+            for m in re.finditer(pattern, query, re.IGNORECASE):
+                g = m.groups()
+                if pattern.startswith(r'§'):
+                    para_num, law_abbr = g[0], g[1]
+                else:
+                    law_abbr, para_num = g[0], g[1]
+                tag = TAG_MAP.get(law_abbr.lower())
+                if tag and (para_num, tag) not in found_paras:
+                    found_paras.append((para_num, tag))
+
+        if not found_paras:
+            logger.info("_boost_by_recognized_paragraphs: keine §-Referenz erkannt")
+            return []
+
+        logger.info(f"_boost_by_recognized_paragraphs: erkannte §-Referenzen {found_paras}")
+
+        try:
+            db = self.database_service.SessionLocal()
+            boosted = []
+            seen = set()
+
+            for para_num, law_tag in found_paras:
+                sql = text("""
+                    SELECT id, document_id, text, title, court, case_number,
+                           date, legal_field, tags, chunk_hash, parent_id, is_parent, created_at
+                    FROM legal_chunks
+                    WHERE tags = :tag
+                      AND title ~ ('§ ' || :para || '([^0-9a-z]|$)')
+                    ORDER BY id
+                    LIMIT :lim
+                """)
+                rows = db.execute(sql, {"tag": law_tag, "para": para_num, "lim": limit}).fetchall()
+                for row in rows:
+                    if row.id not in seen:
+                        seen.add(row.id)
+                        boosted.append({
+                            "id": row.id,
+                            "document_id": row.document_id,
+                            "text": row.text,
+                            "title": row.title,
+                            "court": row.court,
+                            "case_number": row.case_number,
+                            "date": row.date.isoformat() if row.date else None,
+                            "legal_field": row.legal_field,
+                            "tags": row.tags,
+                            "chunk_hash": row.chunk_hash,
+                            "parent_id": row.parent_id,
+                            "is_parent": row.is_parent,
+                            "dense_rank": 1,
+                            "score": 1.0,
+                            "created_at": row.created_at.isoformat() if row.created_at else None,
+                        })
+
+            logger.info(f"_boost_by_recognized_paragraphs: {len(boosted)} Treffer")
+            return boosted[:limit]
+
+        except Exception as e:
+            logger.error(f"Error in _boost_by_recognized_paragraphs: {e}")
+            return []
+        finally:
+            db.close()
+
     def reciprocal_rank_fusion(self, dense: list, sparse: list, k: int = 60) -> list[dict]:
         """Combine dense and sparse results using RRF. Formula: score = sum(1/(k+rank))."""
         fused_scores = {}

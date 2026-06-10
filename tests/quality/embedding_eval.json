@@ -1,19 +1,27 @@
 {
-  "timestamp": "2026-06-04T15:50Z",
+  "timestamp": "2026-06-08T12:00Z",
+  "task": "159",
   "baseline_model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-  "baseline_mrr": 0.25,
+  "baseline_mrr": 0.6258,
   "candidate_models": [
-    "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+    "T-Systems-onsite/german-roberta-sentence-transformer-v2"
   ],
   "results": {
     "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": {
-      "mrr": 0.25,
-      "reason": "Baseline-Modell, zeigt hohen Distanzwert (0.84+) auch bei guten Treffern",
-      "status": "evaluiert"
+      "mrr": 0.6258,
+      "status": "evaluiert",
+      "methodik": "kontrolliertes Ranking (Ground-Truth vs. Zufalls-Noise, 53 Chunks/Frage)"
+    },
+    "T-Systems-onsite/german-roberta-sentence-transformer-v2": {
+      "mrr": 0.6165,
+      "status": "evaluiert",
+      "methodik": "kontrolliertes Ranking (Ground-Truth vs. Zufalls-Noise, 53 Chunks/Frage)"
     }
   },
   "recommendation": {
     "change_model": false,
-    "reason": "Kein signifikanter Gewinn (<+0.15 MRR)\nAktuelles Modell: MRR=0.25\nAndere Modelle: entweder nicht verfügbar oder nur geringfügig besser"
-  }
+    "reason": "Baseline ausreichend — MRR=0.6258. T-Systems-Modell liegt bei MRR=0.6165 (Delta -0.0093, Schwelle +0.15 nicht erreicht). §622 BGB rankt bereits Platz 1-2 für 'Betriebszugehörigkeit Kündigungsfrist'."
+  },
+  "methodik": "Kontrolliertes Ranking: für jede Testfrage werden Ground-Truth-Chunks gegen 50 Zufalls-Chunks gerankt. MRR = Mean Reciprocal Rank über 100 Fragen aus test_dataset.json."
 }
