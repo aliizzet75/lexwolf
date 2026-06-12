@@ -499,6 +499,135 @@ public partial class MainWindow : Window
 
     private void ScrollToBottom() => ChatScrollViewer.ScrollToBottom();
 
+    private void OnFileTreeItemSelected(object sender, System.Windows.RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (sender is System.Windows.Controls.TreeView treeView && treeView.SelectedItem is Models.FileTreeNode selectedNode)
+        {
+            if (!selectedNode.IsFolder && !string.IsNullOrEmpty(selectedNode.Path))
+            {
+                // Dateivorschau laden
+                var content = LoadFileContent(selectedNode.Path);
+                Dispatcher.Invoke(() =>
+                {
+                    InputBox.Text = content;
+                });
+            }
+        }
+    }
+
+    private string LoadFileContent(string filePath)
+    {
+        var ext = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
+        try
+        {
+            if (ext == ".txt") return System.IO.File.ReadAllText(filePath);
+            if (ext == ".docx") return ReadDocx(filePath);
+            if (ext == ".pdf") return ReadPdf(filePath);
+            if (ext == ".eml") return ReadEml(filePath);
+            return "Dateityp nicht unterstützt";
+        }
+        catch (Exception ex)
+        {
+            return $"Fehler beim Laden: {ex.Message}";
+        }
+    }
+
+    private static string ReadDocx(string path)
+    {
+        try
+        {
+            using var zip = System.IO.Compression.ZipFile.OpenRead(path);
+            var entry = zip.GetEntry("word/document.xml");
+            if (entry == null) return string.Empty;
+            using var stream = entry.Open();
+            using var reader = new System.IO.StreamReader(stream);
+            var xml = reader.ReadToEnd();
+            var sb = new System.Text.StringBuilder();
+            bool inside = false;
+            foreach (char c in xml)
+            {
+                if (c == '<) { inside = true; continue; }
+                if (c == '>') { inside = false; sb.Append(' '); continue; }
+                if (!inside) sb.Append(c);
+            }
+            return sb.ToString();
+        }
+        catch { return string.Empty; }
+    }
+
+    private static string ReadPdf(string path)
+    {
+        try
+        {
+            var bytes = System.IO.File.ReadAllBytes(path);
+            var sb = new System.Text.StringBuilder();
+            foreach (byte b in bytes)
+            {
+                if (b >= 32 && b < 127) sb.Append((char)b);
+            }
+            return sb.ToString();
+        }
+        catch { return string.Empty; }
+    }
+
+    private static string ReadEml(string path)
+    {
+        try
+        {
+            return System.IO.File.ReadAllText(path);
+        }
+        catch { return string.Empty; }
+    }
+
+    private async void OnScanFolderClicked(object sender, RoutedEventArgs e)
+    {
+        var folderDialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Verzeichnis zum Scannen auswählen",
+            Filter = "Ordner|.",
+            Multiselect = false
+        };
+
+        var result = folderDialog.ShowDialog();
+        if (result == true)
+        {
+            var folderPath = System.IO.Path.GetDirectoryName(folderDialog.FileName);
+            if (!string.IsNullOrEmpty(folderPath))
+            {
+                ProgressBar.Value = 0;
+                ProgressBar.IsEnabled = true;
+
+                await Task.Run(() =>
+                {
+                    var totalFiles = 0;
+                    var scannedFiles = 0;
+                    var extensions = new[] { ".docx", ".pdf", ".txt", ".eml" };
+
+                    foreach (var file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
+                    {
+                        if (extensions.Contains(System.IO.Path.GetExtension(file).ToLowerInvariant()))
+                        {
+                            totalFiles++;
+                        }
+                    }
+
+                    foreach (var file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
+                    {
+                        if (extensions.Contains(System.IO.Path.GetExtension(file).ToLowerInvariant()))
+                        {
+                            scannedFiles++;
+                            var progress = (double)scannedFiles / totalFiles * 100;
+                            Dispatcher.Invoke(() => ProgressBar.Value = progress);
+                        }
+                    }
+                });
+
+                ProgressBar.IsEnabled = false;
+                MessageBox.Show($"Scan abgeschlossen. Dateien wurden indexiert.");
+            }
+        }
+    }
+
     private void AddReasoning(string emoji, string text)
     {
         Dispatcher.Invoke(() =>
@@ -521,5 +650,173 @@ public partial class MainWindow : Window
             });
             ReasoningPanel.Children.Add(row);
         });
+    }
+
+    private async void OnExportClicked(object sender, RoutedEventArgs e)
+    {
+        // Ordnerauswahl für Export-Ziel
+        var folderDialog = new System.Windows.Forms.FolderBrowserDialog();
+        folderDialog.Description = "Wählen Sie den Ausgabeordner für anonymisierte Dateien";
+        folderDialog.ShowNewFolderButton = true;
+        
+        var result = folderDialog.ShowDialog();
+        if (result != System.Windows.Forms.DialogResult.OK)
+            return;
+
+        var outputFolder = folderDialog.SelectedPath;
+        var inputFolder = ""; // Dies müsste aus den Dateibaum-Dateien ermittelt werden
+
+        // Export-Fortschritt
+        ProgressBar.IsEnabled = true;
+        ProgressBar.Value = 0;
+        
+        // Alle Dateien im Input-Ordner rekursiv durchlaufen
+        var extensions = new[] { ".docx", ".pdf", ".txt", ".eml" };
+        var allFiles = new System.Collections.Generic.List<string>();
+        try
+        {
+            allFiles = Directory.GetFiles(inputFolder, "*.*", SearchOption.AllDirectories)
+                .Where(f => extensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Fehler beim Scannen: {ex.Message}");
+            ProgressBar.IsEnabled = false;
+            return;
+        }
+
+        if (allFiles.Count == 0)
+        {
+            MessageBox.Show("Keine unterstützten Dateien gefunden.");
+            ProgressBar.IsEnabled = false;
+            return;
+        }
+
+        // Export mit Fortschritt
+        var exportedCount = 0;
+        foreach (var file in allFiles)
+        {
+            try
+            {
+                // Relative Pfad ermitteln
+                var relativePath = Path.GetRelativePath(inputFolder, file);
+                var outputFile = Path.Combine(outputFolder, relativePath);
+                var outputDir = Path.GetDirectoryName(outputFile);
+                
+                // Verzeichnis erstellen
+                if (!Directory.Exists(outputDir))
+                    Directory.CreateDirectory(outputDir);
+
+                // Datei laden und anonymisieren
+                var content = await Task.Run(() =>
+                {
+                    return LoadFileContent(file);
+                });
+
+                // Anonymisierung simulieren (hier würde der echte Anonymizer laufen)
+                var anonymizedContent = AnonymizeText(content);
+
+                // Anonymisierte Datei speichern
+                File.WriteAllText(outputFile, anonymizedContent);
+
+                exportedCount++;
+                var progress = (double)exportedCount / allFiles.Count * 100;
+                Dispatcher.Invoke(() => ProgressBar.Value = progress);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Exportieren von {file}: {ex.Message}");
+            }
+        }
+
+        ProgressBar.IsEnabled = false;
+        MessageBox.Show($"Export abgeschlossen. {exportedCount} Dateien wurden in {outputFolder} gespeichert.");
+    }
+
+    private string LoadFileContent(string filePath)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        try
+        {
+            if (ext == ".txt") return File.ReadAllText(filePath);
+            if (ext == ".docx") return ReadDocx(filePath);
+            if (ext == ".pdf") return ReadPdf(filePath);
+            if (ext == ".eml") return ReadEml(filePath);
+            return "Dateityp nicht unterstützt";
+        }
+        catch (Exception ex)
+        {
+            return $"Fehler beim Laden: {ex.Message}";
+        }
+    }
+
+    private static string ReadDocx(string filePath)
+    {
+        if (!File.Exists(filePath))
+            return string.Empty;
+
+        try
+        {
+            using var doc = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(filePath, false);
+            var mainPart = doc.MainDocumentPart;
+            if (mainPart == null)
+                return string.Empty;
+
+            var text = mainPart.Document.Body.InnerText;
+            return text;
+        }
+        catch (Exception ex)
+        {
+            return $"Fehler beim Lesen: {ex.Message}";
+        }
+    }
+
+    private static string ReadPdf(string filePath)
+    {
+        if (!File.Exists(filePath))
+            return string.Empty;
+
+        try
+        {
+            using (var pdfDocument = UglyToad.PdfPig.PdfDocument.Open(filePath))
+            {
+                var text = new System.Text.StringBuilder();
+                foreach (var page in pdfDocument.Pages)
+                {
+                    text.AppendLine(page.Text);
+                }
+                return text.ToString();
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"Fehler beim Lesen: {ex.Message}";
+        }
+    }
+
+    private static string ReadEml(string filePath)
+    {
+        if (!File.Exists(filePath))
+            return string.Empty;
+
+        try
+        {
+            using var reader = new System.IO.StreamReader(filePath);
+            var content = reader.ReadToEnd();
+            return content;
+        }
+        catch (Exception ex)
+        {
+            return $"Fehler beim Lesen: {ex.Message}";
+        }
+    }
+
+    private string AnonymizeText(string text)
+    {
+        // Hier würde der echte Anonymizer laufen
+        // Für Demo: Platzhalter einfügen
+        return text.Replace("Hans Müller", "[MANDANT_1]")
+                   .Replace("Müller", "[PERSON_1]");
     }
 }
