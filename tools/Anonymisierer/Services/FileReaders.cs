@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace LexWolf.Services
+namespace Anonymisierer.Services
 {
     // IFileReader-Schnittstelle für alle Dateitypen
     public interface IFileReader
@@ -26,7 +26,6 @@ namespace LexWolf.Services
                     if (body == null)
                         return string.Empty;
 
-                    // Text aus allen Absätzen extrahieren
                     var text = new System.Text.StringBuilder();
                     foreach (var paragraph in body.Descendants<DocumentFormat.OpenXml.Wordprocessing.Paragraph>())
                     {
@@ -49,11 +48,11 @@ namespace LexWolf.Services
             }
         }
 
-        public bool CanHandle(string extension) => 
+        public bool CanHandle(string extension) =>
             extension?.Equals(".docx", StringComparison.OrdinalIgnoreCase) == true;
     }
 
-    // PdfReader für .pdf mit PdfPig (read-only)
+    // PdfReader für .pdf mit iText7
     public class PdfReader : IFileReader
     {
         public string ReadFile(string filePath)
@@ -64,13 +63,12 @@ namespace LexWolf.Services
             try
             {
                 var sb = new System.Text.StringBuilder();
-                using (var pdfDocument = PdfDocument.Open(filePath))
+                using var reader = new iText.Kernel.Pdf.PdfReader(filePath);
+                using var pdfDoc = new iText.Kernel.Pdf.PdfDocument(reader);
+                for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
                 {
-                    foreach (var page in pdfDocument.Pages)
-                    {
-                        sb.Append(page.Text);
-                        sb.AppendLine();
-                    }
+                    sb.Append(iText.Kernel.Pdf.Canvas.Parser.PdfTextExtractor.GetTextFromPage(pdfDoc.GetPage(i)));
+                    sb.AppendLine();
                 }
                 return sb.ToString();
             }
@@ -80,12 +78,12 @@ namespace LexWolf.Services
             }
         }
 
-        public bool CanHandle(string extension) => 
+        public bool CanHandle(string extension) =>
             extension?.Equals(".pdf", StringComparison.OrdinalIgnoreCase) == true;
     }
 
-    // TextReader für .txt mit StreamReader
-    public class TextReader : IFileReader
+    // TextReader für .txt
+    public class TxtReader : IFileReader
     {
         public string ReadFile(string filePath)
         {
@@ -102,11 +100,11 @@ namespace LexWolf.Services
             }
         }
 
-        public bool CanHandle(string extension) => 
+        public bool CanHandle(string extension) =>
             extension?.Equals(".txt", StringComparison.OrdinalIgnoreCase) == true;
     }
 
-    // EmlReader für .eml mit StreamReader
+    // EmlReader für .eml
     public class EmlReader : IFileReader
     {
         public string ReadFile(string filePath)
@@ -124,7 +122,7 @@ namespace LexWolf.Services
             }
         }
 
-        public bool CanHandle(string extension) => 
+        public bool CanHandle(string extension) =>
             extension?.Equals(".eml", StringComparison.OrdinalIgnoreCase) == true;
     }
 
@@ -135,7 +133,7 @@ namespace LexWolf.Services
         {
             new DocxReader(),
             new PdfReader(),
-            new TextReader(),
+            new TxtReader(),
             new EmlReader()
         };
 

@@ -1,9 +1,10 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
-using LexWolf.Models;
+using Anonymisierer.Models;
+using Anonymisierer.Services;
 
-namespace LexWolf.ViewModels
+namespace Anonymisierer.ViewModels
 {
     // Node für TreeView - Mandant oder Datei
     public class FileNode : NotifyBase
@@ -70,14 +71,14 @@ namespace LexWolf.ViewModels
             var mandantDirs = Directory.GetDirectories(directoryPath);
             foreach (var mandantDir in mandantDirs)
             {
-                var mandantName = Path.GetFileName(mandantDir);
+                var mandantName = System.IO.Path.GetFileName(mandantDir);
                 var mandantNode = new FileNode(mandantName, mandantDir, true);
 
                 // Alle Dateien im Mandanten-Ordner hinzufügen
                 var files = Directory.GetFiles(mandantDir, "*.*", SearchOption.AllDirectories);
                 foreach (var file in files)
                 {
-                    var extension = Path.GetExtension(file).ToLowerInvariant();
+                    var extension = System.IO.Path.GetExtension(file).ToLowerInvariant();
                     if (new[] { ".docx", ".pdf", ".txt", ".eml" }.Contains(extension))
                     {
                         mandantNode.AddChild(new FileNode(file));
@@ -91,31 +92,17 @@ namespace LexWolf.ViewModels
         // Lädt den Inhalt einer Datei für die Vorschau
         public string LoadFilePreview(FileNode node)
         {
-            if (node == null || !node.IsFolder)
+            if (node == null || node.IsFolder)
+                return "Keine Datei ausgewählt";
+
+            try
             {
-                try
-                {
-                    if (node.Path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
-                        return File.ReadAllText(node.Path);
-
-                    if (node.Path.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
-                        return AnonymizerEngine.ReadDocx(node.Path);
-
-                    if (node.Path.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-                        return AnonymizerEngine.ReadPdf(node.Path);
-
-                    if (node.Path.EndsWith(".eml", StringComparison.OrdinalIgnoreCase))
-                        return AnonymizerEngine.ReadEml(node.Path);
-
-                    return "Dateityp nicht unterstützt";
-                }
-                catch (Exception ex)
-                {
-                    return $"Fehler beim Laden: {ex.Message}";
-                }
+                return UnifiedFileReader.ReadFile(node.Path);
             }
-
-            return "Keine Datei ausgewählt";
+            catch (Exception ex)
+            {
+                return $"Fehler beim Laden: {ex.Message}";
+            }
         }
     }
 
