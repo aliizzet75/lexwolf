@@ -1,55 +1,46 @@
 using System;
+using System.Linq;
 using System.Text;
-using DiffPlex;
 using DiffPlex.DiffBuilder;
-using DiffPlex.Model;
+using DiffPlex.DiffBuilder.Model;
 
-namespace LexWolf.Services
+namespace Anonymisierer.Services
 {
     // Diff-Service mit DiffPlex für Text-Vergleiche
     public static class DiffService
     {
-        private static readonly Differ _differ = new Differ();
-
         // Berechnet den Diff zwischen zwei Texten
-        public static DiffResult DiffText(string original, string anonymized)
+        public static DiffPaneModel DiffText(string original, string anonymized)
         {
             if (string.IsNullOrEmpty(original))
                 original = string.Empty;
             if (string.IsNullOrEmpty(anonymized))
                 anonymized = string.Empty;
 
-            var diff = _differ.Diff(original, anonymized);
-            return diff;
+            return InlineDiffBuilder.Diff(original, anonymized);
         }
 
         // Erstellt einen Inline-Diff mit Farben (simuliert)
         public static string BuildColoredDiff(string original, string anonymized)
         {
             var diffResult = DiffText(original, anonymized);
-            
-            var result = new StringBuilder();
-            var lines = diffResult.Lines;
 
-            foreach (var line in lines)
+            var result = new StringBuilder();
+            foreach (var line in diffResult.Lines)
             {
                 switch (line.Type)
                 {
                     case ChangeType.Inserted:
-                        // Grün für anonymisiert (hinzugefügt)
                         result.AppendLine($"[GRÜN]{line.Text}");
                         break;
                     case ChangeType.Deleted:
-                        // Rot für original (gelöscht)
                         result.AppendLine($"[ROT]{line.Text}");
                         break;
-                    case ChangeType.Replace:
-                        // Rot für original, grün für anonymisiert
-                        result.AppendLine($"[ROT]{line.OldText}");
-                        result.AppendLine($"[GRÜN]{line.NewText}");
+                    case ChangeType.Modified:
+                        result.AppendLine($"[ROT]{line.Text}");
+                        result.AppendLine($"[GRÜN]{line.Text}");
                         break;
                     case ChangeType.Unchanged:
-                        // Grau für unverändert
                         result.AppendLine($"[GRAU]{line.Text}");
                         break;
                 }
@@ -62,14 +53,14 @@ namespace LexWolf.Services
         public static DiffViewModel BuildDiffViewModel(string original, string anonymized)
         {
             var diffResult = DiffText(original, anonymized);
-            
+
             var lines = new System.Collections.Generic.List<DiffLine>();
             foreach (var line in diffResult.Lines)
             {
                 lines.Add(new DiffLine
                 {
                     Type = line.Type,
-                    Text = line.Text,
+                    Text = line.Text ?? string.Empty,
                     IsChanged = line.Type != ChangeType.Unchanged
                 });
             }
@@ -100,8 +91,6 @@ namespace LexWolf.Services
     {
         public ChangeType Type { get; set; }
         public string Text { get; set; } = string.Empty;
-        public string OldText { get; set; } = string.Empty;
-        public string NewText { get; set; } = string.Empty;
         public bool IsChanged { get; set; }
     }
 }

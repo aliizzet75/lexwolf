@@ -7,6 +7,10 @@ using System.Windows.Controls;
 using Anonymisierer.Models;
 using Anonymisierer.Services;
 using Anonymisierer.ViewModels;
+using Application = System.Windows.Application;
+using MessageBox = System.Windows.MessageBox;
+using TreeView = System.Windows.Controls.TreeView;
+using TextBox = System.Windows.Controls.TextBox;
 
 namespace Anonymisierer
 {

@@ -15,6 +15,6 @@ namespace Anonymisierer.Models
         public string TypeName { get; set; } = string.Empty;
 
         // Hilfseigenschaft für Typ-Erkennung
-        public string Extension => Path.GetExtension(Path).ToLowerInvariant();
+        public string Extension => System.IO.Path.GetExtension(Path).ToLowerInvariant();
     }
 }

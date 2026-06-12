@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using LexWolf.Models;
+using Anonymisierer.Models;
 
-namespace LexWolf.Services
+namespace Anonymisierer.Services
 {
     // Anonymisierer-Engine mit Regex-Mustererkennung
     public static class AnonymizerEngine
@@ -158,7 +158,7 @@ namespace LexWolf.Services
         }
 
         // Comic-Aliaspool: Donald Duck, Lucky Luke, Asterix — pro Mandant identisches Dict<original,alias>
-        private static readonly Dictionary<string, List<(string Original, string Alias)>> ComicAliasPool = new(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, List<(string Original, string Alias)>> _comicAliasData = new(StringComparer.OrdinalIgnoreCase)
         {
             // Donald Duck: Donald Duck, Daisy, Tick, Trick, Track, Dagobert, Daniel Düsentrieb
             ["donaldduck"] = new List<(string, string)>
@@ -200,7 +200,7 @@ namespace LexWolf.Services
                 return existing;
 
             var mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var theme in ComicAliasPool.Values)
+            foreach (var theme in _comicAliasData.Values)
                 foreach (var (original, alias) in theme)
                     mapping.TryAdd(original, alias);
 

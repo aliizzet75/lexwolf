@@ -83,6 +83,8 @@ backend/=5.0
 # .NET build artifacts
 desktop/bin/
 desktop/obj/
+tools/*/bin/
+tools/*/obj/
 
 # Aligator-generierte Test- und Debug-Dateien (root-level)
 aligator.py

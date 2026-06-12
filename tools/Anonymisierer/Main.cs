@@ -9,8 +9,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using DiffPlex;
 using DiffPlex.DiffBuilder;
+using DiffPlex.DiffBuilder.Model;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using MimeKit;
@@ -68,7 +68,7 @@ namespace Anonymisierer
 
             // Personen erkennen (Vereinfacht: Nachnamen mit Großbuchstaben)
             var personMatches = System.Text.RegularExpressions.Regex.Matches(text, @"\b[A-Z][a-z]+ (Müller|Schmidt|Schulz|Wagner|Becker|Schneider|Fischer|Weber|Meyer|Hoffmann)\b");
-            foreach (var match in personMatches)
+            foreach (System.Text.RegularExpressions.Match match in personMatches)
             {
                 var textMatch = match.ToString();
                 if (!_mapping.TryGetValue(textMatch, out var id))
@@ -91,7 +91,7 @@ namespace Anonymisierer
 
             // Beträge erkennen
             var betragMatches = System.Text.RegularExpressions.Regex.Matches(text, @"(\d{1,3}\.\d{3})\s*€|\d+\s*€");
-            foreach (var match in betragMatches)
+            foreach (System.Text.RegularExpressions.Match match in betragMatches)
             {
                 var textMatch = match.ToString();
                 if (!_mapping.TryGetValue(textMatch, out var id))
@@ -158,7 +158,7 @@ namespace Anonymisierer
                 {
                     for (int page = 1; page <= document.GetNumberOfPages(); page++)
                     {
-                        var text = PdfTextExtractor.GetTextFromPage(document, page);
+                        var text = PdfTextExtractor.GetTextFromPage(document.GetPage(page));
                         sb.Append(text);
                         sb.Append("\n");
                     }
@@ -214,8 +214,7 @@ namespace Anonymisierer
         // Text vergleichen mit DiffPlex
         public static string GenerateDiff(string oldText, string newText)
         {
-            var diffBuilder = new DiffBuilder(new Differ());
-            var diff = diffBuilder.BuildDiffModel(oldText, newText);
+            var diff = InlineDiffBuilder.Diff(oldText, newText);
 
             var result = new StringBuilder();
             foreach (var line in diff.Lines)
@@ -228,11 +227,11 @@ namespace Anonymisierer
                     case ChangeType.Deleted:
                         result.AppendLine($"- {line.Text}");
                         break;
+                    case ChangeType.Modified:
+                        result.AppendLine($"~ {line.Text}");
+                        break;
                     case ChangeType.Unchanged:
                         result.AppendLine($"  {line.Text}");
-                        break;
-                    case ChangeType.Replace:
-                        result.AppendLine($"~ {line.OldText} → {line.NewText}");
                         break;
                 }
             }
