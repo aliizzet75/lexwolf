@@ -12,8 +12,15 @@ public partial class SettingsDialog : Window
     public SettingsDialog(AppSettings current)
     {
         InitializeComponent();
-        Settings = new AppSettings { DokumentePfad = current.DokumentePfad };
+        Settings = new AppSettings
+        {
+            DokumentePfad = current.DokumentePfad,
+            Briefkopf = current.Briefkopf,
+            Briefende = current.Briefende,
+        };
         DokumentePfadBox.Text = Settings.DokumentePfad;
+        BriefkopfBox.Text = Settings.Briefkopf;
+        BriefendeBox.Text = Settings.Briefende;
         NavList.SelectedIndex = 0;
     }
 
@@ -36,6 +43,8 @@ public partial class SettingsDialog : Window
     private void OnSave(object sender, RoutedEventArgs e)
     {
         Settings.DokumentePfad = DokumentePfadBox.Text.Trim();
+        Settings.Briefkopf = BriefkopfBox.Text.Trim();
+        Settings.Briefende = BriefendeBox.Text.Trim();
         Settings.Save();
         StatusLabel.Text       = "Gespeichert";
         StatusLabel.Visibility = Visibility.Visible;

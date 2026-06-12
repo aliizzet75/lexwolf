@@ -1,11 +1,14 @@
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.IO;
 using LexWolf.Database;
 using LexWolf.Services;
 using LexWolf.Dialogs;
@@ -262,10 +265,17 @@ public partial class MainWindow : Window
             ? $"Mandant: {_activeMandantName} (ID: {_activeMandantId})"
             : null;
 
+        var templateContext = GetLatestTemplateContext();
+        var attorneyContext = GetAttorneyContext();
+        var contextParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(mandantContext)) contextParts.Add(mandantContext);
+        if (!string.IsNullOrWhiteSpace(attorneyContext)) contextParts.Add(attorneyContext);
+        if (!string.IsNullOrWhiteSpace(templateContext)) contextParts.Add(templateContext);
+
         var payload = JsonSerializer.Serialize(new
         {
             messages       = _history.Select(m => new { role = m.Role, content = m.Content }).ToArray(),
-            mandant_context = mandantContext,
+            mandant_context = contextParts.Count > 0 ? string.Join("\n\n", contextParts) : null,
         });
         var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
 
@@ -287,6 +297,27 @@ public partial class MainWindow : Window
 
     // ── UI Rendering ──────────────────────────────────────────────────────────
 
+    private static TextBox CreateSelectableTextBox(string text, Brush foreground, double fontSize = 13)
+    {
+        return new TextBox
+        {
+            Text = text,
+            Foreground = foreground,
+            FontSize = fontSize,
+            TextWrapping = TextWrapping.Wrap,
+            AcceptsReturn = true,
+            IsReadOnly = true,
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0),
+            IsTabStop = false,
+            SelectionBrush = new SolidColorBrush(Color.FromRgb(31, 111, 235)),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        };
+    }
+
     private void AppendSystemMessage(string text)
     {
         Dispatcher.Invoke(() =>
@@ -299,13 +330,11 @@ public partial class MainWindow : Window
                 Padding             = new Thickness(12, 6, 12, 6),
                 Margin              = new Thickness(0, 4, 0, 8),
             };
-            border.Child = new TextBlock
-            {
-                Text        = text,
-                Foreground  = new SolidColorBrush(Color.FromRgb(139, 148, 158)),
-                FontSize    = 11,
-                TextWrapping = TextWrapping.Wrap,
-            };
+            border.Child = CreateSelectableTextBox(
+                text,
+                new SolidColorBrush(Color.FromRgb(139, 148, 158)),
+                11);
+
             ChatPanel.Children.Add(border);
             ScrollToBottom();
         });
@@ -324,19 +353,13 @@ public partial class MainWindow : Window
                 Margin              = new Thickness(60, 4, 8, 4),
                 MaxWidth            = 500,
             };
-            bubble.Child = new TextBlock
-            {
-                Text        = text,
-                Foreground  = Brushes.White,
-                FontSize    = 13,
-                TextWrapping = TextWrapping.Wrap,
-            };
+            bubble.Child = CreateSelectableTextBox(text, Brushes.White);
             ChatPanel.Children.Add(bubble);
             ScrollToBottom();
         });
     }
 
-    private void AppendAiMessage(string text, string suggestedAction)
+    private void AppendAiMessage(string text, string suggestedAction, string? filePath = null)
     {
         Dispatcher.Invoke(() =>
         {
@@ -353,14 +376,27 @@ public partial class MainWindow : Window
                 Padding      = new Thickness(14, 10, 14, 10),
                 MaxWidth     = 500,
             };
-            bubble.Child = new TextBlock
-            {
-                Text        = text,
-                Foreground  = new SolidColorBrush(Color.FromRgb(201, 209, 217)),
-                FontSize    = 13,
-                TextWrapping = TextWrapping.Wrap,
-            };
+            bubble.Child = CreateSelectableTextBox(
+                text,
+                new SolidColorBrush(Color.FromRgb(201, 209, 217)));
             container.Children.Add(bubble);
+
+            if (filePath is not null)
+            {
+                var link = new TextBlock
+                {
+                    Margin = new Thickness(0, 6, 0, 0),
+                    Foreground = new SolidColorBrush(Color.FromRgb(31, 111, 235)),
+                    FontSize = 12,
+                };
+                var hyperlink = new Hyperlink
+                {
+                    Inlines = { "📁 Vorlage im Explorer öffnen" },
+                };
+                hyperlink.Click += (_, __) => OpenInExplorer(filePath);
+                link.Inlines.Add(hyperlink);
+                container.Children.Add(link);
+            }
 
             if (suggestedAction == "erstelle_dokument")
             {
@@ -476,7 +512,15 @@ public partial class MainWindow : Window
         AddReasoning("📄", "Vorlage wird erstellt...");
         try
         {
-            var payload = JsonSerializer.Serialize(new { text = $"Erstelle eine Vorlage basierend auf folgendem Kontext: {context}" });
+            var templateContext = GetLatestTemplateContext();
+            var attorneyContext = GetAttorneyContext();
+            var prompt = $"Erstelle eine Vorlage basierend auf folgendem Kontext: {context}";
+            if (!string.IsNullOrWhiteSpace(attorneyContext))
+                prompt += $"\n\nKonfigurierte Anwaltsdaten für Briefkopf und Briefende:\n{attorneyContext}";
+            if (!string.IsNullOrWhiteSpace(templateContext))
+                prompt += $"\n\nBestehende bearbeitete Vorlage des Nutzers:\n{templateContext}";
+
+            var payload = JsonSerializer.Serialize(new { text = prompt });
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
             var response = await _http.PostAsync($"{BackendUrl}/ask", content);
             var json = await response.Content.ReadAsStringAsync();
@@ -485,9 +529,10 @@ public partial class MainWindow : Window
             var root   = doc.RootElement;
             var output = root.TryGetProperty("output", out var o) ? o.GetString() ?? json : json;
 
+            var templatePath = SaveTemplateFile(output);
             _history.Add(new ChatMessage("assistant", output));
             _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", output);
-            AppendAiMessage($"📄 Vorlage:\n\n{output}", "frage");
+            AppendAiMessage($"📄 Vorlage:\n\n{output}", "frage", templatePath);
             ReasoningPanel.Children.Clear();
             AddReasoning("✅", "Vorlage erstellt");
         }
@@ -495,6 +540,62 @@ public partial class MainWindow : Window
         {
             AppendAiMessage($"Fehler beim Erstellen der Vorlage: {ex.Message}", "frage");
         }
+    }
+
+    private string SaveTemplateFile(string content)
+    {
+        var baseDir = Directory.Exists(_settings.DokumentePfad)
+            ? _settings.DokumentePfad
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LexWolf", "Vorlagen");
+        var templateDir = Path.Combine(baseDir, "Vorlagen");
+        Directory.CreateDirectory(templateDir);
+
+        var fileName = $"vorlage_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+        var filePath = Path.Combine(templateDir, fileName);
+        File.WriteAllText(filePath, content, Encoding.UTF8);
+        return filePath;
+    }
+
+    private string? GetAttorneyContext()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_settings.Briefkopf))
+            parts.Add($"Briefkopf:\n{_settings.Briefkopf}");
+        if (!string.IsNullOrWhiteSpace(_settings.Briefende))
+            parts.Add($"Briefende:\n{_settings.Briefende}");
+        return parts.Count > 0 ? string.Join("\n\n", parts) : null;
+    }
+
+    private string? GetLatestTemplateContext()
+    {
+        var baseDir = Directory.Exists(_settings.DokumentePfad)
+            ? _settings.DokumentePfad
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LexWolf", "Vorlagen");
+        var templateDir = Path.Combine(baseDir, "Vorlagen");
+        if (!Directory.Exists(templateDir)) return null;
+
+        var latestFile = Directory.EnumerateFiles(templateDir, "*", SearchOption.TopDirectoryOnly)
+            .Where(path => File.Exists(path))
+            .OrderByDescending(path => new FileInfo(path).LastWriteTimeUtc)
+            .FirstOrDefault();
+
+        if (latestFile is null) return null;
+
+        var content = File.ReadAllText(latestFile, Encoding.UTF8);
+        return string.IsNullOrWhiteSpace(content) ? null : $"Aktuelle Vorlage auf dem Rechner:\n{content}";
+    }
+
+    private void OpenInExplorer(string filePath)
+    {
+        if (!File.Exists(filePath)) return;
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            Arguments = $"/select, \"{filePath}\"",
+            UseShellExecute = true,
+        };
+        Process.Start(startInfo);
     }
 
     private void ScrollToBottom() => ChatScrollViewer.ScrollToBottom();

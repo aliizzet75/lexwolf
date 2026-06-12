@@ -13,6 +13,10 @@ public class AppSettings
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "LexWolf", "Mandanten");
 
+    public string Briefkopf { get; set; } = "";
+
+    public string Briefende { get; set; } = "";
+
     public static AppSettings Load()
     {
         try
