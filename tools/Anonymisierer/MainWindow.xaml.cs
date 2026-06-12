@@ -180,25 +180,87 @@ namespace Anonymisierer
             }
         }
 
-        private void OnFileSelected(object sender, RoutedEventArgs e)
-        {
-            // TODO: Implement file selection logic
-            MessageBox.Show("Dateiauswahl TODO");
-        }
-
         private void OnHelpClicked(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Hilfe: Anonymisierungsdetails");
+            MessageBox.Show(
+                "Workflow:\n" +
+                "  1. Ordner hinzufügen → Dateien werden gescannt\n" +
+                "  2. Datei im Baum auswählen → Vorschau erscheint\n" +
+                "  3. Anonymisieren → Entitäten werden ersetzt\n" +
+                "  4. Exportieren → Alle Dateien in *_anonymisiert/\n\n" +
+                "De-Anonymisieren stellt die Vorschau wieder her.",
+                "Hilfe",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
         private void OnSettingsClicked(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Einstellungen TODO");
+            MessageBox.Show(
+                "Unterstützte Formate:\n" +
+                "  • Word (.docx)  — Formatierung bleibt erhalten\n" +
+                "  • PDF (.pdf)    — Export als .txt\n" +
+                "  • Text (.txt)   — Direktbearbeitung\n" +
+                "  • E-Mail (.eml) — Textinhalt wird anonymisiert\n\n" +
+                "Erkannte Entitäten:\n" +
+                "  • Personen (großgeschriebene Namen)\n" +
+                "  • Adressen (Straße + Hausnummer)\n" +
+                "  • Aktenzeichen (Az. NNNN)\n" +
+                "  • Geldbeträge (€NN,NN)",
+                "Übersicht",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
-        private void OnExportClicked(object sender, RoutedEventArgs e)
+        private async void OnExportClicked(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Exportieren TODO");
+            if (_files.Count == 0 || string.IsNullOrEmpty(_scanRootPath))
+            {
+                MessageBox.Show("Bitte zuerst einen Ordner scannen.", "Kein Inhalt",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var outputDir = ExportService.GetOutputDirectory(_scanRootPath);
+            var progressBar = this.FindName("ProgressBar") as System.Windows.Controls.ProgressBar;
+            if (progressBar != null) { progressBar.Value = 0; progressBar.IsEnabled = true; }
+
+            int success = 0, failed = 0;
+            var snapshot = _files.ToList();
+            double total = snapshot.Count;
+
+            await Task.Run(() =>
+            {
+                for (int i = 0; i < snapshot.Count; i++)
+                {
+                    var file = snapshot[i];
+                    try
+                    {
+                        var content = UnifiedFileReader.ReadFile(file.Path);
+                        var anonymized = Anonymizer.AnonymizeText(content, out var entities);
+                        var destPath = ExportService.GetDestPath(file.Path, outputDir, _scanRootPath);
+                        ExportService.WriteFile(file.Path, destPath, anonymized, entities);
+                        success++;
+                    }
+                    catch { failed++; }
+
+                    double progress = ((i + 1) / total) * 100;
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (progressBar != null) progressBar.Value = progress;
+                    });
+                }
+            });
+
+            if (progressBar != null)
+                Application.Current.Dispatcher.Invoke(() => progressBar.IsEnabled = false);
+
+            MessageBox.Show(
+                $"Export abgeschlossen!\n\n{success} Datei(en) → {outputDir}" +
+                (failed > 0 ? $"\n{failed} konnten nicht exportiert werden." : ""),
+                "Export",
+                MessageBoxButton.OK,
+                failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
         }
     }
 }
