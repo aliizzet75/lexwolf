@@ -113,16 +113,71 @@ namespace Anonymisierer
             });
         }
 
+        private List<Entity> _lastEntities = new();
+        private string _lastOriginalText = string.Empty;
+
         private void OnAnonymizeClicked(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement anonymization logic
-            MessageBox.Show("Anonymisierung TODO");
+            var previewBox = this.FindName("PreviewTextBox") as TextBox;
+            if (previewBox == null || string.IsNullOrWhiteSpace(previewBox.Text))
+            {
+                MessageBox.Show("Bitte zuerst eine Datei auswählen.", "Kein Inhalt", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            _lastOriginalText = previewBox.Text;
+            var anonymized = Anonymizer.AnonymizeText(_lastOriginalText, out _lastEntities);
+            previewBox.Text = anonymized;
+
+            var entitiesPanel = this.FindName("EntitiesPanel") as StackPanel;
+            if (entitiesPanel != null)
+            {
+                entitiesPanel.Children.Clear();
+                if (_lastEntities.Count == 0)
+                {
+                    entitiesPanel.Children.Add(new TextBlock
+                    {
+                        Text = "Keine Entitäten erkannt.",
+                        Foreground = System.Windows.Media.Brushes.Gray,
+                        FontStyle = FontStyles.Italic
+                    });
+                }
+                else
+                {
+                    foreach (var entity in _lastEntities)
+                    {
+                        entitiesPanel.Children.Add(new TextBlock
+                        {
+                            Text = $"[{entity.Type}] {entity.Text} → {entity.AnonymizedText}",
+                            Margin = new Thickness(0, 2, 0, 2)
+                        });
+                    }
+                }
+            }
         }
 
         private void OnDeAnonymizeClicked(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement de-anonymization logic
-            MessageBox.Show("De-Anonymisierung TODO");
+            var previewBox = this.FindName("PreviewTextBox") as TextBox;
+            if (previewBox == null || string.IsNullOrWhiteSpace(_lastOriginalText))
+            {
+                MessageBox.Show("Kein anonymisierter Text vorhanden.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            previewBox.Text = _lastOriginalText;
+
+            var entitiesPanel = this.FindName("EntitiesPanel") as StackPanel;
+            if (entitiesPanel != null)
+            {
+                entitiesPanel.Children.Clear();
+                entitiesPanel.Children.Add(new TextBlock
+                {
+                    Text = "Text wiederhergestellt.",
+                    Foreground = System.Windows.Media.Brushes.Gray,
+                    FontStyle = FontStyles.Italic
+                });
+            }
         }
 
         private void OnFileSelected(object sender, RoutedEventArgs e)
