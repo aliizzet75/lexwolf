@@ -57,23 +57,26 @@
                     </DockPanel>
 
                     <StackPanel Grid.Row="1" Margin="10">
-                        <Button Content="➕ Ordner hinzufügen" 
+                        <Button Content="📁 Ordner auswählen"
                                 Click="OnAddFolderClicked"
                                 Margin="0,0,0,10"/>
-                        
-                        <Separator Margin="0,10,0,10"/>
 
-                        <TextBlock Text="Fortschritt:" 
-                                   FontWeight="Bold" 
-                                   Margin="0,0,0,5"/>
-                        
-                        <ProgressBar Name="ProgressBar" 
-                                       Height="20" 
-                                       Minimum="0" 
-                                       Maximum="100" 
-                                       Value="0" 
-                                       Margin="0,0,0,10"/>
-                        
+                        <TextBlock Name="StatusLabel"
+                                   Text=""
+                                   FontWeight="Bold"
+                                   Foreground="#27AE60"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,6"
+                                   Visibility="Collapsed"/>
+
+                        <ProgressBar Name="ProgressBar"
+                                     Height="20"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="0"
+                                     Margin="0,0,0,10"
+                                     Visibility="Collapsed"/>
+
                         <Separator Margin="0,10,0,10"/>
 
                         <TextBlock Text="Dateibaum:" 
@@ -104,15 +107,15 @@
                         
                         <Separator Margin="0,10,0,10"/>
 
-                        <TextBlock Text="Dokumentenarten:" 
-                                   FontWeight="Bold" 
+                        <TextBlock Text="Unterstützte Formate:"
+                                   FontWeight="Bold"
                                    Margin="0,0,0,5"/>
 
                         <StackPanel>
-                            <RadioButton Content="📄 Word (.docx)" IsChecked="True" Margin="0,3,0,3"/>
-                            <RadioButton Content="📄 PDF (.pdf)" Margin="0,3,0,3"/>
-                            <RadioButton Content="📄 Text (.txt)" Margin="0,3,0,3"/>
-                            <RadioButton Content="📧 E-Mails (.eml)" Margin="0,3,0,3"/>
+                            <TextBlock Text="📄 Word (.docx)" Margin="0,3,0,3"/>
+                            <TextBlock Text="📄 PDF (.pdf)"   Margin="0,3,0,3"/>
+                            <TextBlock Text="📝 Text (.txt)"  Margin="0,3,0,3"/>
+                            <TextBlock Text="📧 E-Mail (.eml)" Margin="0,3,0,3"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>

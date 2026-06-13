@@ -28,10 +28,30 @@ namespace Anonymisierer
             DataContext = this;
         }
 
+        private System.Windows.Controls.ProgressBar? GetProgressBar() =>
+            this.FindName("ProgressBar") as System.Windows.Controls.ProgressBar;
+        private System.Windows.Controls.TextBlock? GetStatusLabel() =>
+            this.FindName("StatusLabel") as System.Windows.Controls.TextBlock;
+
+        private void ShowProgress()
+        {
+            var pb = GetProgressBar();
+            var lbl = GetStatusLabel();
+            if (pb != null)  { pb.Value = 0; pb.Visibility = System.Windows.Visibility.Visible; }
+            if (lbl != null) { lbl.Visibility = System.Windows.Visibility.Collapsed; }
+        }
+
+        private void ShowStatus(string text)
+        {
+            var pb = GetProgressBar();
+            var lbl = GetStatusLabel();
+            if (pb != null)  { pb.Visibility = System.Windows.Visibility.Collapsed; }
+            if (lbl != null) { lbl.Text = text; lbl.Visibility = System.Windows.Visibility.Visible; }
+        }
+
         //Command für Ordner-Auswahl
         private async void OnAddFolderClicked(object sender, RoutedEventArgs e)
         {
-            // FolderPicker öffnen (Windows-Standard-Dialog)
             var folderDialog = new System.Windows.Forms.FolderBrowserDialog
             {
                 Description = "Wählen Sie ein Verzeichnis zum Scannen aus",
@@ -42,36 +62,18 @@ namespace Anonymisierer
             if (result == System.Windows.Forms.DialogResult.OK)
             {
                 _scanRootPath = folderDialog.SelectedPath;
+                ShowProgress();
 
-                // UI-Status: Scannen starten
-                var progressBar = this.FindName("ProgressBar") as System.Windows.Controls.ProgressBar;
-                if (progressBar != null)
-                {
-                    progressBar.Value = 0;
-                    progressBar.IsEnabled = true;
-                }
-
-                // Scan starten
                 await ScanDirectoryAsync(_scanRootPath, (progress) =>
-                {
-                    if (progressBar != null)
-                    {
-                        Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            progressBar.Value = progress;
-                        });
-                    }
-                });
-
-                // UI-Status: Scannen beendet
-                if (progressBar != null)
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        progressBar.IsEnabled = false;
-                        MessageBox.Show($"Scan abgeschlossen: {_files.Count} Dateien gefunden");
+                        var pb = GetProgressBar();
+                        if (pb != null) pb.Value = progress;
                     });
-                }
+                });
+
+                Application.Current.Dispatcher.Invoke(() => ShowStatus("Bereit"));
             }
         }
 
@@ -222,8 +224,7 @@ namespace Anonymisierer
             }
 
             var outputDir = ExportService.GetOutputDirectory(_scanRootPath);
-            var progressBar = this.FindName("ProgressBar") as System.Windows.Controls.ProgressBar;
-            if (progressBar != null) { progressBar.Value = 0; progressBar.IsEnabled = true; }
+            ShowProgress();
 
             int success = 0, failed = 0;
             var snapshot = _files.ToList();
@@ -247,13 +248,13 @@ namespace Anonymisierer
                     double progress = ((i + 1) / total) * 100;
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        if (progressBar != null) progressBar.Value = progress;
+                        var pb = GetProgressBar();
+                        if (pb != null) pb.Value = progress;
                     });
                 }
             });
 
-            if (progressBar != null)
-                Application.Current.Dispatcher.Invoke(() => progressBar.IsEnabled = false);
+            Application.Current.Dispatcher.Invoke(() => ShowStatus("Fertig!"));
 
             MessageBox.Show(
                 $"Export abgeschlossen!\n\n{success} Datei(en) → {outputDir}" +
