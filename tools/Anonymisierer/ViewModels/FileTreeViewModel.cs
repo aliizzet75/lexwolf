@@ -59,6 +59,8 @@ namespace Anonymisierer.ViewModels
             set { _selectedNode = value; OnPropertyChanged(); }
         }
 
+        private static readonly string[] SupportedExtensions = { ".docx", ".pdf", ".txt", ".eml", ".rtf", ".odt" };
+
         // Scant ein Verzeichnis und erstellt die TreeView-Struktur
         public void ScanDirectory(string directoryPath)
         {
@@ -67,25 +69,23 @@ namespace Anonymisierer.ViewModels
             if (string.IsNullOrWhiteSpace(directoryPath) || !Directory.Exists(directoryPath))
                 return;
 
-            // Alle Mandanten-Ordner in der Wurzel holen
-            var mandantDirs = Directory.GetDirectories(directoryPath);
-            foreach (var mandantDir in mandantDirs)
+            // Dateien direkt im Root-Verzeichnis
+            foreach (var file in Directory.GetFiles(directoryPath))
             {
-                var mandantName = System.IO.Path.GetFileName(mandantDir);
-                var mandantNode = new FileNode(mandantName, mandantDir, true);
+                if (SupportedExtensions.Contains(System.IO.Path.GetExtension(file).ToLowerInvariant()))
+                    RootNodes.Add(new FileNode(file));
+            }
 
-                // Alle Dateien im Mandanten-Ordner hinzufügen
-                var files = Directory.GetFiles(mandantDir, "*.*", SearchOption.AllDirectories);
-                foreach (var file in files)
+            // Unterordner als aufklappbare Knoten
+            foreach (var subDir in Directory.GetDirectories(directoryPath))
+            {
+                var folderNode = new FileNode(System.IO.Path.GetFileName(subDir), subDir, true);
+                foreach (var file in Directory.GetFiles(subDir, "*.*", SearchOption.AllDirectories))
                 {
-                    var extension = System.IO.Path.GetExtension(file).ToLowerInvariant();
-                    if (new[] { ".docx", ".pdf", ".txt", ".eml" }.Contains(extension))
-                    {
-                        mandantNode.AddChild(new FileNode(file));
-                    }
+                    if (SupportedExtensions.Contains(System.IO.Path.GetExtension(file).ToLowerInvariant()))
+                        folderNode.AddChild(new FileNode(file));
                 }
-
-                RootNodes.Add(mandantNode);
+                RootNodes.Add(folderNode);
             }
         }
 

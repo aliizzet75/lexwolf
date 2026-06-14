@@ -53,68 +53,132 @@ namespace Anonymisierer
     // Hauptklasse für die Anonymisierungs-Logik
     public static class Anonymizer
     {
-        // Lokales Mapping von echten Werten zu anonymisierten IDs
         private static readonly Dictionary<string, string> _mapping = new();
         private static int _counter = 1;
+        private static int _personIdx;
+        private static int _addrIdx;
 
-        // Anonymisierung für Text
+        private static readonly string[] PersonPool =
+        {
+            "Asterix", "Obelix", "Miraculix", "Majestix", "Troubadix", "Verleihnix",
+            "Donald Duck", "Dagobert Duck", "Tick", "Trick", "Track", "Daisy Duck",
+            "Lucky Luke", "Jolly Jumper", "Calamity Jane", "Billy the Kid",
+            "Batman", "Robin", "Superman", "Wonder Woman", "Flash", "Green Lantern",
+            "Spider-Man", "Iron Man", "Thor", "Hulk", "Black Widow", "Hawkeye",
+            "Luke Skywalker", "Han Solo", "Leia Organa", "Yoda", "Chewbacca",
+            "Sherlock Holmes", "Dr. Watson", "Irene Adler", "Prof. Moriarty",
+            "Gandalf", "Frodo Beutlin", "Aragorn Elessar", "Legolas", "Gimli",
+            "Pippi Langstrumpf", "Indiana Jones", "James Bond", "Ethan Hunt"
+        };
+
+        private static readonly string[] AdressPool =
+        {
+            "Privet Drive 4", "Baker Street 221b", "Downing Street 10",
+            "Auenland-Weg 3", "Moria-Pfad 7", "Rivendell-Allee 1",
+            "Mos-Eisley-Straße 42", "Tatooine-Ring 99", "Coruscant-Boulevard 1",
+            "Batcave-Weg 7", "Wayne-Manor-Allee 1", "Gotham-Platz 13",
+            "Hogwarts-Allee 9¾", "Diagon-Gasse 93",
+            "Entenhausen-Ufer 3", "Geldspeicher-Ring 1",
+            "Schlumpfhausen-Gasse 10", "Smurf-Allee 42"
+        };
+
+        // Häufige deutsche Substantive die keine Namen sind
+        private static readonly HashSet<string> _stopWords = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Mieter", "Vermieter", "Partei", "Herr", "Frau", "Januar", "Februar", "März",
+            "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November",
+            "Dezember", "Mietvertrag", "Vertrag", "Deutschland", "Bundesrepublik",
+            "Wohnung", "Zimmer", "Küche", "Keller", "Garage", "Etage", "Stockwerk",
+            "Anlage", "Anhang", "Seite", "Abschnitt", "Paragraph", "Absatz",
+        };
+
+        // Kombinierte Regex: Gruppe 1 = bereits ersetzte [Token] überspringen,
+        // Gruppe 2 = echter Personenname (kein Zeilenumbruch innerhalb)
+        private static readonly System.Text.RegularExpressions.Regex _rxPerson =
+            new(@"(\[[^\]]+\])|(\b[A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+[A-ZÄÖÜ][a-zäöüß]{1,20}){1,2}\b)",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static readonly System.Text.RegularExpressions.Regex _rxDatum =
+            new(@"\b(\d{1,2}\.\s*\d{1,2}\.\s*\d{4}|\d{1,2}\.\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+\d{4})\b",
+                System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        private static readonly System.Text.RegularExpressions.Regex _rxAdresse =
+            new(@"\b([A-ZÄÖÜ][a-zäöüß]+(?:straße|strasse|str\.|weg|gasse|platz|allee|ring|damm|pfad|ufer)[^\S\r\n]+\d{1,3}\s*[a-z]?)\b",
+                System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        private static readonly System.Text.RegularExpressions.Regex _rxPlz =
+            new(@"\b(\d{5})[^\S\r\n]+([A-ZÄÖÜ][a-zäöüß]+)\b",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static readonly System.Text.RegularExpressions.Regex _rxTelefon =
+            new(@"\b((?:\+49|0049|0)\s*[\d][\d\s\-\/]{6,14})\b",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static readonly System.Text.RegularExpressions.Regex _rxIban =
+            new(@"\b([A-Z]{2}\d{2}(?:[^\S\r\n]?\d{4}){4}(?:[^\S\r\n]?\d{1,6})?)\b",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static readonly System.Text.RegularExpressions.Regex _rxBetrag =
+            new(@"(\d{1,3}(?:\.\d{3})*,\d{2}\s*€|€\s*\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}\s*€)",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static readonly System.Text.RegularExpressions.Regex _rxAktenzeichen =
+            new(@"\b(Az\.?\s*[\w\d]{1,6}[\s\/\-][\w\d\/\-]+)\b",
+                System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
         public static string AnonymizeText(string text, out List<Entity> entities)
         {
             entities = new List<Entity>();
             string result = text;
 
-            // Erkennung von Entitäten (Vereinfachte Implementierung)
-            // In der Produktion würde hier spaCy NER + Mistral 7B eingesetzt werden
-
-            // Personen erkennen (Vereinfacht: Nachnamen mit Großbuchstaben)
-            var personMatches = System.Text.RegularExpressions.Regex.Matches(text, @"\b[A-Z][a-z]+ (Müller|Schmidt|Schulz|Wagner|Becker|Schneider|Fischer|Weber|Meyer|Hoffmann)\b");
-            foreach (System.Text.RegularExpressions.Match match in personMatches)
-            {
-                var textMatch = match.ToString();
-                if (!_mapping.TryGetValue(textMatch, out var id))
-                {
-                    id = $"PERSON_{_counter++}";
-                    _mapping[textMatch] = id;
-                }
-
-                entities.Add(new Entity
-                {
-                    Text = textMatch,
-                    Type = EntityType.Person,
-                    AnonymizedText = $"[{id}]",
-                    StartPosition = match.Index,
-                    EndPosition = match.Index + match.Length
-                });
-
-                result = result.Replace(textMatch, $"[{id}]");
-            }
-
-            // Beträge erkennen
-            var betragMatches = System.Text.RegularExpressions.Regex.Matches(text, @"(\d{1,3}\.\d{3})\s*€|\d+\s*€");
-            foreach (System.Text.RegularExpressions.Match match in betragMatches)
-            {
-                var textMatch = match.ToString();
-                if (!_mapping.TryGetValue(textMatch, out var id))
-                {
-                    id = $"BETRAG_{_counter++}";
-                    _mapping[textMatch] = id;
-                }
-
-                entities.Add(new Entity
-                {
-                    Text = textMatch,
-                    Type = EntityType.Betrag,
-                    AnonymizedText = $"[{id}]",
-                    StartPosition = match.Index,
-                    EndPosition = match.Index + match.Length
-                });
-
-                result = result.Replace(textMatch, $"[{id}]");
-            }
-
-            // ... weitere Entitätserkennung (Daten, Adressen, etc.)
+            result = ReplaceWithAlias(result, _rxIban,         EntityType.Konto,        () => $"[KONTO-{_counter++}]",   entities);
+            result = ReplaceWithAlias(result, _rxAktenzeichen, EntityType.Aktenzeichen,  () => $"[AZ-{_counter++}]",      entities);
+            result = ReplaceWithAlias(result, _rxTelefon,      EntityType.Person,        () => $"[TEL-{_counter++}]",     entities);
+            result = ReplaceWithAlias(result, _rxBetrag,       EntityType.Betrag,        () => $"[BETRAG-{_counter++}]",  entities);
+            result = ReplaceWithAlias(result, _rxDatum,        EntityType.Datum,         () => $"[DATUM-{_counter++}]",   entities);
+            result = ReplaceWithAlias(result, _rxAdresse,      EntityType.Adresse,
+                () => $"[{AdressPool[_addrIdx++ % AdressPool.Length]}]",                                                  entities);
+            result = ReplaceWithAlias(result, _rxPlz,          EntityType.Adresse,       () => $"[ORT-{_counter++}]",     entities);
+            result = ReplacePersons(result, entities);
 
             return result;
+        }
+
+        private static string ReplaceWithAlias(
+            string text,
+            System.Text.RegularExpressions.Regex rx,
+            EntityType type,
+            Func<string> makeAlias,
+            List<Entity> entities)
+        {
+            return rx.Replace(text, match =>
+            {
+                var original = match.Value;
+                if (_mapping.TryGetValue(original, out var existing))
+                    return existing;
+                var alias = makeAlias();
+                _mapping[original] = alias;
+                entities.Add(new Entity { Text = original, Type = type, AnonymizedText = alias });
+                return alias;
+            });
+        }
+
+        private static string ReplacePersons(string text, List<Entity> entities)
+        {
+            return _rxPerson.Replace(text, match =>
+            {
+                // Gruppe 1: bereits ersetzter [Token] → unverändert lassen
+                if (!match.Groups[2].Success) return match.Value;
+
+                var original = match.Groups[2].Value;
+                if (_stopWords.Contains(original)) return original;
+                if (_mapping.TryGetValue(original, out var existing)) return existing;
+
+                var alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
+                _mapping[original] = alias;
+                entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
+                return alias;
+            });
         }
 
         // De-Anonymisierung

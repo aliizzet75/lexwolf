@@ -9,20 +9,24 @@ namespace Anonymisierer.Services
     public static class AnonymizerEngine
     {
         // Regex-Muster für die Erkennung von Entitäten
+        // [^\S\n]+ statt \s+ verhindert, dass Zeilenumbrüche zwischen zwei Wörtern
+        // fälschlicherweise als Namenstrenner interpretiert werden.
         private static readonly Regex RegexGroßschreibungsNamen = new Regex(
-            @"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b",
+            @"\b([A-Z][a-z]+(?:[^\S\n]+[A-Z][a-z]+)+)\b",
             RegexOptions.Compiled);
 
         private static readonly Regex RegexAdresse = new Regex(
-            @"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(\d{1,3})\b",
+            @"\b([A-Z][a-z]+(?:[^\S\n]+[A-Z][a-z]+)*)[^\S\n]+(\d{1,3})\b",
             RegexOptions.Compiled);
 
         private static readonly Regex RegexAktenzeichen = new Regex(
             @"\bAz\.\s*(\d{4})\b",
             RegexOptions.Compiled);
 
+        // Matcht sowohl "€ 125,00" als auch "125,00 €" auf der gleichen Zeile.
+        // [^\S\n]* statt \s* verhindert Zeilenumbruch-Konsum bei zeilengetrennt formatierten Beträgen.
         private static readonly Regex RegexBetrag = new Regex(
-            @"€\s*(\d{1,3}\.\d{3},\d{2}|\d+,\d{2})\b",
+            @"(?:€[^\S\n]*(?:\d{1,3}\.\d{3},\d{2}|\d+,\d{2})\b|(?:\d{1,3}\.\d{3},\d{2}|\d+,\d{2})\b[^\S\n]*€)",
             RegexOptions.Compiled);
 
         // Hilfsmethode zum Erkennen von Mandantennamen

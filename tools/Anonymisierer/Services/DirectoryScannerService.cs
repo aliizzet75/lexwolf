@@ -11,7 +11,7 @@ namespace Anonymisierer.Services
     public class DirectoryScannerService
     {
         // Unterstützte Dateiendungen
-        private static readonly string[] SupportedExtensions = { ".docx", ".pdf", ".txt", ".eml" };
+        private static readonly string[] SupportedExtensions = { ".docx", ".pdf", ".txt", ".eml", ".rtf", ".odt" };
 
         // Scannet ein Verzeichnis rekursiv und sammelt Dateieinträge
         public static async Task<ObservableCollection<FileEntry>> ScanDirectoryAsync(string directoryPath, Action<double> onProgress)

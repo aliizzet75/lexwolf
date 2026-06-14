@@ -104,6 +104,68 @@ namespace Anonymisierer.Services
             extension?.Equals(".txt", StringComparison.OrdinalIgnoreCase) == true;
     }
 
+    // RtfReader für .rtf (via WinForms RichTextBox)
+    public class RtfReader : IFileReader
+    {
+        public string ReadFile(string filePath)
+        {
+            if (!File.Exists(filePath)) return string.Empty;
+            try
+            {
+                string result = string.Empty;
+                var thread = new System.Threading.Thread(() =>
+                {
+                    using var rtb = new System.Windows.Forms.RichTextBox();
+                    rtb.LoadFile(filePath, System.Windows.Forms.RichTextBoxStreamType.RichText);
+                    result = rtb.Text;
+                });
+                thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                thread.Start();
+                thread.Join();
+                return result;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        public bool CanHandle(string extension) =>
+            extension?.Equals(".rtf", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    // OdtReader für .odt (OpenDocument Text via ZIP + XML)
+    public class OdtReader : IFileReader
+    {
+        public string ReadFile(string filePath)
+        {
+            if (!File.Exists(filePath)) return string.Empty;
+            try
+            {
+                using var zip = System.IO.Compression.ZipFile.OpenRead(filePath);
+                var entry = zip.GetEntry("content.xml");
+                if (entry == null) return string.Empty;
+                using var stream = entry.Open();
+                var doc = System.Xml.Linq.XDocument.Load(stream);
+                var sb = new System.Text.StringBuilder();
+                foreach (var el in doc.Descendants())
+                {
+                    var local = el.Name.LocalName;
+                    if (local == "p" || local == "h")
+                        sb.AppendLine(el.Value);
+                }
+                return sb.ToString();
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        public bool CanHandle(string extension) =>
+            extension?.Equals(".odt", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
     // EmlReader für .eml
     public class EmlReader : IFileReader
     {
@@ -134,7 +196,9 @@ namespace Anonymisierer.Services
             new DocxReader(),
             new PdfReader(),
             new TxtReader(),
-            new EmlReader()
+            new EmlReader(),
+            new RtfReader(),
+            new OdtReader()
         };
 
         // Liest eine Datei basierend auf der Extension
