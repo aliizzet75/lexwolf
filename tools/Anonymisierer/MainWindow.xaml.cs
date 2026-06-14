@@ -241,14 +241,37 @@ namespace Anonymisierer
         private async Task ShowPdfInPanel(string pdfPath, StackPanel panel)
         {
             panel.Children.Clear();
-            var images = await RenderPdfAsync(pdfPath);
-            foreach (var bmp in images)
+            try
             {
-                panel.Children.Add(new System.Windows.Controls.Image
+                var images = await RenderPdfAsync(pdfPath);
+                if (images.Count == 0)
                 {
-                    Source  = bmp,
-                    Stretch = System.Windows.Media.Stretch.Uniform,
-                    Margin  = new Thickness(0, 0, 0, 8)
+                    panel.Children.Add(new TextBlock
+                    {
+                        Text = "PDF konnte nicht gerendert werden.",
+                        Foreground = _defFg, Margin = new Thickness(14)
+                    });
+                    return;
+                }
+                foreach (var bmp in images)
+                {
+                    panel.Children.Add(new System.Windows.Controls.Image
+                    {
+                        Source              = bmp,
+                        Stretch             = System.Windows.Media.Stretch.Uniform,
+                        HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+                        Margin              = new Thickness(0, 0, 0, 8)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text       = $"Fehler beim Rendern: {ex.Message}",
+                    Foreground = _hlFg,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin     = new Thickness(14)
                 });
             }
         }
@@ -259,13 +282,14 @@ namespace Anonymisierer
             var storageFile = await StorageFile.GetFileFromPathAsync(pdfPath);
             var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
 
+            var renderOptions = new PdfPageRenderOptions { DestinationWidth = 1400 };
+
             for (uint i = 0; i < pdfDoc.PageCount; i++)
             {
                 using var page = pdfDoc.GetPage(i);
                 using var stream = new InMemoryRandomAccessStream();
-                await page.RenderToStreamAsync(stream);
+                await page.RenderToStreamAsync(stream, renderOptions);
 
-                stream.Seek(0);
                 var reader = new DataReader(stream.GetInputStreamAt(0));
                 await reader.LoadAsync((uint)stream.Size);
                 var bytes = new byte[stream.Size];
