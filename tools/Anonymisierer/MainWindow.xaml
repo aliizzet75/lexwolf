@@ -98,19 +98,27 @@
                 <Border DockPanel.Dock="Top" Background="#161b22" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
                     <TextBlock Text="Original" Foreground="#8b949e" FontSize="11" FontWeight="SemiBold"/>
                 </Border>
-                <ScrollViewer Name="OriginalScroll"
-                              VerticalScrollBarVisibility="Hidden"
-                              HorizontalScrollBarVisibility="Disabled"
-                              ScrollChanged="OnOriginalScrollChanged">
-                    <TextBox Name="OriginalBox"
-                             IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             Background="#0d1117" Foreground="#c9d1d9"
-                             BorderThickness="0" Padding="14"
-                             FontFamily="Consolas" FontSize="12"
-                             Text="Wählen Sie eine Datei im Dateibaum aus."/>
-                </ScrollViewer>
+                <Grid>
+                    <ScrollViewer Name="OriginalScroll"
+                                  VerticalScrollBarVisibility="Hidden"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  ScrollChanged="OnOriginalScrollChanged">
+                        <TextBox Name="OriginalBox"
+                                 IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Background="#0d1117" Foreground="#c9d1d9"
+                                 BorderThickness="0" Padding="14"
+                                 FontFamily="Consolas" FontSize="12"
+                                 Text="Wählen Sie eine Datei im Dateibaum aus."/>
+                    </ScrollViewer>
+                    <ScrollViewer Name="OriginalPdfScroll"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Visibility="Collapsed">
+                        <StackPanel Name="OriginalPdfPanel" Margin="14,14,14,14"/>
+                    </ScrollViewer>
+                </Grid>
             </DockPanel>
 
             <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="#21262d"/>
@@ -124,18 +132,26 @@
                                    HorizontalAlignment="Right" DockPanel.Dock="Right"/>
                     </DockPanel>
                 </Border>
-                <ScrollViewer Name="AnonymizedScroll"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              ScrollChanged="OnAnonymizedScrollChanged">
-                    <RichTextBox Name="AnonymizedRich"
-                                 IsReadOnly="True"
-                                 Background="#0d1117" Foreground="#c9d1d9"
-                                 BorderThickness="0" Padding="14"
-                                 FontFamily="Consolas" FontSize="12"
-                                 VerticalScrollBarVisibility="Disabled"
-                                 HorizontalScrollBarVisibility="Disabled"/>
-                </ScrollViewer>
+                <Grid>
+                    <ScrollViewer Name="AnonymizedScroll"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  ScrollChanged="OnAnonymizedScrollChanged">
+                        <RichTextBox Name="AnonymizedRich"
+                                     IsReadOnly="True"
+                                     Background="#0d1117" Foreground="#c9d1d9"
+                                     BorderThickness="0" Padding="14"
+                                     FontFamily="Consolas" FontSize="12"
+                                     VerticalScrollBarVisibility="Disabled"
+                                     HorizontalScrollBarVisibility="Disabled"/>
+                    </ScrollViewer>
+                    <ScrollViewer Name="AnonymizedPdfScroll"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Visibility="Collapsed">
+                        <StackPanel Name="AnonymizedPdfPanel" Margin="14,14,14,14"/>
+                    </ScrollViewer>
+                </Grid>
             </DockPanel>
         </Grid>
     </DockPanel>

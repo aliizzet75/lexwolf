@@ -7,9 +7,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Anonymisierer.Models;
 using Anonymisierer.Services;
 using Anonymisierer.ViewModels;
+using Windows.Data.Pdf;
+using Windows.Storage;
+using Windows.Storage.Streams;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 using TreeView = System.Windows.Controls.TreeView;
@@ -27,6 +31,8 @@ namespace Anonymisierer
         private List<Entity> _lastEntities = new();
         private string _lastOriginalText = string.Empty;
         private bool _isScrollSyncing;
+        private string _currentFilePath = string.Empty;
+        private string? _tempPdfPath;
 
         private static readonly Regex _placeholderRx = new(@"\[[^\]]+\]", RegexOptions.Compiled);
         private static readonly SolidColorBrush _hlBg  = new(Color.FromRgb(0x3d, 0x2e, 0x00));
@@ -61,6 +67,18 @@ namespace Anonymisierer
 
         private TextBlock? GetEntityCountLabel() =>
             this.FindName("EntityCountLabel") as TextBlock;
+
+        private StackPanel? GetOriginalPdfPanel() =>
+            this.FindName("OriginalPdfPanel") as StackPanel;
+
+        private StackPanel? GetAnonymizedPdfPanel() =>
+            this.FindName("AnonymizedPdfPanel") as StackPanel;
+
+        private ScrollViewer? GetOriginalPdfScroll() =>
+            this.FindName("OriginalPdfScroll") as ScrollViewer;
+
+        private ScrollViewer? GetAnonymizedPdfScroll() =>
+            this.FindName("AnonymizedPdfScroll") as ScrollViewer;
 
         // ── Progress / Status ─────────────────────────────────────────────────
 
@@ -139,12 +157,23 @@ namespace Anonymisierer
             if ((sender as TreeView)?.SelectedItem is not FileNode node) return;
             if (node.IsFolder || string.IsNullOrEmpty(node.Path)) return;
 
+            if (_tempPdfPath != null && File.Exists(_tempPdfPath))
+            {
+                try { File.Delete(_tempPdfPath); } catch { }
+                _tempPdfPath = null;
+            }
+
+            _currentFilePath = node.Path;
             var fileName = System.IO.Path.GetFileName(node.Path);
             ShowSpinner($"Lade und anonymisiere {fileName}...");
 
-            var originalBox  = GetOriginalBox();
+            bool isPdf = System.IO.Path.GetExtension(node.Path)
+                .Equals(".pdf", StringComparison.OrdinalIgnoreCase);
+            SetPanelMode(isPdf);
+
+            var originalBox    = GetOriginalBox();
             var anonymizedRich = GetAnonymizedRich();
-            var countLabel   = GetEntityCountLabel();
+            var countLabel     = GetEntityCountLabel();
             if (originalBox != null) originalBox.Text = "";
             if (anonymizedRich != null) anonymizedRich.Document = new FlowDocument();
             if (countLabel != null) countLabel.Text = "";
@@ -157,23 +186,101 @@ namespace Anonymisierer
 
                 await Task.Run(() =>
                 {
-                    content   = _fileTreeViewModel.LoadFilePreview(node);
+                    content    = _fileTreeViewModel.LoadFilePreview(node);
                     anonymized = Anonymizer.AnonymizeText(content, out entities);
                 });
 
                 _lastOriginalText = content;
                 _lastEntities     = entities;
 
-                if (originalBox != null)    originalBox.Text = content;
-                if (anonymizedRich != null) anonymizedRich.Document = BuildAnonymizedDoc(anonymized);
-                if (countLabel != null)     countLabel.Text = $"{entities.Count} Entität(en) ersetzt";
+                if (isPdf)
+                {
+                    var origPanel = GetOriginalPdfPanel();
+                    if (origPanel != null)
+                        await ShowPdfInPanel(node.Path, origPanel);
 
+                    _tempPdfPath = System.IO.Path.Combine(
+                        System.IO.Path.GetTempPath(), $"anon_{Guid.NewGuid():N}.pdf");
+                    ExportService.WritePdf(_tempPdfPath, anonymized);
+
+                    var anonPanel = GetAnonymizedPdfPanel();
+                    if (anonPanel != null)
+                        await ShowPdfInPanel(_tempPdfPath, anonPanel);
+                }
+                else
+                {
+                    if (originalBox != null)    originalBox.Text = content;
+                    if (anonymizedRich != null) anonymizedRich.Document = BuildAnonymizedDoc(anonymized);
+                }
+
+                if (countLabel != null) countLabel.Text = $"{entities.Count} Entität(en) ersetzt";
                 ShowStatus($"{fileName} — {entities.Count} Entität(en) anonymisiert");
             }
             catch (Exception ex)
             {
                 ShowStatus($"Fehler: {ex.Message}");
             }
+        }
+
+        private void SetPanelMode(bool isPdf)
+        {
+            var textVis = isPdf ? Visibility.Collapsed : Visibility.Visible;
+            var pdfVis  = isPdf ? Visibility.Visible   : Visibility.Collapsed;
+
+            var origScroll    = GetOriginalScroll();
+            var origPdfScroll = GetOriginalPdfScroll();
+            var anonScroll    = GetAnonymizedScroll();
+            var anonPdfScroll = GetAnonymizedPdfScroll();
+
+            if (origScroll    != null) origScroll.Visibility    = textVis;
+            if (origPdfScroll != null) origPdfScroll.Visibility = pdfVis;
+            if (anonScroll    != null) anonScroll.Visibility    = textVis;
+            if (anonPdfScroll != null) anonPdfScroll.Visibility = pdfVis;
+        }
+
+        private async Task ShowPdfInPanel(string pdfPath, StackPanel panel)
+        {
+            panel.Children.Clear();
+            var images = await RenderPdfAsync(pdfPath);
+            foreach (var bmp in images)
+            {
+                panel.Children.Add(new System.Windows.Controls.Image
+                {
+                    Source  = bmp,
+                    Stretch = System.Windows.Media.Stretch.Uniform,
+                    Margin  = new Thickness(0, 0, 0, 8)
+                });
+            }
+        }
+
+        private static async Task<List<BitmapImage>> RenderPdfAsync(string pdfPath)
+        {
+            var images = new List<BitmapImage>();
+            var storageFile = await StorageFile.GetFileFromPathAsync(pdfPath);
+            var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
+
+            for (uint i = 0; i < pdfDoc.PageCount; i++)
+            {
+                using var page = pdfDoc.GetPage(i);
+                using var stream = new InMemoryRandomAccessStream();
+                await page.RenderToStreamAsync(stream);
+
+                stream.Seek(0);
+                var reader = new DataReader(stream.GetInputStreamAt(0));
+                await reader.LoadAsync((uint)stream.Size);
+                var bytes = new byte[stream.Size];
+                reader.ReadBytes(bytes);
+
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption  = BitmapCacheOption.OnLoad;
+                bmp.StreamSource = new MemoryStream(bytes);
+                bmp.EndInit();
+                bmp.Freeze();
+                images.Add(bmp);
+            }
+
+            return images;
         }
 
         // ── Scroll-Synchronisierung ───────────────────────────────────────────
