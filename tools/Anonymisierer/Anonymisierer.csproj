@@ -21,6 +21,8 @@
     <PackageReference Include="iText7" Version="9.0.0" />
     <PackageReference Include="MimeKit" Version="4.11.0" />
     <PackageReference Include="DiffPlex" Version="1.7.0" />
+    <PackageReference Include="PdfiumViewer" Version="2.13.0.0" />
+    <PackageReference Include="PdfiumViewer.Native.x86_x64.v8-xfa" Version="85.0.4183.121" />
   </ItemGroup>
 
 </Project>

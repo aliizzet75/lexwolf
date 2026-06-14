@@ -11,9 +11,7 @@ using System.Windows.Media.Imaging;
 using Anonymisierer.Models;
 using Anonymisierer.Services;
 using Anonymisierer.ViewModels;
-using Windows.Data.Pdf;
-using Windows.Storage;
-using Windows.Storage.Streams;
+using PdfiumViewer;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 using TreeView = System.Windows.Controls.TreeView;
@@ -266,45 +264,42 @@ namespace Anonymisierer
             }
             catch (Exception ex)
             {
+                var msg = $"PDF-Fehler: {ex.GetType().Name}: {ex.Message}";
+                ShowStatus(msg);
                 panel.Children.Add(new TextBlock
                 {
-                    Text       = $"Fehler beim Rendern: {ex.Message}",
-                    Foreground = _hlFg,
+                    Text         = msg,
+                    Foreground   = _hlFg,
                     TextWrapping = TextWrapping.Wrap,
-                    Margin     = new Thickness(14)
+                    Margin       = new Thickness(14)
                 });
             }
         }
 
-        private static async Task<List<BitmapImage>> RenderPdfAsync(string pdfPath)
+        private static Task<List<BitmapImage>> RenderPdfAsync(string pdfPath)
         {
-            var images = new List<BitmapImage>();
-            var storageFile = await StorageFile.GetFileFromPathAsync(pdfPath);
-            var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
-
-            var renderOptions = new PdfPageRenderOptions { DestinationWidth = 1400 };
-
-            for (uint i = 0; i < pdfDoc.PageCount; i++)
+            return Task.Run(() =>
             {
-                using var page = pdfDoc.GetPage(i);
-                using var stream = new InMemoryRandomAccessStream();
-                await page.RenderToStreamAsync(stream, renderOptions);
+                var images = new List<BitmapImage>();
+                using var pdf = PdfDocument.Load(pdfPath);
+                for (int i = 0; i < pdf.PageCount; i++)
+                {
+                    using var img = (System.Drawing.Bitmap)pdf.Render(
+                        i, 150f, 150f, PdfRenderFlags.CorrectFromDpi);
+                    using var ms = new MemoryStream();
+                    img.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    ms.Seek(0, SeekOrigin.Begin);
 
-                var reader = new DataReader(stream.GetInputStreamAt(0));
-                await reader.LoadAsync((uint)stream.Size);
-                var bytes = new byte[stream.Size];
-                reader.ReadBytes(bytes);
-
-                var bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption  = BitmapCacheOption.OnLoad;
-                bmp.StreamSource = new MemoryStream(bytes);
-                bmp.EndInit();
-                bmp.Freeze();
-                images.Add(bmp);
-            }
-
-            return images;
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.CacheOption  = BitmapCacheOption.OnLoad;
+                    bmp.StreamSource = ms;
+                    bmp.EndInit();
+                    bmp.Freeze();
+                    images.Add(bmp);
+                }
+                return images;
+            });
         }
 
         // ── Scroll-Synchronisierung ───────────────────────────────────────────
