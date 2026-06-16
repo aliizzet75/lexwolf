@@ -197,13 +197,31 @@ namespace Anonymisierer
                     if (origPanel != null)
                         await ShowPdfInPanel(node.Path, origPanel);
 
-                    _tempPdfPath = System.IO.Path.Combine(
-                        System.IO.Path.GetTempPath(), $"anon_{Guid.NewGuid():N}.pdf");
-                    ExportService.WritePdf(_tempPdfPath, anonymized);
-
                     var anonPanel = GetAnonymizedPdfPanel();
                     if (anonPanel != null)
-                        await ShowPdfInPanel(_tempPdfPath, anonPanel);
+                    {
+                        anonPanel.Children.Clear();
+                        try
+                        {
+                            _tempPdfPath = System.IO.Path.Combine(
+                                System.IO.Path.GetTempPath(), $"anon_{Guid.NewGuid():N}.pdf");
+                            var tempPath = _tempPdfPath;
+                            await Task.Run(() => ExportService.WritePdf(tempPath, anonymized));
+                            await ShowPdfInPanel(_tempPdfPath, anonPanel);
+                        }
+                        catch (Exception pdfEx)
+                        {
+                            var msg = $"Anon-PDF Fehler: {pdfEx.GetType().Name}: {pdfEx.Message}";
+                            ShowStatus(msg);
+                            anonPanel.Children.Add(new TextBlock
+                            {
+                                Text         = msg,
+                                Foreground   = _hlFg,
+                                TextWrapping = TextWrapping.Wrap,
+                                Margin       = new Thickness(14)
+                            });
+                        }
+                    }
                 }
                 else
                 {
