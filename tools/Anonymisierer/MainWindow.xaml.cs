@@ -213,13 +213,7 @@ namespace Anonymisierer
                         {
                             var msg = $"Anon-PDF Fehler: {pdfEx.GetType().Name}: {pdfEx.Message}";
                             ShowStatus(msg);
-                            anonPanel.Children.Add(new TextBlock
-                            {
-                                Text         = msg,
-                                Foreground   = _hlFg,
-                                TextWrapping = TextWrapping.Wrap,
-                                Margin       = new Thickness(14)
-                            });
+                            anonPanel.Children.Add(MakeSelectableText(msg, _hlFg));
                         }
                     }
                 }
@@ -237,6 +231,22 @@ namespace Anonymisierer
                 ShowStatus($"Fehler: {ex.Message}");
             }
         }
+
+        private static TextBox MakeSelectableText(string text, SolidColorBrush fg) => new TextBox
+        {
+            Text                = text,
+            IsReadOnly          = true,
+            TextWrapping        = TextWrapping.Wrap,
+            Background          = System.Windows.Media.Brushes.Transparent,
+            Foreground          = fg,
+            BorderThickness     = new Thickness(0),
+            FontFamily          = _monoFont,
+            FontSize            = 12,
+            Margin              = new Thickness(14),
+            Padding             = new Thickness(0),
+            IsTabStop           = false,
+            Cursor              = System.Windows.Input.Cursors.IBeam,
+        };
 
         private void SetPanelMode(bool isPdf)
         {
@@ -262,11 +272,7 @@ namespace Anonymisierer
                 var images = await RenderPdfAsync(pdfPath);
                 if (images.Count == 0)
                 {
-                    panel.Children.Add(new TextBlock
-                    {
-                        Text = "PDF konnte nicht gerendert werden.",
-                        Foreground = _defFg, Margin = new Thickness(14)
-                    });
+                    panel.Children.Add(MakeSelectableText("PDF konnte nicht gerendert werden.", _defFg));
                     return;
                 }
                 foreach (var bmp in images)
@@ -284,13 +290,7 @@ namespace Anonymisierer
             {
                 var msg = $"PDF-Fehler: {ex.GetType().Name}: {ex.Message}";
                 ShowStatus(msg);
-                panel.Children.Add(new TextBlock
-                {
-                    Text         = msg,
-                    Foreground   = _hlFg,
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin       = new Thickness(14)
-                });
+                panel.Children.Add(MakeSelectableText(msg, _hlFg));
             }
         }
 

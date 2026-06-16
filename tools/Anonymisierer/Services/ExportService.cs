@@ -46,15 +46,14 @@ namespace Anonymisierer.Services
         public static void WritePdf(string destPath, string text)
         {
             using var writer = new iText.Kernel.Pdf.PdfWriter(destPath);
-            using var pdfDoc = new iText.Kernel.Pdf.PdfDocument(writer);
-            using var doc = new iText.Layout.Document(pdfDoc);
-            var font = iText.Kernel.Font.PdfFontFactory.CreateFont(
+            var pdfDoc = new iText.Kernel.Pdf.PdfDocument(writer);
+            var doc    = new iText.Layout.Document(pdfDoc, iText.Kernel.Geom.PageSize.A4);
+            var font   = iText.Kernel.Font.PdfFontFactory.CreateFont(
                 iText.IO.Font.Constants.StandardFonts.HELVETICA);
             doc.SetFont(font).SetFontSize(10);
             foreach (var rawLine in text.Split('\n'))
-            {
                 doc.Add(new iText.Layout.Element.Paragraph(rawLine.TrimEnd('\r')).SetMarginBottom(0));
-            }
+            doc.Close(); // schließt pdfDoc mit — kein doppelter Dispose
         }
 
         private static void WriteDocx(string sourcePath, string destPath, Dictionary<string, string> replacements)
