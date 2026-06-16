@@ -167,7 +167,8 @@ namespace Anonymisierer
 
             bool isPdf = System.IO.Path.GetExtension(node.Path)
                 .Equals(".pdf", StringComparison.OrdinalIgnoreCase);
-            SetPanelMode(isPdf);
+            // left=PDF images, right=anonymized text (RichTextBox mit Highlights)
+            SetPanelMode(origIsPdf: isPdf, anonIsPdf: false);
 
             var originalBox    = GetOriginalBox();
             var anonymizedRich = GetAnonymizedRich();
@@ -197,25 +198,9 @@ namespace Anonymisierer
                     if (origPanel != null)
                         await ShowPdfInPanel(node.Path, origPanel);
 
-                    var anonPanel = GetAnonymizedPdfPanel();
-                    if (anonPanel != null)
-                    {
-                        anonPanel.Children.Clear();
-                        try
-                        {
-                            _tempPdfPath = System.IO.Path.Combine(
-                                System.IO.Path.GetTempPath(), $"anon_{Guid.NewGuid():N}.pdf");
-                            var tempPath = _tempPdfPath;
-                            await Task.Run(() => ExportService.WritePdf(tempPath, anonymized));
-                            await ShowPdfInPanel(_tempPdfPath, anonPanel);
-                        }
-                        catch (Exception pdfEx)
-                        {
-                            var msg = $"Anon-PDF Fehler: {pdfEx.GetType().Name}: {pdfEx.Message}";
-                            ShowStatus(msg);
-                            anonPanel.Children.Add(MakeSelectableText(msg, _hlFg));
-                        }
-                    }
+                    // Rechts: anonymisierten Text mit Highlights (kein iText7 WritePdf nötig)
+                    if (anonymizedRich != null)
+                        anonymizedRich.Document = BuildAnonymizedDoc(anonymized);
                 }
                 else
                 {
@@ -248,20 +233,17 @@ namespace Anonymisierer
             Cursor              = System.Windows.Input.Cursors.IBeam,
         };
 
-        private void SetPanelMode(bool isPdf)
+        private void SetPanelMode(bool origIsPdf, bool anonIsPdf)
         {
-            var textVis = isPdf ? Visibility.Collapsed : Visibility.Visible;
-            var pdfVis  = isPdf ? Visibility.Visible   : Visibility.Collapsed;
+            var origText = origIsPdf ? Visibility.Collapsed : Visibility.Visible;
+            var origPdf  = origIsPdf ? Visibility.Visible   : Visibility.Collapsed;
+            var anonText = anonIsPdf ? Visibility.Collapsed : Visibility.Visible;
+            var anonPdf  = anonIsPdf ? Visibility.Visible   : Visibility.Collapsed;
 
-            var origScroll    = GetOriginalScroll();
-            var origPdfScroll = GetOriginalPdfScroll();
-            var anonScroll    = GetAnonymizedScroll();
-            var anonPdfScroll = GetAnonymizedPdfScroll();
-
-            if (origScroll    != null) origScroll.Visibility    = textVis;
-            if (origPdfScroll != null) origPdfScroll.Visibility = pdfVis;
-            if (anonScroll    != null) anonScroll.Visibility    = textVis;
-            if (anonPdfScroll != null) anonPdfScroll.Visibility = pdfVis;
+            if (GetOriginalScroll()    is { } os)  os.Visibility  = origText;
+            if (GetOriginalPdfScroll() is { } ops) ops.Visibility = origPdf;
+            if (GetAnonymizedScroll()  is { } as_) as_.Visibility = anonText;
+            if (GetAnonymizedPdfScroll() is { } aps) aps.Visibility = anonPdf;
         }
 
         private async Task ShowPdfInPanel(string pdfPath, StackPanel panel)
