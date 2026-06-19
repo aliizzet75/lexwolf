@@ -167,8 +167,7 @@ namespace Anonymisierer
 
             bool isPdf = System.IO.Path.GetExtension(node.Path)
                 .Equals(".pdf", StringComparison.OrdinalIgnoreCase);
-            // left=PDF images, right=anonymized text (RichTextBox mit Highlights)
-            SetPanelMode(origIsPdf: isPdf, anonIsPdf: false);
+            SetPanelMode(origIsPdf: isPdf, anonIsPdf: isPdf);
 
             var originalBox    = GetOriginalBox();
             var anonymizedRich = GetAnonymizedRich();
@@ -198,9 +197,16 @@ namespace Anonymisierer
                     if (origPanel != null)
                         await ShowPdfInPanel(node.Path, origPanel);
 
-                    // Rechts: anonymisierten Text mit Highlights (kein iText7 WritePdf nötig)
-                    if (anonymizedRich != null)
-                        anonymizedRich.Document = BuildAnonymizedDoc(anonymized);
+                    _tempPdfPath = System.IO.Path.Combine(
+                        System.IO.Path.GetTempPath(),
+                        $"lexwolf_anon_{Guid.NewGuid():N}.pdf");
+                    var tempPath = _tempPdfPath;
+                    await Task.Run(() =>
+                        ExportService.AnonymizePdfInPlace(node.Path, tempPath, entities));
+
+                    var anonPanel = GetAnonymizedPdfPanel();
+                    if (anonPanel != null)
+                        await ShowPdfInPanel(tempPath, anonPanel);
                 }
                 else
                 {

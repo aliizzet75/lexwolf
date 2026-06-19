@@ -27,7 +27,10 @@ namespace Anonymisierer.Services
 
             if (Path.GetExtension(sourcePath).Equals(".pdf", System.StringComparison.OrdinalIgnoreCase))
             {
-                WritePdf(destPath, anonymizedText);
+                if (entities.Count > 0)
+                    AnonymizePdfInPlace(sourcePath, destPath, entities);
+                else
+                    WritePdf(destPath, anonymizedText);
             }
             else if (Path.GetExtension(sourcePath).Equals(".docx", System.StringComparison.OrdinalIgnoreCase)
                 && entities.Count > 0)
@@ -40,6 +43,74 @@ namespace Anonymisierer.Services
             else
             {
                 File.WriteAllText(destPath, anonymizedText, Encoding.UTF8);
+            }
+        }
+
+        public static void AnonymizePdfInPlace(string sourcePdfPath, string destPdfPath, List<Anonymisierer.Entity> entities)
+        {
+            var replacements = entities
+                .GroupBy(e => e.Text)
+                .ToDictionary(g => g.Key, g => g.First().AnonymizedText);
+
+            static string ToPdfOctal(string s)
+            {
+                var sb = new System.Text.StringBuilder();
+                foreach (char c in s)
+                    if (c > 127) sb.Append('\\').Append(Convert.ToString(c, 8).PadLeft(3, '0'));
+                    else sb.Append(c);
+                return sb.ToString();
+            }
+
+            bool ReplaceInStream(iText.Kernel.Pdf.PdfStream stream)
+            {
+                byte[] bytes;
+                try { bytes = stream.GetBytes(decoded: true); }
+                catch { return false; }
+
+                var latin  = Encoding.Latin1.GetString(bytes);
+                bool changed = false;
+
+                foreach (var kvp in replacements)
+                {
+                    if (latin.Contains(kvp.Key))
+                    {
+                        latin   = latin.Replace(kvp.Key, kvp.Value);
+                        changed = true;
+                    }
+                    var pdfOrig = ToPdfOctal(kvp.Key);
+                    if (pdfOrig != kvp.Key && latin.Contains(pdfOrig))
+                    {
+                        latin   = latin.Replace(pdfOrig, kvp.Value);
+                        changed = true;
+                    }
+                }
+
+                if (changed) stream.SetData(Encoding.Latin1.GetBytes(latin));
+                return changed;
+            }
+
+            void ProcessXObjects(iText.Kernel.Pdf.PdfDictionary? resDict)
+            {
+                var xobj = resDict?.GetAsDictionary(iText.Kernel.Pdf.PdfName.XObject);
+                if (xobj == null) return;
+                foreach (var key in xobj.KeySet())
+                {
+                    if (xobj.Get(key) is not iText.Kernel.Pdf.PdfStream stream) continue;
+                    ReplaceInStream(stream);
+                    ProcessXObjects(stream.GetAsDictionary(iText.Kernel.Pdf.PdfName.Resources));
+                }
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(destPdfPath)!);
+            using var reader = new iText.Kernel.Pdf.PdfReader(sourcePdfPath);
+            using var writer = new iText.Kernel.Pdf.PdfWriter(destPdfPath);
+            using var doc    = new iText.Kernel.Pdf.PdfDocument(reader, writer);
+            for (int p = 1; p <= doc.GetNumberOfPages(); p++)
+            {
+                var page = doc.GetPage(p);
+                for (int s = 0; s < page.GetContentStreamCount(); s++)
+                    ReplaceInStream(page.GetContentStream(s));
+                ProcessXObjects(page.GetPdfObject().GetAsDictionary(iText.Kernel.Pdf.PdfName.Resources));
             }
         }
 
