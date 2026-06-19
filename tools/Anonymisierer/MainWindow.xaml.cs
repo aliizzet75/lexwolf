@@ -115,6 +115,7 @@ namespace Anonymisierer
             if (folderDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
 
             _scanRootPath = folderDialog.SelectedPath;
+            Anonymizer.SetMappingFile(_scanRootPath);
 
             var folderLabel = this.FindName("FolderPathLabel") as System.Windows.Controls.TextBlock;
             if (folderLabel != null)
@@ -186,6 +187,7 @@ namespace Anonymisierer
                 {
                     content    = _fileTreeViewModel.LoadFilePreview(node);
                     anonymized = Anonymizer.AnonymizeText(content, out entities);
+                    Anonymizer.SaveMapping();
                 });
 
                 _lastOriginalText = content;
@@ -465,6 +467,7 @@ namespace Anonymisierer
                         if (pb != null) pb.Value = progress;
                     });
                 }
+                Anonymizer.SaveMapping();
             });
 
             Cursor = System.Windows.Input.Cursors.Arrow;

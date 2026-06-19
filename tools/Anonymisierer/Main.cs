@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -56,6 +57,8 @@ namespace Anonymisierer
     public static class Anonymizer
     {
         private static readonly Dictionary<string, string> _mapping = new();
+        private static readonly Dictionary<string, EntityType> _entityTypes = new();
+        private static string _mappingFilePath = string.Empty;
         private static int _counter = 1;
         private static int _personIdx;
         private static int _addrIdx;
@@ -71,8 +74,8 @@ namespace Anonymisierer
         };
         private static readonly string[] _fakeBetraege =
         {
-            "1.250,00 €", "875,50 €", "3.400,00 €", "620,00 €",
-            "15.750,00 €", "490,00 €", "2.100,00 €", "1.050,25 €"
+            "1.250,00", "875,50", "3.400,00", "620,00",
+            "15.750,00", "490,00", "2.100,00", "1.050,25"
         };
         private static readonly string[] _fakeIbans =
         {
@@ -193,6 +196,7 @@ namespace Anonymisierer
                     return existing;
                 var alias = makeAlias();
                 _mapping[original] = alias;
+                _entityTypes[original] = type;
                 entities.Add(new Entity { Text = original, Type = type, AnonymizedText = alias });
                 return alias;
             });
@@ -211,6 +215,7 @@ namespace Anonymisierer
 
                 var alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
                 _mapping[original] = alias;
+                _entityTypes[original] = EntityType.Person;
                 entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
                 return alias;
             });
@@ -342,6 +347,79 @@ namespace Anonymisierer
         public static Dictionary<string, string> GetReverseMapping()
         {
             return _mapping.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
+        }
+
+        // Ordner-Mapping-Datei setzen und laden (beim Öffnen eines Ordners aufrufen)
+        public static void SetMappingFile(string folderPath)
+        {
+            _mappingFilePath = Path.Combine(folderPath, ".lexwolf_mapping.json");
+            _mapping.Clear();
+            _entityTypes.Clear();
+            _personIdx = _addrIdx = _datumIdx = _betragIdx = _ibanIdx = _emailIdx = 0;
+            _counter = 1;
+            LoadMappingFromFile();
+        }
+
+        // Mapping aus JSON-Datei laden und Zähler wiederherstellen
+        private static void LoadMappingFromFile()
+        {
+            if (!File.Exists(_mappingFilePath)) return;
+            try
+            {
+                var json = File.ReadAllText(_mappingFilePath);
+                var data = JsonSerializer.Deserialize<MappingFile>(json);
+                if (data?.Entries == null) return;
+
+                foreach (var e in data.Entries)
+                {
+                    _mapping[e.Original] = e.Alias;
+                    _entityTypes[e.Original] = e.Type;
+                    switch (e.Type)
+                    {
+                        case EntityType.Person:       _personIdx++;  break;
+                        case EntityType.Betrag:       _betragIdx++;  break;
+                        case EntityType.Datum:        _datumIdx++;   break;
+                        case EntityType.Adresse:      _addrIdx++;    break;
+                        case EntityType.Konto:        _ibanIdx++;    break;
+                        case EntityType.Email:        _emailIdx++;   break;
+                        case EntityType.Telefon:      _counter++;    break;
+                        case EntityType.Aktenzeichen: _counter++;    break;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Mapping in JSON-Datei speichern (nach jeder Anonymisierung aufrufen)
+        public static void SaveMapping()
+        {
+            if (string.IsNullOrEmpty(_mappingFilePath)) return;
+            try
+            {
+                var entries = _mapping.Select(kvp => new MappingEntry
+                {
+                    Original = kvp.Key,
+                    Alias    = kvp.Value,
+                    Type     = _entityTypes.TryGetValue(kvp.Key, out var t) ? t : EntityType.Person
+                }).ToList();
+
+                var data = new MappingFile { Entries = entries };
+                var opts = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(_mappingFilePath, JsonSerializer.Serialize(data, opts));
+            }
+            catch { }
+        }
+
+        private sealed class MappingEntry
+        {
+            public string     Original { get; set; } = string.Empty;
+            public string     Alias    { get; set; } = string.Empty;
+            public EntityType Type     { get; set; }
+        }
+
+        private sealed class MappingFile
+        {
+            public List<MappingEntry>? Entries { get; set; }
         }
     }
 
