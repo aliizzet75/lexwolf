@@ -326,6 +326,22 @@ namespace Anonymisierer
             _isScrollSyncing = false;
         }
 
+        private void OnOriginalPdfScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (_isScrollSyncing || e.VerticalChange == 0) return;
+            _isScrollSyncing = true;
+            GetAnonymizedPdfScroll()?.ScrollToVerticalOffset(e.VerticalOffset);
+            _isScrollSyncing = false;
+        }
+
+        private void OnAnonymizedPdfScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (_isScrollSyncing || e.VerticalChange == 0) return;
+            _isScrollSyncing = true;
+            GetOriginalPdfScroll()?.ScrollToVerticalOffset(e.VerticalOffset);
+            _isScrollSyncing = false;
+        }
+
         // ── FlowDocument mit Farb-Highlighting ────────────────────────────────
 
         private static FlowDocument BuildAnonymizedDoc(string text)

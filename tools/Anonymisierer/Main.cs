@@ -27,7 +27,9 @@ namespace Anonymisierer
         Adresse,
         Aktenzeichen,
         Konto,
-        Unternehmen
+        Unternehmen,
+        Email,
+        Telefon
     }
 
     // Erkannte Entität
@@ -57,6 +59,35 @@ namespace Anonymisierer
         private static int _counter = 1;
         private static int _personIdx;
         private static int _addrIdx;
+        private static int _datumIdx;
+        private static int _betragIdx;
+        private static int _ibanIdx;
+        private static int _emailIdx;
+
+        private static readonly string[] _fakeDaten =
+        {
+            "15.06.1985", "03.09.1972", "21.11.1990", "08.04.1967",
+            "30.01.1983", "17.07.1995", "25.12.1975", "11.03.2000"
+        };
+        private static readonly string[] _fakeBetraege =
+        {
+            "1.250,00 €", "875,50 €", "3.400,00 €", "620,00 €",
+            "15.750,00 €", "490,00 €", "2.100,00 €", "1.050,25 €"
+        };
+        private static readonly string[] _fakeIbans =
+        {
+            "DE89 3704 0044 0532 0130 00",
+            "DE02 2012 0500 0000 0250 01",
+            "DE12 5004 0075 0000 1234 00",
+            "DE91 1000 0000 0123 4567 89"
+        };
+        private static readonly string[] _fakeEmails =
+        {
+            "info@beispiel-kanzlei.de",
+            "max.muster@muster-gmbh.de",
+            "kontakt@beispiel-partner.de",
+            "service@test-immobilien.de"
+        };
 
         private static readonly string[] PersonPool =
         {
@@ -93,9 +124,9 @@ namespace Anonymisierer
         };
 
         // Kombinierte Regex: Gruppe 1 = bereits ersetzte [Token] überspringen,
-        // Gruppe 2 = echter Personenname (kein Zeilenumbruch innerhalb)
+        // Gruppe 2 = echter Personenname inkl. Initialen wie "Wilhelm R. Schapmann"
         private static readonly System.Text.RegularExpressions.Regex _rxPerson =
-            new(@"(\[[^\]]+\])|(\b[A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+[A-ZÄÖÜ][a-zäöüß]{1,20}){1,2}\b)",
+            new(@"(\[[^\]]+\])|(\b[A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+(?:[A-ZÄÖÜ]\.[^\S\r\n]*)?[A-ZÄÖÜ][a-zäöüß]{1,20}){1,3}\b)",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private static readonly System.Text.RegularExpressions.Regex _rxDatum =
@@ -126,19 +157,23 @@ namespace Anonymisierer
             new(@"\b(Az\.?\s*[\w\d]{1,6}[\s\/\-][\w\d\/\-]+)\b",
                 System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
+        private static readonly System.Text.RegularExpressions.Regex _rxEmail =
+            new(@"\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
         public static string AnonymizeText(string text, out List<Entity> entities)
         {
             entities = new List<Entity>();
             string result = text;
 
-            result = ReplaceWithAlias(result, _rxIban,         EntityType.Konto,        () => $"[KONTO-{_counter++}]",   entities);
-            result = ReplaceWithAlias(result, _rxAktenzeichen, EntityType.Aktenzeichen,  () => $"[AZ-{_counter++}]",      entities);
-            result = ReplaceWithAlias(result, _rxTelefon,      EntityType.Person,        () => $"[TEL-{_counter++}]",     entities);
-            result = ReplaceWithAlias(result, _rxBetrag,       EntityType.Betrag,        () => $"[BETRAG-{_counter++}]",  entities);
-            result = ReplaceWithAlias(result, _rxDatum,        EntityType.Datum,         () => $"[DATUM-{_counter++}]",   entities);
-            result = ReplaceWithAlias(result, _rxAdresse,      EntityType.Adresse,
-                () => $"[{AdressPool[_addrIdx++ % AdressPool.Length]}]",                                                  entities);
-            result = ReplaceWithAlias(result, _rxPlz,          EntityType.Adresse,       () => $"[ORT-{_counter++}]",     entities);
+            result = ReplaceWithAlias(result, _rxIban,         EntityType.Konto,        () => _fakeIbans[_ibanIdx++ % _fakeIbans.Length],         entities);
+            result = ReplaceWithAlias(result, _rxAktenzeichen, EntityType.Aktenzeichen, () => $"[AZ-{_counter++}]",                                       entities);
+            result = ReplaceWithAlias(result, _rxTelefon,      EntityType.Telefon,      () => $"[TEL-{_counter++}]",                                      entities);
+            result = ReplaceWithAlias(result, _rxEmail,        EntityType.Email,        () => _fakeEmails[_emailIdx++ % _fakeEmails.Length],               entities);
+            result = ReplaceWithAlias(result, _rxBetrag,       EntityType.Betrag,       () => _fakeBetraege[_betragIdx++ % _fakeBetraege.Length],          entities);
+            result = ReplaceWithAlias(result, _rxDatum,        EntityType.Datum,        () => _fakeDaten[_datumIdx++ % _fakeDaten.Length],                 entities);
+            result = ReplaceWithAlias(result, _rxAdresse,      EntityType.Adresse,      () => $"[{AdressPool[_addrIdx++ % AdressPool.Length]}]",           entities);
+            result = ReplaceWithAlias(result, _rxPlz,          EntityType.Adresse,      () => $"[ORT-{_counter++}]",                                      entities);
             result = ReplacePersons(result, entities);
 
             return result;

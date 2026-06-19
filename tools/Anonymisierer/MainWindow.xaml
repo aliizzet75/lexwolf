@@ -115,6 +115,7 @@
                     <ScrollViewer Name="OriginalPdfScroll"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
+                                  ScrollChanged="OnOriginalPdfScrollChanged"
                                   Visibility="Collapsed">
                         <StackPanel Name="OriginalPdfPanel" Margin="14,14,14,14"/>
                     </ScrollViewer>
@@ -148,6 +149,7 @@
                     <ScrollViewer Name="AnonymizedPdfScroll"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
+                                  ScrollChanged="OnAnonymizedPdfScrollChanged"
                                   Visibility="Collapsed">
                         <StackPanel Name="AnonymizedPdfPanel" Margin="14,14,14,14"/>
                     </ScrollViewer>
