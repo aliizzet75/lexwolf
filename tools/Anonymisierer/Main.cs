@@ -142,7 +142,7 @@ namespace Anonymisierer
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private static readonly System.Text.RegularExpressions.Regex _rxTelefon =
-            new(@"\b((?:\+49|0049|0)\s*[\d][\d\s\-\/]{6,14})\b",
+            new(@"\b((?:\+49|0049|0)\d[\d\-\/]{6,13})\b",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private static readonly System.Text.RegularExpressions.Regex _rxIban =
@@ -150,7 +150,7 @@ namespace Anonymisierer
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private static readonly System.Text.RegularExpressions.Regex _rxBetrag =
-            new(@"(\d{1,3}(?:\.\d{3})*,\d{2}\s*€|€\s*\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}\s*€)",
+            new(@"(?<!\d)(\d{1,3}(?:\.\d{3})*,\d{2})(?!\d)",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private static readonly System.Text.RegularExpressions.Regex _rxAktenzeichen =
