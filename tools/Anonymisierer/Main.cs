@@ -116,53 +116,32 @@ namespace Anonymisierer
             "Schlumpfhausen-Gasse 10", "Smurf-Allee 42"
         };
 
-        // Häufige deutsche Substantive die keine Namen sind
+        // Nur Wörter ohne typische Nominalendung, die trotzdem keine Namen sind
         private static readonly HashSet<string> _stopWords = new(StringComparer.OrdinalIgnoreCase)
         {
-            // Formelle Pronomen (im Deutschen immer großgeschrieben – häufigste False-Positive-Quelle)
+            // Formelle Pronomen – im Deutschen immer großgeschrieben, häufigste False-Positive-Quelle
             "Sie", "Ihr", "Ihre", "Ihren", "Ihrem", "Ihres", "Ihnen",
-            // Anreden / Titel
-            "Herr", "Frau", "Herrn", "Damen", "Herren",
+            // Anreden / Titel (werden vom Salutation-Pass als Präfix verbraucht, hier als Sicherheitsnetz)
+            "Herr", "Frau", "Herrn",
             // Monate
             "Januar", "Februar", "März", "April", "Mai", "Juni",
             "Juli", "August", "September", "Oktober", "November", "Dezember",
-            // Vertragsparteien
-            "Mieter", "Vermieter", "Partei", "Parteien", "Auftraggeber", "Auftragnehmer",
-            "Gläubiger", "Schuldner", "Kläger", "Beklagter", "Mandant",
-            // Länder / Orte
-            "Deutschland", "Bundesrepublik", "Stuttgart", "München", "Berlin", "Hamburg",
-            // Wohneinheiten
-            "Wohnung", "Zimmer", "Küche", "Keller", "Garage", "Etage", "Stockwerk",
-            "Erdgeschoss", "Dachgeschoss", "Untergeschoss", "Wohngruppe",
-            // Dokument-Begriffe
-            "Anlage", "Anhang", "Seite", "Abschnitt", "Paragraph", "Absatz",
-            "Schreiben", "Dokument", "Dokumente", "Unterlagen", "Akte", "Akten",
-            "Protokoll", "Bescheid", "Formular", "Antrag", "Bericht", "Schriftsatz",
-            "Nachweis", "Kopie",
-            // Rechts-/Vertragsbegriffe
-            "Mietvertrag", "Vertrag", "Vereinbarung", "Kündigung", "Mahnung",
-            "Klage", "Beschwerde", "Einspruch", "Widerspruch", "Forderung", "Forderungen",
-            // Finanz-Begriffe
-            "Kredit", "Darlehen", "Hypothek", "Auszug", "Kontoauszug",
-            "Rechnung", "Zahlung", "Betrag", "Konto", "Kosten",
-            "Miete", "Nebenkosten", "Kaution", "Abschlag", "Anzahlung",
-            "Steuer", "Umsatzsteuer", "Mehrwertsteuer", "Gebühr",
-            "Kindergeld", "Leasingrate", "Leasingbeginn", "Kostenbeitrag",
-            "Ausgaben", "Einnahmen", "Lebensunterhalt", "Verwendungszweck",
-            // Immobilien-Begriffe
-            "Immobilie", "Grundstück", "Eigentümer", "Wohnfläche",
-            // Familienbegriffe
-            "Tochter", "Sohn", "Mutter", "Vater", "Kind", "Kinder", "Eltern",
-            // Gesundheitsbegriffe
-            "Krankheit", "Essstörung", "Depressionen", "Klinikaufenthalte",
-            "Therapie", "Behandlung",
-            // Fahrzeuge
-            "Kfz", "Auto",
-            // Allgemeine Substantive in Rechtstexten
-            "Anbei", "Betreff", "Hinweis", "Information", "Mitteilung",
-            "Bestätigung", "Quittung", "Übersicht", "Zusammenfassung",
-            "Datum", "Uhrzeit", "Unterschrift", "Stempel",
-            "Zeit", "Chance",
+            // Kurze Substantive ohne erkennbare Nominalendung
+            "Kfz", "Auto", "Zeit", "Miete", "Konto", "Kredit", "Klage",
+            "Kasse", "Daten", "Akte", "Kopie", "Seite",
+        };
+
+        // Typische Wortbildungsendungen deutscher Nomen – kommen in Personennamen nie vor.
+        // Deckt automatisch alle Komposita ab: Leasing·rate, Kosten·beitrag, Kinder·geld …
+        private static readonly string[] _germanNounSuffixes =
+        {
+            // Derivationssuffixe
+            "ung", "keit", "schaft", "heit", "nis", "tum",
+            // Zusammengesetzte Enden, die immer Sachbegriffe sind
+            "rate", "geld", "beitrag", "zweck", "kosten",
+            "antrag", "vertrag", "bescheid", "nachweis", "zahlung",
+            "auskunft", "aufenthalt", "aufenthalte", "auszug", "auftrag",
+            "steuer", "betrag", "beginn", "unterhalt",
         };
 
         // Pass 1: Name nach Anrede – "Frau Ruck", "Herrn Ali Izzet Erkol", "Dr. Schapmann"
@@ -285,10 +264,12 @@ namespace Anonymisierer
                 if (match.Groups[1].Success) return match.Value; // bereits ersetzter [Token]
 
                 var original = match.Groups[2].Value;
-                if (_stopWords.Contains(original)) return original;
-                // Auch Einzelwörter innerhalb der Sequenz prüfen – verhindert "Auszug Kredit Immobilie"
-                if (original.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                            .Any(w => _stopWords.Contains(w))) return original;
+                // Jedes Wort der Sequenz prüfen: stopWords (Pronomen, kurze Wörter)
+                // UND morphologischer Suffix-Filter (Nominalendungen die in Namen nie vorkommen)
+                var words = original.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (words.Any(w => _stopWords.Contains(w) ||
+                                   _germanNounSuffixes.Any(s => w.EndsWith(s, StringComparison.OrdinalIgnoreCase))))
+                    return original;
 
                 if (_mapping.TryGetValue(original, out var existing))
                 {
