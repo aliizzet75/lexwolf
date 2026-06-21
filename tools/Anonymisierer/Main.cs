@@ -193,7 +193,11 @@ namespace Anonymisierer
             {
                 var original = match.Value;
                 if (_mapping.TryGetValue(original, out var existing))
+                {
+                    if (!entities.Any(e => e.Text == original))
+                        entities.Add(new Entity { Text = original, Type = type, AnonymizedText = existing });
                     return existing;
+                }
                 var alias = makeAlias();
                 _mapping[original] = alias;
                 _entityTypes[original] = type;
@@ -211,7 +215,12 @@ namespace Anonymisierer
 
                 var original = match.Groups[2].Value;
                 if (_stopWords.Contains(original)) return original;
-                if (_mapping.TryGetValue(original, out var existing)) return existing;
+                if (_mapping.TryGetValue(original, out var existing))
+                {
+                    if (!entities.Any(e => e.Text == original))
+                        entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = existing });
+                    return existing;
+                }
 
                 var alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
                 _mapping[original] = alias;
