@@ -119,6 +119,8 @@ namespace Anonymisierer
         // Häufige deutsche Substantive die keine Namen sind
         private static readonly HashSet<string> _stopWords = new(StringComparer.OrdinalIgnoreCase)
         {
+            // Formelle Pronomen (im Deutschen immer großgeschrieben – häufigste False-Positive-Quelle)
+            "Sie", "Ihr", "Ihre", "Ihren", "Ihrem", "Ihres", "Ihnen",
             // Anreden / Titel
             "Herr", "Frau", "Herrn", "Damen", "Herren",
             // Monate
@@ -131,25 +133,36 @@ namespace Anonymisierer
             "Deutschland", "Bundesrepublik", "Stuttgart", "München", "Berlin", "Hamburg",
             // Wohneinheiten
             "Wohnung", "Zimmer", "Küche", "Keller", "Garage", "Etage", "Stockwerk",
-            "Erdgeschoss", "Dachgeschoss", "Untergeschoss",
+            "Erdgeschoss", "Dachgeschoss", "Untergeschoss", "Wohngruppe",
             // Dokument-Begriffe
             "Anlage", "Anhang", "Seite", "Abschnitt", "Paragraph", "Absatz",
             "Schreiben", "Dokument", "Dokumente", "Unterlagen", "Akte", "Akten",
             "Protokoll", "Bescheid", "Formular", "Antrag", "Bericht", "Schriftsatz",
+            "Nachweis", "Kopie",
             // Rechts-/Vertragsbegriffe
             "Mietvertrag", "Vertrag", "Vereinbarung", "Kündigung", "Mahnung",
-            "Klage", "Beschwerde", "Einspruch", "Widerspruch", "Forderung",
+            "Klage", "Beschwerde", "Einspruch", "Widerspruch", "Forderung", "Forderungen",
             // Finanz-Begriffe
             "Kredit", "Darlehen", "Hypothek", "Auszug", "Kontoauszug",
-            "Rechnung", "Zahlung", "Zahlung", "Betrag", "Konto", "Kosten",
+            "Rechnung", "Zahlung", "Betrag", "Konto", "Kosten",
             "Miete", "Nebenkosten", "Kaution", "Abschlag", "Anzahlung",
             "Steuer", "Umsatzsteuer", "Mehrwertsteuer", "Gebühr",
+            "Kindergeld", "Leasingrate", "Leasingbeginn", "Kostenbeitrag",
+            "Ausgaben", "Einnahmen", "Lebensunterhalt", "Verwendungszweck",
             // Immobilien-Begriffe
             "Immobilie", "Grundstück", "Eigentümer", "Wohnfläche",
+            // Familienbegriffe
+            "Tochter", "Sohn", "Mutter", "Vater", "Kind", "Kinder", "Eltern",
+            // Gesundheitsbegriffe
+            "Krankheit", "Essstörung", "Depressionen", "Klinikaufenthalte",
+            "Therapie", "Behandlung",
+            // Fahrzeuge
+            "Kfz", "Auto",
             // Allgemeine Substantive in Rechtstexten
             "Anbei", "Betreff", "Hinweis", "Information", "Mitteilung",
             "Bestätigung", "Quittung", "Übersicht", "Zusammenfassung",
             "Datum", "Uhrzeit", "Unterschrift", "Stempel",
+            "Zeit", "Chance",
         };
 
         // Pass 1: Name nach Anrede – "Frau Ruck", "Herrn Ali Izzet Erkol", "Dr. Schapmann"
@@ -168,7 +181,7 @@ namespace Anonymisierer
                 System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         private static readonly System.Text.RegularExpressions.Regex _rxAdresse =
-            new(@"\b([A-ZÄÖÜ][a-zäöüß]+(?:straße|strasse|str\.|weg|gasse|platz|allee|ring|damm|pfad|ufer)[^\S\r\n]+\d{1,3}\s*[a-z]?)\b",
+            new(@"\b([A-ZÄÖÜ][a-zäöüß]+(?:straße|strasse|str\.|weg|gasse|platz|allee|ring|damm|pfad|ufer)[^\S\r\n]*\d{1,3}\s*[a-z]?)\b",
                 System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         private static readonly System.Text.RegularExpressions.Regex _rxPlz =
