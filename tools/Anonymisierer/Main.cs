@@ -119,17 +119,48 @@ namespace Anonymisierer
         // Häufige deutsche Substantive die keine Namen sind
         private static readonly HashSet<string> _stopWords = new(StringComparer.OrdinalIgnoreCase)
         {
-            "Mieter", "Vermieter", "Partei", "Herr", "Frau", "Januar", "Februar", "März",
-            "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November",
-            "Dezember", "Mietvertrag", "Vertrag", "Deutschland", "Bundesrepublik",
+            // Anreden / Titel
+            "Herr", "Frau", "Herrn", "Damen", "Herren",
+            // Monate
+            "Januar", "Februar", "März", "April", "Mai", "Juni",
+            "Juli", "August", "September", "Oktober", "November", "Dezember",
+            // Vertragsparteien
+            "Mieter", "Vermieter", "Partei", "Parteien", "Auftraggeber", "Auftragnehmer",
+            "Gläubiger", "Schuldner", "Kläger", "Beklagter", "Mandant",
+            // Länder / Orte
+            "Deutschland", "Bundesrepublik", "Stuttgart", "München", "Berlin", "Hamburg",
+            // Wohneinheiten
             "Wohnung", "Zimmer", "Küche", "Keller", "Garage", "Etage", "Stockwerk",
+            "Erdgeschoss", "Dachgeschoss", "Untergeschoss",
+            // Dokument-Begriffe
             "Anlage", "Anhang", "Seite", "Abschnitt", "Paragraph", "Absatz",
+            "Schreiben", "Dokument", "Dokumente", "Unterlagen", "Akte", "Akten",
+            "Protokoll", "Bescheid", "Formular", "Antrag", "Bericht", "Schriftsatz",
+            // Rechts-/Vertragsbegriffe
+            "Mietvertrag", "Vertrag", "Vereinbarung", "Kündigung", "Mahnung",
+            "Klage", "Beschwerde", "Einspruch", "Widerspruch", "Forderung",
+            // Finanz-Begriffe
+            "Kredit", "Darlehen", "Hypothek", "Auszug", "Kontoauszug",
+            "Rechnung", "Zahlung", "Zahlung", "Betrag", "Konto", "Kosten",
+            "Miete", "Nebenkosten", "Kaution", "Abschlag", "Anzahlung",
+            "Steuer", "Umsatzsteuer", "Mehrwertsteuer", "Gebühr",
+            // Immobilien-Begriffe
+            "Immobilie", "Grundstück", "Eigentümer", "Wohnfläche",
+            // Allgemeine Substantive in Rechtstexten
+            "Anbei", "Betreff", "Hinweis", "Information", "Mitteilung",
+            "Bestätigung", "Quittung", "Übersicht", "Zusammenfassung",
+            "Datum", "Uhrzeit", "Unterschrift", "Stempel",
         };
 
-        // Kombinierte Regex: Gruppe 1 = bereits ersetzte [Token] überspringen,
-        // Gruppe 2 = echter Personenname inkl. Initialen wie "Wilhelm R. Schapmann"
-        private static readonly System.Text.RegularExpressions.Regex _rxPerson =
-            new(@"(\[[^\]]+\])|(\b[A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+(?:[A-ZÄÖÜ]\.[^\S\r\n]*)?[A-ZÄÖÜ][a-zäöüß]{1,20}){1,3}\b)",
+        // Pass 1: Name nach Anrede – "Frau Ruck", "Herrn Ali Izzet Erkol", "Dr. Schapmann"
+        private static readonly System.Text.RegularExpressions.Regex _rxPersonSalutation =
+            new(@"(?:Herr(?:n|in)?|Frau(?:en)?|Dr\.|Prof\.(?:in)?|Dipl\.[-\w]*\.)\s+([A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+(?:[A-ZÄÖÜ]\.[^\S\r\n]*)?[A-ZÄÖÜ][a-zäöüß]{1,20}){0,2})",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        // Pass 2: mind. 3 großgeschriebene Wörter ohne Anrede – "Ali Izzet Erkol"
+        // {2,3} statt {1,3}: verhindert False Positives wie "Auszug Kredit" (nur 2 Wörter)
+        private static readonly System.Text.RegularExpressions.Regex _rxPersonBare =
+            new(@"(\[[^\]]+\])|(\b[A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+[A-ZÄÖÜ][a-zäöüß]{1,20}){2,3}\b)",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private static readonly System.Text.RegularExpressions.Regex _rxDatum =
@@ -208,13 +239,44 @@ namespace Anonymisierer
 
         private static string ReplacePersons(string text, List<Entity> entities)
         {
-            return _rxPerson.Replace(text, match =>
+            // Pass 1: Name unmittelbar nach Anrede (Frau/Herr/Dr./Prof.) → zuverlässige Erkennung
+            text = _rxPersonSalutation.Replace(text, match =>
             {
-                // Gruppe 1: bereits ersetzter [Token] → unverändert lassen
-                if (!match.Groups[2].Success) return match.Value;
+                var original = match.Groups[1].Value;
+                if (_stopWords.Contains(original)) return match.Value;
+
+                string alias;
+                if (_mapping.TryGetValue(original, out var existing))
+                {
+                    alias = existing;
+                    if (!entities.Any(e => e.Text == original))
+                        entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
+                }
+                else
+                {
+                    alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
+                    _mapping[original] = alias;
+                    _entityTypes[original] = EntityType.Person;
+                    entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
+                }
+
+                // Anrede-Präfix ("Frau ", "Herrn " etc.) unverändert lassen, nur Namen ersetzen
+                int prefixLen = match.Groups[1].Index - match.Index;
+                return match.Value[..prefixLen] + alias;
+            });
+
+            // Pass 2: mind. 3 großgeschriebene Wörter ohne Anrede – "Ali Izzet Erkol"
+            // {2,3} verhindert False Positives wie "Auszug Kredit" (nur 2 Wörter)
+            return _rxPersonBare.Replace(text, match =>
+            {
+                if (match.Groups[1].Success) return match.Value; // bereits ersetzter [Token]
 
                 var original = match.Groups[2].Value;
                 if (_stopWords.Contains(original)) return original;
+                // Auch Einzelwörter innerhalb der Sequenz prüfen – verhindert "Auszug Kredit Immobilie"
+                if (original.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                            .Any(w => _stopWords.Contains(w))) return original;
+
                 if (_mapping.TryGetValue(original, out var existing))
                 {
                     if (!entities.Any(e => e.Text == original))
