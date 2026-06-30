@@ -13,6 +13,7 @@ from api.ask import router as ask_router
 from api.subscription import router as subscription_router
 from api.chat import router as chat_router
 from api.mandant import router as mandant_router
+from api.ner import router as ner_router
 
 # Import Neo4j service
 from services.neo4j_service import Neo4jService
@@ -63,6 +64,7 @@ app.include_router(ask_router)
 app.include_router(subscription_router)
 app.include_router(chat_router)
 app.include_router(mandant_router)
+app.include_router(ner_router)
 
 @app.get("/")
 async def root():

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -53,6 +54,19 @@ namespace Anonymisierer
         public DateTime? LetzterKontakt { get; set; }
     }
 
+    // NER-Response von FastAPI /ner
+    internal sealed class NerEntity
+    {
+        public string text  { get; set; } = string.Empty;
+        public string label { get; set; } = string.Empty;
+        public int    start { get; set; }
+        public int    end   { get; set; }
+    }
+    internal sealed class NerResponse
+    {
+        public List<NerEntity> entities { get; set; } = new();
+    }
+
     // Hauptklasse für die Anonymisierungs-Logik
     public static class Anonymizer
     {
@@ -66,6 +80,10 @@ namespace Anonymisierer
         private static int _betragIdx;
         private static int _ibanIdx;
         private static int _emailIdx;
+
+        // NER-Endpoint konfigurierbar; Standard ist der lokale LexWolf-Backend-Port
+        public static string NerEndpoint { get; set; } = "http://localhost:8000/ner";
+        private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
         private static readonly string[] _fakeDaten =
         {
@@ -116,43 +134,9 @@ namespace Anonymisierer
             "Schlumpfhausen-Gasse 10", "Smurf-Allee 42"
         };
 
-        // Nur Wörter ohne typische Nominalendung, die trotzdem keine Namen sind
-        private static readonly HashSet<string> _stopWords = new(StringComparer.OrdinalIgnoreCase)
-        {
-            // Formelle Pronomen – im Deutschen immer großgeschrieben, häufigste False-Positive-Quelle
-            "Sie", "Ihr", "Ihre", "Ihren", "Ihrem", "Ihres", "Ihnen",
-            // Anreden / Titel (werden vom Salutation-Pass als Präfix verbraucht, hier als Sicherheitsnetz)
-            "Herr", "Frau", "Herrn",
-            // Monate
-            "Januar", "Februar", "März", "April", "Mai", "Juni",
-            "Juli", "August", "September", "Oktober", "November", "Dezember",
-            // Kurze Substantive ohne erkennbare Nominalendung
-            "Kfz", "Auto", "Zeit", "Miete", "Konto", "Kredit", "Klage",
-            "Kasse", "Daten", "Akte", "Kopie", "Seite",
-        };
-
-        // Typische Wortbildungsendungen deutscher Nomen – kommen in Personennamen nie vor.
-        // Deckt automatisch alle Komposita ab: Leasing·rate, Kosten·beitrag, Kinder·geld …
-        private static readonly string[] _germanNounSuffixes =
-        {
-            // Derivationssuffixe
-            "ung", "keit", "schaft", "heit", "nis", "tum",
-            // Zusammengesetzte Enden, die immer Sachbegriffe sind
-            "rate", "geld", "beitrag", "zweck", "kosten",
-            "antrag", "vertrag", "bescheid", "nachweis", "zahlung",
-            "auskunft", "aufenthalt", "aufenthalte", "auszug", "auftrag",
-            "steuer", "betrag", "beginn", "unterhalt",
-        };
-
         // Pass 1: Name nach Anrede – "Frau Ruck", "Herrn Ali Izzet Erkol", "Dr. Schapmann"
         private static readonly System.Text.RegularExpressions.Regex _rxPersonSalutation =
             new(@"(?:Herr(?:n|in)?|Frau(?:en)?|Dr\.|Prof\.(?:in)?|Dipl\.[-\w]*\.)\s+([A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+(?:[A-ZÄÖÜ]\.[^\S\r\n]*)?[A-ZÄÖÜ][a-zäöüß]{1,20}){0,2})",
-                System.Text.RegularExpressions.RegexOptions.Compiled);
-
-        // Pass 2: mind. 3 großgeschriebene Wörter ohne Anrede – "Ali Izzet Erkol"
-        // {2,3} statt {1,3}: verhindert False Positives wie "Auszug Kredit" (nur 2 Wörter)
-        private static readonly System.Text.RegularExpressions.Regex _rxPersonBare =
-            new(@"(\[[^\]]+\])|(\b[A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+[A-ZÄÖÜ][a-zäöüß]{1,20}){2,3}\b)",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private static readonly System.Text.RegularExpressions.Regex _rxDatum =
@@ -187,9 +171,8 @@ namespace Anonymisierer
             new(@"\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
-        public static string AnonymizeText(string text, out List<Entity> entities)
+        public static async Task<string> AnonymizeTextAsync(string text, List<Entity> entities)
         {
-            entities = new List<Entity>();
             string result = text;
 
             result = ReplaceWithAlias(result, _rxIban,         EntityType.Konto,        () => _fakeIbans[_ibanIdx++ % _fakeIbans.Length],         entities);
@@ -200,8 +183,17 @@ namespace Anonymisierer
             result = ReplaceWithAlias(result, _rxDatum,        EntityType.Datum,        () => _fakeDaten[_datumIdx++ % _fakeDaten.Length],                 entities);
             result = ReplaceWithAlias(result, _rxAdresse,      EntityType.Adresse,      () => $"[{AdressPool[_addrIdx++ % AdressPool.Length]}]",           entities);
             result = ReplaceWithAlias(result, _rxPlz,          EntityType.Adresse,      () => $"[ORT-{_counter++}]",                                      entities);
-            result = ReplacePersons(result, entities);
+            result = await ReplacePersonsAsync(result, entities);
 
+            return result;
+        }
+
+        // Synchronous wrapper kept for compatibility (blocks async)
+        public static string AnonymizeText(string text, out List<Entity> entities)
+        {
+            var list = new List<Entity>();
+            var result = AnonymizeTextAsync(text, list).GetAwaiter().GetResult();
+            entities = list;
             return result;
         }
 
@@ -229,14 +221,12 @@ namespace Anonymisierer
             });
         }
 
-        private static string ReplacePersons(string text, List<Entity> entities)
+        private static async Task<string> ReplacePersonsAsync(string text, List<Entity> entities)
         {
-            // Pass 1: Name unmittelbar nach Anrede (Frau/Herr/Dr./Prof.) → zuverlässige Erkennung
+            // Pass 1: Salutation-basiert (Frau/Herr/Dr./Prof.) — bleibt unverändert, sehr zuverlässig
             text = _rxPersonSalutation.Replace(text, match =>
             {
                 var original = match.Groups[1].Value;
-                if (_stopWords.Contains(original)) return match.Value;
-
                 string alias;
                 if (_mapping.TryGetValue(original, out var existing))
                 {
@@ -247,43 +237,90 @@ namespace Anonymisierer
                 else
                 {
                     alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
-                    _mapping[original] = alias;
-                    _entityTypes[original] = EntityType.Person;
+                    StorePersonAlias(original, alias);
                     entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
                 }
-
-                // Anrede-Präfix ("Frau ", "Herrn " etc.) unverändert lassen, nur Namen ersetzen
                 int prefixLen = match.Groups[1].Index - match.Index;
                 return match.Value[..prefixLen] + alias;
             });
 
-            // Pass 2: mind. 3 großgeschriebene Wörter ohne Anrede – "Ali Izzet Erkol"
-            // {2,3} verhindert False Positives wie "Auszug Kredit" (nur 2 Wörter)
-            return _rxPersonBare.Replace(text, match =>
+            // Pre-Pass: bekannte Personen aus Mapping direkt ersetzen (längste zuerst → kein Doppelersatz)
+            text = ApplyKnownPersonMappings(text, entities);
+
+            // Pass 2: spaCy NER — nur noch unbekannte Namen werden gefunden
+            text = await ReplaceViaSpacyNer(text, entities);
+
+            return text;
+        }
+
+        // Wendet alle bekannten Personen-Mappings an (längste Einträge zuerst, um Überlappungen zu vermeiden)
+        private static string ApplyKnownPersonMappings(string text, List<Entity> entities)
+        {
+            var personEntries = _mapping
+                .Where(kvp => _entityTypes.TryGetValue(kvp.Key, out var t) && t == EntityType.Person)
+                .OrderByDescending(kvp => kvp.Key.Length)
+                .ToList();
+
+            foreach (var (orig, alias) in personEntries)
             {
-                if (match.Groups[1].Success) return match.Value; // bereits ersetzter [Token]
+                if (!text.Contains(orig)) continue;
+                text = text.Replace(orig, alias);
+                if (!entities.Any(e => e.Text == orig))
+                    entities.Add(new Entity { Text = orig, Type = EntityType.Person, AnonymizedText = alias });
+            }
+            return text;
+        }
 
-                var original = match.Groups[2].Value;
-                // Jedes Wort der Sequenz prüfen: stopWords (Pronomen, kurze Wörter)
-                // UND morphologischer Suffix-Filter (Nominalendungen die in Namen nie vorkommen)
-                var words = original.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (words.Any(w => _stopWords.Contains(w) ||
-                                   _germanNounSuffixes.Any(s => w.EndsWith(s, StringComparison.OrdinalIgnoreCase))))
-                    return original;
-
-                if (_mapping.TryGetValue(original, out var existing))
+        // Ruft POST /ner auf, ersetzt neue PER-Entitäten und speichert Alias + Teilnamen im Mapping
+        private static async Task<string> ReplaceViaSpacyNer(string text, List<Entity> entities)
+        {
+            NerResponse? nerResult = null;
+            try
+            {
+                var payload = JsonSerializer.Serialize(new { text });
+                using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                using var resp = await _http.PostAsync(NerEndpoint, content);
+                if (resp.IsSuccessStatusCode)
                 {
-                    if (!entities.Any(e => e.Text == original))
-                        entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = existing });
-                    return existing;
+                    var json = await resp.Content.ReadAsStringAsync();
+                    nerResult = JsonSerializer.Deserialize<NerResponse>(json);
                 }
+            }
+            catch { /* NER nicht verfügbar → nur Salutation-Pass greift */ }
+
+            if (nerResult == null || nerResult.entities.Count == 0) return text;
+
+            // Entitäten von hinten nach vorne ersetzen, damit Offsets gültig bleiben
+            // (Text wurde durch Pre-Pass ggf. bereits verändert → neu suchen per Contains)
+            foreach (var ent in nerResult.entities.OrderByDescending(e => e.start))
+            {
+                // Entität auf die erste Zeile begrenzen (spaCy verbindet manchmal Name+Adresse)
+                var name = ent.text.Contains('\n') ? ent.text[..ent.text.IndexOf('\n')].Trim() : ent.text.Trim();
+                if (name.Length < 2) continue;
+                if (!text.Contains(name)) continue;          // bereits durch Pre-Pass ersetzt
+                if (_mapping.ContainsKey(name)) continue;    // Race-condition-Schutz
 
                 var alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
-                _mapping[original] = alias;
-                _entityTypes[original] = EntityType.Person;
-                entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
-                return alias;
-            });
+                StorePersonAlias(name, alias);
+                entities.Add(new Entity { Text = name, Type = EntityType.Person, AnonymizedText = alias });
+                text = text.Replace(name, alias);
+            }
+            return text;
+        }
+
+        // Speichert den vollen Namen UND den letzten Token (Nachname) als separate Mapping-Einträge
+        private static void StorePersonAlias(string fullName, string alias)
+        {
+            _mapping[fullName] = alias;
+            _entityTypes[fullName] = EntityType.Person;
+
+            // Letzten Token als Nachname separat mappen (≥4 Zeichen, kein Alias-Muster)
+            var lastName = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Last();
+            if (lastName.Length >= 4 && !_mapping.ContainsKey(lastName))
+            {
+                _mapping[lastName] = alias;
+                _entityTypes[lastName] = EntityType.Person;
+            }
         }
 
         // De-Anonymisierung
