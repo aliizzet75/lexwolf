@@ -85,6 +85,16 @@ desktop/bin/
 desktop/obj/
 tools/*/bin/
 tools/*/obj/
+tools/**/bin/
+tools/**/obj/
+
+# Anonymisierer test artifacts (enthalten teils echte Mandanten-PII)
+tools/Anonymisierer/Anonymisierer.Tests/.lexwolf_mapping.json
+tools/Anonymisierer/Anonymisierer.Tests/entities.json
+tools/Anonymisierer/Anonymisierer.Tests/*_anon.txt
+tools/Anonymisierer/Anonymisierer.Tests/anon_report.md
+backend/api/*.bak
+backend/server.log
 
 # Aligator-generierte Test- und Debug-Dateien (root-level)
 aligator.py
