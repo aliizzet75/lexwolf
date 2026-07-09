@@ -21,6 +21,13 @@ namespace Anonymisierer.Services
             return Path.Combine(outputDir, relPath);
         }
 
+        public static string GetAnonFilePath(string sourcePath)
+        {
+            var dir = Path.GetDirectoryName(sourcePath)!;
+            var name = Path.GetFileNameWithoutExtension(sourcePath);
+            return Path.Combine(dir, name + "_anon.txt");
+        }
+
         public static void WriteFile(string sourcePath, string destPath, string anonymizedText, List<Anonymisierer.Entity> entities)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
@@ -43,6 +50,14 @@ namespace Anonymisierer.Services
             else
             {
                 File.WriteAllText(destPath, anonymizedText, Encoding.UTF8);
+            }
+
+            // Task #196: Create _anon.txt in the same folder as the original file
+            // This enables LexWolf ingestion by providing plaintext versions
+            if (!Path.GetExtension(sourcePath).Equals(".pdf", System.StringComparison.OrdinalIgnoreCase))
+            {
+                var anonFilePath = GetAnonFilePath(sourcePath);
+                File.WriteAllText(anonFilePath, anonymizedText, Encoding.UTF8);
             }
         }
 

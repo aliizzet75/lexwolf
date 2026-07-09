@@ -456,6 +456,14 @@ namespace Anonymisierer
                         var anonymized = Anonymizer.AnonymizeText(content, out _);
                         var destPath   = ExportService.GetDestPath(file.Path, outputDir, _scanRootPath);
                         ExportService.WriteFile(file.Path, destPath, anonymized, new List<Entity>());
+
+                        // Task #196: Create _anon.txt in the same folder as the original file
+                        // This enables LexWolf ingestion by providing plaintext versions
+                        var dir = Path.GetDirectoryName(file.Path)!;
+                        var name = Path.GetFileNameWithoutExtension(file.Path);
+                        var anonFilePath = Path.Combine(dir, name + "_anon.txt");
+                        System.IO.File.WriteAllText(anonFilePath, anonymized, System.Text.Encoding.UTF8);
+
                         success++;
                     }
                     catch { failed++; }

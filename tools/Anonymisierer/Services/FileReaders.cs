@@ -148,11 +148,18 @@ namespace Anonymisierer.Services
                 using var stream = entry.Open();
                 var doc = System.Xml.Linq.XDocument.Load(stream);
                 var sb = new System.Text.StringBuilder();
+                // Alle text:p, text:h und text:span Knoten durchlaufen
                 foreach (var el in doc.Descendants())
                 {
                     var local = el.Name.LocalName;
-                    if (local == "p" || local == "h")
-                        sb.AppendLine(el.Value);
+                    if (local == "p" || local == "h" || local == "span")
+                    {
+                        var text = el.Value?.Trim();
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            sb.AppendLine(text);
+                        }
+                    }
                 }
                 return sb.ToString();
             }
