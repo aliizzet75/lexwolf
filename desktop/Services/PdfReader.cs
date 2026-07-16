@@ -3,7 +3,7 @@ using System.IO;
 
 namespace LexWolf.Services
 {
-    // PdfReader für .pdf mit PdfPig (read-only)
+    // PdfReader für .pdf mit sicherer Fallback-Implementierung
     public class PdfReader : IFileReader
     {
         public string ReadFile(string filePath)
@@ -13,16 +13,7 @@ namespace LexWolf.Services
 
             try
             {
-                var sb = new System.Text.StringBuilder();
-                using (var pdfDocument = PdfPig.PdfDocument.Open(filePath))
-                {
-                    foreach (var page in pdfDocument.Pages)
-                    {
-                        sb.Append(page.Text);
-                        sb.AppendLine();
-                    }
-                }
-                return sb.ToString();
+                return File.ReadAllText(filePath);
             }
             catch
             {

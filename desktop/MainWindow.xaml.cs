@@ -1,14 +1,18 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using Forms = System.Windows.Forms;
 using LexWolf.Database;
 using LexWolf.Services;
 using LexWolf.Dialogs;
@@ -203,9 +207,9 @@ public partial class MainWindow : Window
         UnterhaltBtn.Visibility = Visibility.Collapsed;
     }
 
-    private void OnInputKeyDown(object sender, KeyEventArgs e)
+    private void OnInputKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (e.Key == Key.Return && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        if (e.Key == System.Windows.Input.Key.Return && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
         {
             e.Handled = true;
             OnSend(sender, e);
@@ -297,24 +301,24 @@ public partial class MainWindow : Window
 
     // ── UI Rendering ──────────────────────────────────────────────────────────
 
-    private static TextBox CreateSelectableTextBox(string text, Brush foreground, double fontSize = 13)
+    private static System.Windows.Controls.TextBox CreateSelectableTextBox(string text, System.Windows.Media.Brush foreground, double fontSize = 13)
     {
-        return new TextBox
+        return new System.Windows.Controls.TextBox
         {
             Text = text,
             Foreground = foreground,
             FontSize = fontSize,
-            TextWrapping = TextWrapping.Wrap,
+            TextWrapping = System.Windows.TextWrapping.Wrap,
             AcceptsReturn = true,
             IsReadOnly = true,
-            BorderThickness = new Thickness(0),
-            Background = Brushes.Transparent,
-            Padding = new Thickness(0),
-            Margin = new Thickness(0),
+            BorderThickness = new System.Windows.Thickness(0),
+            Background = System.Windows.Media.Brushes.Transparent,
+            Padding = new System.Windows.Thickness(0),
+            Margin = new System.Windows.Thickness(0),
             IsTabStop = false,
-            SelectionBrush = new SolidColorBrush(Color.FromRgb(31, 111, 235)),
-            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            SelectionBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(31, 111, 235)),
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Disabled,
+            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Disabled,
         };
     }
 
@@ -647,7 +651,7 @@ public partial class MainWindow : Window
             bool inside = false;
             foreach (char c in xml)
             {
-                if (c == '<) { inside = true; continue; }
+                if (c == '<') { inside = true; continue; }
                 if (c == '>') { inside = false; sb.Append(' '); continue; }
                 if (!inside) sb.Append(c);
             }
@@ -756,12 +760,12 @@ public partial class MainWindow : Window
     private async void OnExportClicked(object sender, RoutedEventArgs e)
     {
         // Ordnerauswahl für Export-Ziel
-        var folderDialog = new System.Windows.Forms.FolderBrowserDialog();
+        var folderDialog = new Forms.FolderBrowserDialog();
         folderDialog.Description = "Wählen Sie den Ausgabeordner für anonymisierte Dateien";
         folderDialog.ShowNewFolderButton = true;
         
         var result = folderDialog.ShowDialog();
-        if (result != System.Windows.Forms.DialogResult.OK)
+        if (result != Forms.DialogResult.OK)
             return;
 
         var outputFolder = folderDialog.SelectedPath;
@@ -782,14 +786,14 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Fehler beim Scannen: {ex.Message}");
+            System.Windows.MessageBox.Show($"Fehler beim Scannen: {ex.Message}");
             ProgressBar.IsEnabled = false;
             return;
         }
 
         if (allFiles.Count == 0)
         {
-            MessageBox.Show("Keine unterstützten Dateien gefunden.");
+            System.Windows.MessageBox.Show("Keine unterstützten Dateien gefunden.");
             ProgressBar.IsEnabled = false;
             return;
         }
@@ -827,90 +831,12 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Fehler beim Exportieren von {file}: {ex.Message}");
+                System.Windows.MessageBox.Show($"Fehler beim Exportieren von {file}: {ex.Message}");
             }
         }
 
         ProgressBar.IsEnabled = false;
-        MessageBox.Show($"Export abgeschlossen. {exportedCount} Dateien wurden in {outputFolder} gespeichert.");
-    }
-
-    private string LoadFileContent(string filePath)
-    {
-        var ext = Path.GetExtension(filePath).ToLowerInvariant();
-        try
-        {
-            if (ext == ".txt") return File.ReadAllText(filePath);
-            if (ext == ".docx") return ReadDocx(filePath);
-            if (ext == ".pdf") return ReadPdf(filePath);
-            if (ext == ".eml") return ReadEml(filePath);
-            return "Dateityp nicht unterstützt";
-        }
-        catch (Exception ex)
-        {
-            return $"Fehler beim Laden: {ex.Message}";
-        }
-    }
-
-    private static string ReadDocx(string filePath)
-    {
-        if (!File.Exists(filePath))
-            return string.Empty;
-
-        try
-        {
-            using var doc = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(filePath, false);
-            var mainPart = doc.MainDocumentPart;
-            if (mainPart == null)
-                return string.Empty;
-
-            var text = mainPart.Document.Body.InnerText;
-            return text;
-        }
-        catch (Exception ex)
-        {
-            return $"Fehler beim Lesen: {ex.Message}";
-        }
-    }
-
-    private static string ReadPdf(string filePath)
-    {
-        if (!File.Exists(filePath))
-            return string.Empty;
-
-        try
-        {
-            using (var pdfDocument = UglyToad.PdfPig.PdfDocument.Open(filePath))
-            {
-                var text = new System.Text.StringBuilder();
-                foreach (var page in pdfDocument.Pages)
-                {
-                    text.AppendLine(page.Text);
-                }
-                return text.ToString();
-            }
-        }
-        catch (Exception ex)
-        {
-            return $"Fehler beim Lesen: {ex.Message}";
-        }
-    }
-
-    private static string ReadEml(string filePath)
-    {
-        if (!File.Exists(filePath))
-            return string.Empty;
-
-        try
-        {
-            using var reader = new System.IO.StreamReader(filePath);
-            var content = reader.ReadToEnd();
-            return content;
-        }
-        catch (Exception ex)
-        {
-            return $"Fehler beim Lesen: {ex.Message}";
-        }
+        System.Windows.MessageBox.Show($"Export abgeschlossen. {exportedCount} Dateien wurden in {outputFolder} gespeichert.");
     }
 
     private string AnonymizeText(string text)

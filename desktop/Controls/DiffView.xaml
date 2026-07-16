@@ -10,21 +10,23 @@
         </Grid.RowDefinitions>
 
         <!-- Title Bar -->
-        <DockPanel Background="#161b22" Padding="10,5" Grid.Row="0">
-            <TextBlock Text="🔍 Diff-Ansicht" 
-                       Foreground="#c9d1d9" 
-                       FontSize="14" 
-                       FontWeight="Bold"/>
-            <Button Content="🔄 Diff berechnen" 
-                    DockPanel.Dock="Right"
-                    Click="OnComputeDiff"
-                    Background="#21262d" 
-                    Foreground="#c9d1d9" 
-                    BorderBrush="#30363d" 
-                    BorderThickness="1"
-                    Padding="10,5"
-                    Margin="10,0,0,0"/>
-        </DockPanel>
+        <Border Background="#161b22" Padding="10,5" Grid.Row="0">
+            <DockPanel>
+                <TextBlock Text="🔍 Diff-Ansicht" 
+                           Foreground="#c9d1d9" 
+                           FontSize="14" 
+                           FontWeight="Bold"/>
+                <Button Content="🔄 Diff berechnen" 
+                        DockPanel.Dock="Right"
+                        Click="OnComputeDiff"
+                        Background="#21262d" 
+                        Foreground="#c9d1d9" 
+                        BorderBrush="#30363d" 
+                        BorderThickness="1"
+                        Padding="10,5"
+                        Margin="10,0,0,0"/>
+            </DockPanel>
+        </Border>
 
         <!-- Diff Display (Scrollable) -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
