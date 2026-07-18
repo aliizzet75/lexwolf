@@ -70,6 +70,14 @@ namespace Anonymisierer
     {
         private static readonly Dictionary<string, string> _mapping = new();
         private static readonly Dictionary<string, EntityType> _entityTypes = new();
+
+        // Zweite, normalisierte Sicht auf _mapping: fängt Fälle ab, in denen dieselbe reale
+        // Entität (z.B. eine Adresse) in unterschiedlichen Dokumentformaten (ODT vs. RTF) mit
+        // leicht abweichendem Whitespace extrahiert wird und sonst zwei verschiedene Aliase
+        // bekäme. _mapping selbst behält seine Original-String-Keys (wird u.a. von
+        // ApplyKnownMappings per Volltext-Contains/Replace durchsucht) — diese Dictionary dient
+        // nur als Fallback-Lookup für die Alias-Wiederverwendung.
+        private static readonly Dictionary<string, string> _mappingByNormalizedKey = new();
         private static string _mappingFilePath = string.Empty;
         private static int _counter = 1;
         private static int _personIdx;
@@ -251,6 +259,33 @@ namespace Anonymisierer
             return result;
         }
 
+        // Normalisiert einen Original-String für den Fallback-Abgleich in _mappingByNormalizedKey:
+        // mehrfacher Whitespace (inkl. Zeilenumbrüche) wird auf ein einzelnes Leerzeichen reduziert,
+        // Rand-Whitespace entfernt. Fängt Extraktionsunterschiede zwischen Dokumentformaten ab.
+        private static string NormalizeKey(string s) =>
+            System.Text.RegularExpressions.Regex.Replace(s, @"\s+", " ").Trim();
+
+        // Sucht einen bereits bekannten Alias für 'original' — erst exakt in _mapping, dann als
+        // Fallback über die normalisierte Form in _mappingByNormalizedKey.
+        private static bool TryGetKnownAlias(string original, out string alias)
+        {
+            if (_mapping.TryGetValue(original, out alias!))
+                return true;
+            if (_mappingByNormalizedKey.TryGetValue(NormalizeKey(original), out alias!))
+                return true;
+            alias = string.Empty;
+            return false;
+        }
+
+        // Registriert ein Mapping in beiden Dictionaries. Immer aufrufen statt _mapping direkt
+        // zu befüllen, damit _mappingByNormalizedKey konsistent bleibt.
+        private static void RegisterMapping(string original, string alias, EntityType type)
+        {
+            _mapping[original] = alias;
+            _entityTypes[original] = type;
+            _mappingByNormalizedKey[NormalizeKey(original)] = alias;
+        }
+
         private static string ReplaceWithAlias(
             string text,
             System.Text.RegularExpressions.Regex rx,
@@ -261,15 +296,15 @@ namespace Anonymisierer
             return rx.Replace(text, match =>
             {
                 var original = match.Value;
-                if (_mapping.TryGetValue(original, out var existing))
+                if (TryGetKnownAlias(original, out var existing))
                 {
+                    RegisterMapping(original, existing, type);
                     if (!entities.Any(e => e.Text == original))
                         entities.Add(new Entity { Text = original, Type = type, AnonymizedText = existing });
                     return existing;
                 }
                 var alias = makeAlias();
-                _mapping[original] = alias;
-                _entityTypes[original] = type;
+                RegisterMapping(original, alias, type);
                 entities.Add(new Entity { Text = original, Type = type, AnonymizedText = alias });
                 return alias;
             });
@@ -284,16 +319,15 @@ namespace Anonymisierer
                 var original = match.Groups[1].Value;
                 if (original.Length < 2) return match.Value;
                 string alias;
-                if (_mapping.TryGetValue(original, out var existing))
+                if (TryGetKnownAlias(original, out var existing))
                 {
                     alias = existing;
                 }
                 else
                 {
                     alias = $"[{AdressPool[_addrIdx++ % AdressPool.Length]}]";
-                    _mapping[original] = alias;
-                    _entityTypes[original] = EntityType.Adresse;
                 }
+                RegisterMapping(original, alias, EntityType.Adresse);
                 if (!entities.Any(e => e.Text == original))
                     entities.Add(new Entity { Text = original, Type = EntityType.Adresse, AnonymizedText = alias });
                 int prefixLen = match.Groups[1].Index - match.Index;
@@ -308,16 +342,15 @@ namespace Anonymisierer
             {
                 var original = match.Groups[1].Value;
                 string alias;
-                if (_mapping.TryGetValue(original, out var existing))
+                if (TryGetKnownAlias(original, out var existing))
                 {
                     alias = existing;
                 }
                 else
                 {
                     alias = $"[{CityPool[_cityIdx++ % CityPool.Length]}]";
-                    _mapping[original] = alias;
-                    _entityTypes[original] = EntityType.Adresse;
                 }
+                RegisterMapping(original, alias, EntityType.Adresse);
                 if (!entities.Any(e => e.Text == original))
                     entities.Add(new Entity { Text = original, Type = EntityType.Adresse, AnonymizedText = alias });
                 int prefixLen = match.Groups[1].Index - match.Index;
@@ -357,7 +390,7 @@ namespace Anonymisierer
             {
                 var original = match.Groups[1].Value;
                 string alias;
-                if (_mapping.TryGetValue(original, out var existing))
+                if (TryGetKnownAlias(original, out var existing))
                 {
                     alias = existing;
                     if (!entities.Any(e => e.Text == original))
@@ -366,9 +399,9 @@ namespace Anonymisierer
                 else
                 {
                     alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
-                    StorePersonAlias(original, alias);
                     entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
                 }
+                StorePersonAlias(original, alias);
                 int prefixLen = match.Groups[1].Index - match.Index;
                 return match.Value[..prefixLen] + alias;
             });
@@ -409,7 +442,7 @@ namespace Anonymisierer
                 var name = ent.text.Contains('\n') ? ent.text[..ent.text.IndexOf('\n')].Trim() : ent.text.Trim();
                 if (name.Length < 2) continue;
                 if (!text.Contains(name)) continue;          // bereits durch Pre-Pass ersetzt
-                if (_mapping.ContainsKey(name)) continue;    // Race-condition-Schutz
+                if (TryGetKnownAlias(name, out _)) continue; // Race-condition-Schutz
 
                 var alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
                 StorePersonAlias(name, alias);
@@ -422,15 +455,13 @@ namespace Anonymisierer
         // Speichert den vollen Namen UND den letzten Token (Nachname) als separate Mapping-Einträge
         private static void StorePersonAlias(string fullName, string alias)
         {
-            _mapping[fullName] = alias;
-            _entityTypes[fullName] = EntityType.Person;
+            RegisterMapping(fullName, alias, EntityType.Person);
 
             // Letzten Token als Nachname separat mappen (≥4 Zeichen, kein Alias-Muster)
             var lastName = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Last();
-            if (lastName.Length >= 4 && !_mapping.ContainsKey(lastName))
+            if (lastName.Length >= 4 && !TryGetKnownAlias(lastName, out _))
             {
-                _mapping[lastName] = alias;
-                _entityTypes[lastName] = EntityType.Person;
+                RegisterMapping(lastName, alias, EntityType.Person);
             }
         }
 
@@ -665,6 +696,7 @@ namespace Anonymisierer
             _mappingFilePath = Path.Combine(folderPath, ".lexwolf_mapping.json");
             _mapping.Clear();
             _entityTypes.Clear();
+            _mappingByNormalizedKey.Clear();
             _personIdx = _addrIdx = _datumIdx = _betragIdx = _ibanIdx = _emailIdx = 0;
             _counter = 1;
             LoadMappingFromFile();
@@ -686,6 +718,7 @@ namespace Anonymisierer
                 {
                     _mapping[e.Original] = e.Alias;
                     _entityTypes[e.Original] = e.Type;
+                    _mappingByNormalizedKey[NormalizeKey(e.Original)] = e.Alias;
                     switch (e.Type)
                     {
                         case EntityType.Person:       _personIdx++;  break;
@@ -752,6 +785,7 @@ namespace Anonymisierer
                     {
                         _mapping.Remove(orig);
                         _entityTypes.Remove(orig);
+                        _mappingByNormalizedKey.Remove(NormalizeKey(orig));
                         Log($"Removed invalid person entry '{orig}' from mapping — NER did not recognize it as PER");
                     }
                 }

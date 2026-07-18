@@ -15,6 +15,7 @@
   <ItemGroup>
     <Compile Remove="Anonymisierer.Tests\**\*" />
     <Compile Remove="Anonymisierer.Core\**\*" />
+    <Compile Remove="Anonymisierer.Cli\**\*" />
   </ItemGroup>
 
   <ItemGroup>
