@@ -190,6 +190,250 @@ namespace Anonymisierer
             return $"[{baseCity} {idx / CityPool.Length + 1}]";
         }
 
+        // --- STRUKTURELLE FILTERUNG VON FALSE-POSITIVE PERSONEN-ERKENNUNGEN (Task #207) ---
+        //
+        // Beobachtung aus Task #204/#207: spaCy NER erkennt im juristischen Kontext haefig
+        // generische deutsche Substantive/Komposita als PER (Type 1), z.B.:
+        //   "Bescheinigt", "Mieters", "Wirtschaftsjahrs", "Waermecontracting",
+        //   "Betriebskostenpauschale", "Bruttoarbeitslohn", "Hauptvordruck", ...
+        // Eine einfache Stopwortliste (Task #204) bekaempft dieses Symptom nur fuer bekannte
+        // Woerter (Whack-a-Mole). Wir ergaenzen deshalb ein strukturelles Kriterium:
+        //
+        // 1. Suffix-Regel: Das Wort endet auf ein typisches deutsches Substantiv-/Abstraktum-
+        //    Suffix, das bei Eigennamen extrem selten vorkommt (z.B. -jahrs, -jahr, -jahre,
+        //    -kosten, -pauschale, -angaben, -lohn, -gehalt, -contracting, -geraete, -art,
+        //    -druck, -vordruck, -behandlung, -erklaerung, -rechnung, -vertrag).
+        // 2. Praefix-Regel: Das Wort beginnt mit einem typischen Fachbegriffs-Praefix, das bei
+        //    Personennamen quasi nie auftritt (Wirtschafts-, Waerme-, Betriebs-, Arbeits-,
+        //    Brutto-, Haushalts-, Elektro-, Haupt-).
+        // 3. Ein Kompositum muss mindestens EINE der beiden Regeln erfuellen (Suffix ODER
+        //    Praefix), damit es als generisches Substantiv abgelehnt wird.
+        //
+        // Echte Personennamen (Erkol, Schapmann, Dilara, Maysa, Samir, Melisa, Ruck) erfuellen
+        // diese Muster in der Regel nicht. Ausnahmen wie "Mayer" (Endung -ayer) oder "Pahl"
+        // (Endung -ahl) werden absichtlich NICHT getroffen, weil sie die harten Suffixe nicht
+        // besitzen und keine Fachbegriffs-Praefixe tragen.
+        private static readonly string[] _germanGenericSubstantivSuffixes = new[]
+        {
+            "jahrs", "jahr", "jahre", "jahres",
+            "kosten", "kostens",
+            "pauschale", "pauschalen", "pauschals",
+            "angaben", "angabe",
+            "lohn", "lohns", "gehalt", "gehalts", "verdienst", "einkommen",
+            "contracting",
+            "geraete", "geraets", "gerät", "geräte",
+            "art", "arten",
+            "druck", "drucks", "vordruck", "vordrucks",
+            "behandlung", "behandlungen",
+            "erklaerung", "erklaerungen", "erklärung", "erklärungen",
+            "rechnung", "rechnungen",
+            "vertrag", "vertrags", "vertraege",
+            "abrechnung", "abrechnungen",
+            "gemeinschaft", "gemeinschaften",
+            "versicherung", "versicherungen",
+            "kasse", "kassen",
+            "antrag", "antrags", "antraege",
+            "bescheid", "bescheide", "bescheids",
+            "konto", "kontos", "konten",
+            "geld", "geldes",
+            "schein", "scheins",
+            "zins", "zinsen",
+            "miete", "mieten",
+            "nebenkosten", "heizkosten",
+            "steuer", "steuern",
+            "frist", "fristen",
+            "lage", "lagen",
+            "leistung", "leistungen",
+            "vollmacht", "vollmachten",
+            "zulage", "zulagen"
+        };
+
+        private static readonly string[] _germanGenericTechnicalPrefixes = new[]
+        {
+            "Wirtschafts", "Waerme", "Betriebs", "Arbeits", "Brutto",
+            "Haushalts", "Elektro", "Haupt", "Neben", "Veranlagungs",
+            "Steuer", "Miet", "Gehalts", "Lohn", "Sozial",
+            "Kranken", "Renten", "Pflege", "Unfall",
+            "Rechts", "Verwaltungs", "Versicherungs"
+        };
+
+        // Bindestrich-Komposita (z.B. "Wirtschaftsjahrs" oder "abzurechnenden Wirtschaftsjahrs")
+        // und grosse Substantive mit Fachbegriffs-Praefix/-Suffix werden als generisches
+        // Substantiv erkannt und aus der Personen-Erkennung ausgeschlossen. Das ist ein
+        // generalisierendes Kriterium und keine Aufzaehlung einzelner falsch erkannter Woerter.
+        private static bool IsGenericGermanSubstantivComposite(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return true;
+            var clean = text.Trim('[', ']').Trim();
+            if (clean.Length < 4) return false;
+
+            // 1. Suffix-Pruefung (am längsten passenden Suffix testen, damit "Wirtschaftsjahrs"
+            //    nicht nur als "jahrs", sondern als Ganzes betrachtet wird).
+            foreach (var suffix in _germanGenericSubstantivSuffixes)
+            {
+                if (clean.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            // 2. Praefix-Pruefung an Bindestrich- oder zusammengeschriebenem Kompositum.
+            foreach (var prefix in _germanGenericTechnicalPrefixes)
+            {
+                if (clean.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                var lower = clean.ToLowerInvariant();
+                if (lower.Contains("-" + prefix.ToLowerInvariant()) ||
+                    lower.Contains(prefix.ToLowerInvariant() + "-"))
+                    return true;
+            }
+
+            return false;
+        }
+
+        // Prueft, ob 'text' identisch mit einem bereits vergebenen Alias-Wert ist oder
+        // ein Teilstring/davon-Teiltoken davon (z.B. "Baker Street" innerhalb von
+        // "[Baker Street 221b]", "Entenhausen" innerhalb von "[Entenhausen]", "ORT-4"
+        // innerhalb von "[ORT-4]", "STEUER-3" innerhalb von "[STEUER-3]").
+        // Damit werden bereits erzeugte Alias-/Platzhalterwerte NICHT erneut als Personen
+        // (oder anderer Typ) erkannt, wenn sie (mit oder ohne Klammern) spaeter im selben
+        // Batch wieder auftauchen (Task #208: Selbstkontamination).
+        private static bool IsKnownAliasOrFragment(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            var clean = text.Trim('[', ']').Trim();
+            if (clean.Length < 2) return false;
+
+            foreach (var alias in _knownAliasValues)
+            {
+                if (string.IsNullOrWhiteSpace(alias)) continue;
+                var aliasClean = alias.Trim('[', ']').Trim();
+                if (aliasClean.Length < 2) continue;
+
+                // Exakte Uebereinstimmung (mit/ohne Klammern)
+                if (clean.Equals(aliasClean, StringComparison.OrdinalIgnoreCase)) return true;
+
+                // 'clean' ist Teilstring des Alias (z.B. "Baker Street" in "Baker Street 221b")
+                if (aliasClean.Contains(clean, StringComparison.OrdinalIgnoreCase)) return true;
+
+                // Der Alias ist Teilstring von 'clean' (z.B. "ORT-4" in "Mein ORT-4 Text")
+                if (clean.Contains(aliasClean, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+
+            return false;
+        }
+
+        // Deutscher Wortschatz als Frequenzliste (ca. 20.000 häufigste Wörter), geladen
+        // aus einer Embedded Resource. Dient als negatives Kriterium: Ein von spaCy als PER
+        // geliefertes Token, das in dieser Liste steht UND strukturelle Merkmale eines
+        // generischen Substantivs trägt (typisches Suffix/Präfix oder Top-100-Häufigkeit),
+        // wird als False Positive abgelehnt. Echte Personennamen (Erkol, Schapmann, ...)
+        // stehen nicht in der Liste und bleiben erhalten.
+        private static readonly HashSet<string> _germanWordList = LoadGermanWordList();
+
+        // Echte Personennamen, die zufällig auch im deutschen Wortschatz vorkommen
+        // (z.B. "Samir", "Ruck" in der Frequenzliste), dürfen dadurch nicht ausgeschlossen
+        // werden. Die Wortliste greift deshalb nur in Kombination mit einem der harten
+        // strukturellen Kriterien (Substantiv-Suffix, Fachbegriffs-Präfix oder
+        // Top-100-Häufigkeit).
+        private static HashSet<string> LoadGermanWordList()
+        {
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var assembly = typeof(Anonymizer).Assembly;
+                var resourceName = "Anonymisierer.Data.de_words_20k.txt";
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                {
+                    // Fallback: versuche den Dateinamen ohne expliziten Namespace
+                    foreach (var name in assembly.GetManifestResourceNames())
+                    {
+                        if (name.EndsWith("de_words_20k.txt", StringComparison.OrdinalIgnoreCase))
+                        {
+                            using var fallback = assembly.GetManifestResourceStream(name);
+                            if (fallback != null)
+                            {
+                                ReadWordList(fallback, set);
+                                return set;
+                            }
+                        }
+                    }
+                    return set;
+                }
+                ReadWordList(stream, set);
+            }
+            catch
+            {
+                // Bei Problemen mit der Embedded Resource arbeiten wir nur mit der
+                // Suffix-/Präfix-Heuristik weiter.
+            }
+            return set;
+        }
+
+        private static void ReadWordList(Stream stream, HashSet<string> set)
+        {
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                // Zeilen enthalten bereits Kleinbuchstaben-Grundformen.
+                set.Add(line.Trim());
+            }
+        }
+
+        // Top-100-Häufigkeitswörter aus der Wortliste. Einzelne, sehr häufige deutsche
+        // Wörter (z.B. "will" als Verbform, "Wille" als Substantiv) werden von spaCy
+        // gelegentlich fälschlich als Person erkannt. Da sie in den allerhäufigsten
+        // deutschen Wörtern vorkommen, ist die Wahrscheinlichkeit hoch, dass es sich um
+        // ein generisches Wort handelt, keinen Eigennamen.
+        private static readonly HashSet<string> _top100GermanWords = _germanWordList.Take(100).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Kombiniert die alte Stopwortliste (Task #204) mit dem neuen strukturellen Filter
+        // und der Alias-Selbstkontaminations-Sperre (Task #208).
+        // Fuer den Fall, dass spaCy zukuenftig generische Substantive liefert, die weder in
+        // der Liste noch das harte Suffix/Praefix-Muster treffen, greift zusätzlich der
+        // Abgleich gegen den deutschen Wortschatz.
+        private static bool IsGermanCommonWordOrFragment(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return true;
+            var clean = text.Trim('[', ']').Trim();
+            if (_germanCommonWords.Contains(clean)) return true;
+
+            // Silbentrennungs-Fragmente (ohne nachfolgenden Bindestrich) ablehnen.
+            var withoutHyphen = clean.TrimEnd('-');
+            if (_germanWordFragmentStoplist.Contains(withoutHyphen)) return true;
+
+            // NEU (Task #207): generische deutsche Substantiv-Komposita ablehnen.
+            if (IsGenericGermanSubstantivComposite(clean)) return true;
+
+            // NEU (Task #207): Abgleich gegen den deutschen Wortschatz. Ein Wort, das im
+            // Wortschatz steht, wird nur dann abgelehnt, wenn es zusätzlich ein hartes
+            // Substantiv-Merkmal trägt (Suffix/Präfix) oder ein sehr häufiges Wort ist.
+            // Das schützt zufällig im Wortschatz vorkommende Vornamen wie "Samir" oder
+            // Nachnamen wie "Ruck", die weder Suffix/Präfix noch Top-100-Status haben.
+            if (LooksLikeGenericGermanWord(clean)) return true;
+
+            return false;
+        }
+
+        // Prüft, ob ein Wort im deutschen Wortschatz vorkommt UND zusätzlich ein Signal
+        // für ein generisches Substantiv liefert. Die Suffix-/Präfix-Heuristik deckt
+        // Fachkomposita wie "Wirtschaftsjahrs" oder "Elektroheizgeräte" ab; die
+        // Top-100-Regel fängt einzelne hochfrequente Wörter wie "Will" ab.
+        private static bool LooksLikeGenericGermanWord(string clean)
+        {
+            if (_germanWordList.Count == 0) return false;
+            if (!_germanWordList.Contains(clean)) return false;
+
+            // Suffix-/Präfix-Merkmal vorhanden?
+            if (IsGenericGermanSubstantivComposite(clean)) return true;
+
+            // Sehr häufiges deutsches Wort (Top 100) → wahrscheinlich kein Eigenname.
+            if (_top100GermanWords.Contains(clean)) return true;
+
+            return false;
+        }
+
         private static readonly string[] PersonPool =
         {
             "Asterix", "Obelix", "Miraculix", "Majestix", "Troubadix", "Verleihnix",
@@ -522,23 +766,6 @@ namespace Anonymisierer
             new(@"-(\s*\r?\n\s*)(?=[a-zäöüß])",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
-        // Einfacher Heuristik-Check, ob ein Token ein typisches deutsches Substantiv/Wortfragment
-        // ist. Nicht nur die exakte Stopwortliste: auch Wortfragmente, die mit typischen
-        // Suffixen deutscher Substantive enden, werden abgelehnt, damit spaCy-Fehler, die
-        // unsere Liste nicht exakt abdeckt, trotzdem nicht durchschluepfen.
-        private static bool IsGermanCommonWordOrFragment(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return true;
-            var clean = text.Trim('[', ']').Trim();
-            if (_germanCommonWords.Contains(clean)) return true;
-
-            // Silbentrennungs-Fragmente (ohne nachfolgenden Bindestrich) ablehnen.
-            var withoutHyphen = clean.TrimEnd('-');
-            if (_germanWordFragmentStoplist.Contains(withoutHyphen)) return true;
-
-            return false;
-        }
-
         public static async Task<string> AnonymizeTextAsync(string text, List<Entity> entities)
         {
             // Schützt bereits vergebene Alias-Werte (Personen-/Adress-Aliase, Platzhalter-Codes
@@ -851,6 +1078,11 @@ namespace Anonymisierer
             text = _rxPersonSalutation.Replace(text, match =>
             {
                 var original = match.Groups[1].Value;
+                // Task #208: Bereits erzeugte Alias-/Platzhalterwerte (oder deren Teiltoken)
+                // duerfen nicht erneut als Person erkannt werden, auch wenn sie in Anrede-
+                // Kontext auftauchen (z.B. "Herr Baker Street" nachdem "[Baker Street 221b]"
+                // bereits als Adress-Alias vergeben wurde).
+                if (IsKnownAliasOrFragment(original)) return match.Value;
                 string alias;
                 if (TryGetKnownAlias(original, out var existing))
                 {
@@ -911,6 +1143,7 @@ namespace Anonymisierer
                 var name = ent.text.Contains('\n') ? ent.text[..ent.text.IndexOf('\n')].Trim() : ent.text.Trim();
                 if (name.Length < 2) continue;
                 if (IsGermanCommonWordOrFragment(name)) continue;
+                if (IsKnownAliasOrFragment(name)) continue; // Task #208: Selbstkontamination verhindern
                 if (!text.Contains(name)) continue;
                 if (TryGetKnownAlias(name, out _)) continue;
 
@@ -936,7 +1169,8 @@ namespace Anonymisierer
             RegisterMapping(fullName, alias, EntityType.Person);
 
             // Letzten Token als Nachname separat mappen (≥4 Zeichen, kein Alias-Muster)
-            var lastName = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Last();
+            var tokens = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var lastName = tokens.Length > 0 ? tokens[tokens.Length - 1] : fullName;
             if (lastName.Length >= 4 && !TryGetKnownAlias(lastName, out _))
             {
                 RegisterMapping(lastName, alias, EntityType.Person);
@@ -1020,7 +1254,12 @@ namespace Anonymisierer
 
             using (var document = WordprocessingDocument.Open(filePath, false))
             {
-                var body = document.MainDocumentPart.Document.Body;
+                var mainPart = document.MainDocumentPart;
+                if (mainPart == null)
+                    throw new InvalidDataException($"Word-Dokument hat keinen MainDocumentPart: {filePath}");
+                var body = mainPart.Document.Body;
+                if (body == null)
+                    throw new InvalidDataException($"Word-Dokument hat keinen Body: {filePath}");
                 var text = body.InnerText;
                 return text;
             }
