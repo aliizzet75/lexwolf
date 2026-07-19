@@ -78,6 +78,12 @@ namespace Anonymisierer
         // ApplyKnownMappings per Volltext-Contains/Replace durchsucht) — diese Dictionary dient
         // nur als Fallback-Lookup für die Alias-Wiederverwendung.
         private static readonly Dictionary<string, string> _mappingByNormalizedKey = new();
+
+        // Menge aller jemals vergebenen Alias-Werte (z.B. "[Dr. Watson]", "[STEUER-5]", die
+        // Fake-IBAN "DE89 ..."). Wird genutzt, um bereits anonymisierten Text vor erneuten
+        // Durchläufen zu schützen (siehe ProtectKnownAliases) — verhindert Alias-Verkettung
+        // (Task #202: Erkol -> Dr. Watson -> Prof. Moriarty -> Verleihnix -> Robin).
+        private static readonly HashSet<string> _knownAliasValues = new();
         private static string _mappingFilePath = string.Empty;
         private static int _counter = 1;
         private static int _personIdx;
@@ -125,6 +131,65 @@ namespace Anonymisierer
             "service@test-immobilien.de"
         };
 
+        // Generiert fuer jede Nummer eine eindeutige Datum-Variation, falls der statische
+        // _fakeDaten-Pool erschoepft ist (Task #205). Der 9. und jede weitere Datumserkennung
+        // erhaelt z.B. "11.03.2001", "11.03.2002" etc. statt erneut "15.06.1985".
+        private static string GenerateUniqueDatum(int idx)
+        {
+            var baseDate = _fakeDaten[idx % _fakeDaten.Length];
+            if (idx < _fakeDaten.Length) return baseDate;
+
+            if (DateTime.TryParseExact(baseDate, "dd.MM.yyyy",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var d))
+            {
+                var shifted = d.AddDays(idx / _fakeDaten.Length);
+                return shifted.ToString("dd.MM.yyyy");
+            }
+            return $"[{baseDate}-{idx}]";
+        }
+
+        // Generiert fuer jede Nummer einen eindeutigen Betrags-Alias, falls der statische
+        // _fakeBetraege-Pool erschoepft ist (Task #205). Der 9. und jede weitere
+        // Betragserkennung erhaelt z.B. "1.250,01", "875,51" etc. statt erneut "1.250,00".
+        private static string GenerateUniqueBetrag(int idx)
+        {
+            var baseValue = _fakeBetraege[idx % _fakeBetraege.Length];
+            if (idx < _fakeBetraege.Length) return baseValue;
+
+            // "1.250,00" -> 125000 Cent, addiere 1 Cent pro Exemplar ueber den Pool hinaus
+            var clean = baseValue.Replace(".", "").Replace(",", ".");
+            if (decimal.TryParse(clean, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var amount))
+            {
+                var unique = amount + (idx / _fakeBetraege.Length) * 0.01m;
+                // Manuelle DE-Formatierung statt CultureInfo.GetCultureInfo("de-DE"),
+                // da die Anonymisierer.Cli mit InvariantGlobalization laeuft (keine ICU-Kulturdaten verfuegbar).
+                var invariantStr = unique.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+                return invariantStr.Replace(",", "\0").Replace(".", ",").Replace("\0", ".");
+            }
+            return $"[{baseValue}-{idx}]";
+        }
+
+        // Generiert fuer jede Nummer eine eindeutige Adress-Alias-Variation, falls der statische
+        // AdressPool erschoepft ist (Task #205). Der 19. und jede weitere Adress-Erkennung
+        // erhaelt z.B. "Privet Drive 4 (Haus 2)", "Baker Street 221b (Haus 2)" etc.
+        private static string GenerateUniqueAdresse(int idx)
+        {
+            var baseAddr = AdressPool[idx % AdressPool.Length];
+            if (idx < AdressPool.Length) return $"[{baseAddr}]";
+            return $"[{baseAddr} (Haus {idx / AdressPool.Length + 1})]";
+        }
+
+        // Generiert fuer jede Nummer eine eindeutige Stadt-Alias-Variation, falls der statische
+        // CityPool erschoepft ist (Task #205).
+        private static string GenerateUniqueCity(int idx)
+        {
+            var baseCity = CityPool[idx % CityPool.Length];
+            if (idx < CityPool.Length) return $"[{baseCity}]";
+            return $"[{baseCity} {idx / CityPool.Length + 1}]";
+        }
+
         private static readonly string[] PersonPool =
         {
             "Asterix", "Obelix", "Miraculix", "Majestix", "Troubadix", "Verleihnix",
@@ -149,9 +214,10 @@ namespace Anonymisierer
             "Schlumpfhausen-Gasse 10", "Smurf-Allee 42"
         };
 
-        // Pass 1: Name nach Anrede – "Frau Ruck", "Herrn Ali Izzet Erkol", "Dr. Schapmann"
+        // Pass 1: Name nach Anrede – "Frau Ruck", "Herrn Ali Izzet Erkol", "Dr. Schapmann".
+        // Der Name darf mit bis zu 3 weiteren Token (z.B. Zwischenname + Nachname) erfasst werden.
         private static readonly System.Text.RegularExpressions.Regex _rxPersonSalutation =
-            new(@"(?:Herr(?:n|in)?|Frau(?:en)?|Dr\.|Prof\.(?:in)?|Dipl\.[-\w]*\.)\s+([A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+(?:[A-ZÄÖÜ]\.[^\S\r\n]*)?[A-ZÄÖÜ][a-zäöüß]{1,20}){0,2})",
+            new(@"(?:Herr(?:n|in)?|Frau(?:en)?|Dr\.|Prof\.(?:in)?|Dipl\.[-\w]*\.)\s+([A-ZÄÖÜ][a-zäöüß]{1,20}(?:[^\S\r\n]+(?:[A-ZÄÖÜ]\.[^\S\r\n]*)?[A-ZÄÖÜ][a-zäöüß]{1,20}){0,3})",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private static readonly System.Text.RegularExpressions.Regex _rxDatum =
@@ -229,9 +295,265 @@ namespace Anonymisierer
             new(@"\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b",
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
+        // Statische Stopwortliste deutscher Woerter/Wortfragmente, die im Fließtext
+        // grossgeschrieben auftauchen koennen, aber keine Personennamen sind. Wird
+        // spaCy-NER-Ergebnissen vorgehalten, um False-Positive Type-1-Erkennungen zu
+        // vermeiden (Task #204: Bescheinigt, Mieters, Parken, Wo-, Las-).
+        private static readonly HashSet<string> _germanCommonWords = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Bescheinigt", "Bescheinigung", "Bescheinigungen", "Bestaetigt", "Bestaetigung",
+            "Mieter", "Mieters", "Mieterin", "Mietvertrag", "Mietverhaeltnis",
+            "Parken", "Geparkt", "Parkplatz", "Parkgebuehr",
+            "Wohnung", "Wohnungs", "Wohnort", "Wohnsitz",
+            "Lastschrift", "Lastschriften", "Ueberweisung", "Ueberweisungen",
+            "Klage", "Klagen", "Klaeger", "Klaegerin", "Beklagter", "Beklagte",
+            "Verfahren", "Verfahrens", "Verhandlung", "Verhandlungen",
+            "Bescheid", "Bescheide", "Bescheides",
+            "Antrag", "Antraege", "Antrags", "Antragsteller", "Antragstellerin",
+            "Bescheinigungs", "Vollmacht", "Vollmachten",
+            "Anlage", "Anlagen", "Anhang", "Anhaenge",
+            "Unterlagen", "Unterlage",
+            "Datum", "Daten", "Termin", "Termine",
+            "Gebuehr", "Gebuehren", "Kosten", "Kostenvoranschlag",
+            "Rechnung", "Rechnungen", "Zahlung", "Zahlungen",
+            "Vorgang", "Vorgaenge", "Sache", "Sachverhalt",
+            "Begruendung", "Begruendungen", "Entscheidung", "Entscheidungen",
+            "Beschluss", "Beschluesse", "Urteil", "Urteile",
+            "Anhoerung", "Anhoerungen", "Vereinbarung", "Vereinbarungen",
+            "Aufforderung", "Aufforderungen", "Mahnung", "Mahnungen",
+            "Widerspruch", "Widersprueche", "Beschwerde", "Beschwerden",
+            "Berufung", "Berufungen", "Revision", "Revisionen",
+            "Klageschrift", "Klageschriften", "Schriftsatz", "Schriftsaetze",
+            "Stellungnahme", "Stellungnahmen", "Erklaerung", "Erklaerungen",
+            "Beweis", "Beweise", "Beweisantrag", "Beweisantraege",
+            "Gutachten", "Gutachter", "Gutachterin",
+            "Termin", "Termine", "Sitzung", "Sitzungen",
+            "Kosten", "Kostenfestsetzung", "Kostenentscheidung",
+            "Schadensersatz", "Schadensersatzanspruch", "Schadensersatzansprueche",
+            "Frist", "Fristen", "Fristsetzung",
+            "Verpflichtung", "Verpflichtungen", "Anspruch", "Ansprueche",
+            "Verzug", "Verzuges", "Mahngebuehr",
+            "Betrag", "Betrags", "Betraege", "Geld",
+            "Summe", "Summen", "Restschuld", "Schuld",
+            "Kontostand", "Kontoauszug", "Auszug",
+            "Einkommen", "Einkommens", "Gehalt", "Gehalts",
+            "Miete", "Mieten", "Mietzins", "Mietzinses",
+            "Nebenkosten", "Nebenkostenabrechnung",
+            "Heizkosten", "Heizkostenabrechnung",
+            "Strom", "Gas", "Wasser", "Abwasser",
+            "Versicherung", "Versicherungen", "Versicherungs",
+            "Beitrag", "Beitraege", "Beitrags",
+            "Rueckzahlung", "Rueckzahlungen", "Erstattung", "Erstattungen",
+            "Zinsen", "Zins", "Tilgung", "Tilgungen",
+            "Darlehen", "Darlehens", "Hypothek", "Hypotheken",
+            "Kauf", "Kaufs", "Kaufvertrag", "Kaufvertrages",
+            "Verkauf", "Verkaufs", "Verkaeufers", "Verkaefer",
+            "Schenkung", "Schenkungs",
+            "Erbschein", "Erbscheins", "Erbe", "Erben",
+            "Testament", "Testaments", "Vermaechtnis", "Vermaechtnisse",
+            "Pflichtteil", "Pflichtteils", "Pflichtteilsanspruch",
+            "Erbengemeinschaft", "Erbengemeinschafts",
+            "Gesellschaft", "Gesellschafter", "Gmbh", "Gbr",
+            "Firma", "Firmen", "Unternehmen",
+            "Vermieter", "Vermieters", "Vermieterin",
+            "Verkaeufer", "Verkaeufers", "Verkaeuferin",
+            "Makler", "Maklers", "Maklerin",
+            "Notar", "Notars", "Notarin",
+            "Gericht", "Gerichts", "Amtsgericht", "Landgericht", "Oberlandesgericht",
+            "Bundesgerichtshof", "Bundesverfassungsgericht", "Bundesverwaltungsgericht",
+            "Bundesarbeitsgericht", "Bundessozialgericht",
+            "Verwaltung", "Verwaltungs", "Behoerde", "Behoerden",
+            "Finanzamt", "Finanzamts",
+            "Jobcenter", "Agentur", "Arbeitsagentur",
+            "Sozialamt", "Sozialamts", "Rathaus",
+            "Polizei", "Staatsanwaltschaft",
+            "Anwalt", "Anwalts", "Anwaelte", "Anwaelte",
+            "Mandant", "Mandanten", "Mandantin",
+            "Richter", "Richters", "Richterin",
+            "Rechtspfleger", "Rechtspflegerin",
+            "Zeuge", "Zeugen", "Zeugin",
+            "Sachverstaendige", "Sachverstaendiger", "Sachverstaendigen",
+            "Dokument", "Dokumente", "Dokuments",
+            "Schrift", "Schriften", "Schreiben", "Schreibens",
+            "Post", "Email", "E-Mail", "Telefax",
+            "Anlage", "Anlagen",
+            "Vertrag", "Vertrags", "Vertraege",
+            "Konto", "Kontos", "Konten",
+            "Bank", "Banken",
+            "Berater", "Beraters", "Beraterin",
+            "Sachbearbeiter", "Sachbearbeiterin", "Sachbearbeitung",
+            "Widerspruch", "Widersprueche",
+            "Rueckruf", "Rueckfrage", "Rueckfragen",
+            "Zulage", "Zulagen", "Verguetung", "Verguetungen",
+            "Auftrag", "Auftrags", "Auftraege",
+            "Vollstreckung", "Vollstreckungs",
+            "Pfaendung", "Pfaendungen",
+            "Insolvenz", "Insolvenzverwalter", "Insolvenzverwalters",
+            "Mahnbescheid", "Mahnbescheids",
+            "Vollstreckungsbescheid", "Vollstreckungsbescheids",
+            "Zahlungsaufforderung", "Zahlungsaufforderungen",
+            "Leistung", "Leistungen",
+            "Anschluss", "Anschlusses",
+            "Folge", "Folgen",
+            "Verbindlichkeit", "Verbindlichkeiten",
+            "Forderung", "Forderungen",
+            "Haftung", "Haftungen", "Haftungs",
+            "Schulden", "Schuldner", "Schuldnerin",
+            "Glaubiger", "Glaubigers", "Glaubigerin",
+            "Betreibung", "Betreibungs",
+            "Gerichtsvollzieher", "Gerichtsvollziehers", "Gerichtsvollzieherin",
+            "Unterhalt", "Unterhalts",
+            "Sorge", "Sorgerecht", "Sorgerechts",
+            "Umgang", "Umgangs", "Umgangsrecht",
+            "Ehe", "Ehegattens", "Ehegatte", "Ehegattin",
+            "Scheidung", "Scheidungs",
+            "Trennung", "Trennungs",
+            "Hausrat", "Hausrats",
+            "Versorgungsausgleich",
+            "Zugewinn", "Zugewinns",
+            "Gueterrecht", "Gueterrechts",
+            "Ehevertrag", "Ehevertrags",
+            "Erbvertrag", "Erbvertrags",
+            "Patient", "Patienten", "Patientin",
+            "Behandlung", "Behandlungen",
+            "Arzt", "Arztes", "Aerztin",
+            "Krankenhaus", "Krankenhauses",
+            "Krankenkasse", "Krankenkassen",
+            "Rezept", "Rezepte",
+            "Unfall", "Unfalls",
+            "Schaden", "Schadens", "Schaeden",
+            "Hergang", "Hergangs",
+            "Unfallbericht", "Unfallberichts",
+            "Arbeitsunfaehigkeit", "Arbeitsunfaehigkeits",
+            "Krankengeld", "Krankengelds",
+            "Lohn", "Lohns", "Lohnfortzahlung",
+            "Urlaub", "Urlaubs",
+            "Arbeitszeit", "Arbeitszeiten",
+            "Ueberstunden", "Ueberstunde",
+            "Kuenigung", "Kuenigungs",
+            "Abmahnung", "Abmahnungen",
+            "Zeugnis", "Zeugnisses", "Zeugnisse",
+            "Arbeitszeugnis", "Arbeitszeugnisses",
+            "Befristung", "Befristungen",
+            "Probezeit", "Probezeit",
+            "Ausbildung", "Ausbildungs",
+            "Praktikum", "Praktikums",
+            "Werk", "Werks",
+            "Werkvertrag", "Werkvertrags",
+            "Dienstvertrag", "Dienstvertrags",
+            "Arbeitsvertrag", "Arbeitsvertrags",
+            "Geschaeft", "Geschaefts", "Geschaeftsfuehrer", "Geschaeftsfuehrers",
+            "Protokoll", "Protokolls", "Protokolle",
+            "Niederschrift", "Niederschriften",
+            "Beweismittel", "Beweismittels",
+            "Sachlage", "Sachlagen",
+            "Rechtslage", "Rechtslagen",
+            "Ausgang", "Ausgangs",
+            "Ergebnis", "Ergebnisse",
+            "Entwurf", "Entwuerfe",
+            "Bedarfs",
+            "Wohnungsgeber", "Wohnungsgebers",
+            "Einzug", "Einzugs",
+            "Umzug", "Umzugs",
+            "Nachweis", "Nachweise", "Nachweises",
+            "Einkommensnachweis", "Einkommensnachweises",
+            "Mietkaution", "Mietkaution",
+            "Kaution", "Kautions",
+            "Schufa", "Schufas",
+            "Bonitaet", "Bonitaets",
+            "Selbstauskunft", "Selbstauskuenfte",
+            "Steuer", "Steuern", "Steuererklaerung", "Steuerbescheid",
+            "Einkommensteuer", "Umsatzsteuer", "Gewerbesteuer",
+            "Steuernummer", "Steueridentifikationsnummer",
+            "Jahressteuer", "Festsetzung", "Festsetzungs",
+            "Nachzahlung", "Nachzahlungen", "Erstattung", "Erstattungen",
+            "Sozialabgaben",
+            "Rentenversicherung", "Krankenversicherung", "Arbeitslosenversicherung",
+            "Pflegeversicherung",
+            "Renten", "Rente", "Rentenanspruch", "Rentenansprueche",
+            "Pension", "Pensionen",
+            "Alter", "Alters",
+            "Behindert", "Behinderten",
+            "Schwerbehindertenausweis",
+            "Merkblatt", "Merkmale",
+            "Vordruck", "Vordrucke",
+            "Formular", "Formulare",
+            "Antragsformular", "Antragsformulare",
+            "Beilage", "Beilagen",
+            "Zusammenfassung", "Zusammenfassungen",
+            "Vermerk", "Vermerke",
+            "Notiz", "Notizen",
+            "Wiedervorlage", "Wiedervorlagen",
+            "Aktenzeichen", "Az", "Az.",
+            "Geschaeftszeichen",
+            "Sachgebiet", "Sachgebiete",
+            "Bearbeiter", "Bearbeiters", "Bearbeiterin",
+            "Telefon", "Telefons", "Fax", "Mobil",
+            "Handy", "Handys",
+            "Durchwahl", "Durchwahlen",
+            "Zimmer", "Zimmernummer",
+            "Hauptstelle", "Zweigstelle", "Filiale",
+            "Berlin", "Hamburg", "Muenchen", "Koeln", "Frankfurt", "Stuttgart",
+            "Dortmund", "Essen", "Duesseldorf", "Bremen", "Hannover",
+            "Dresden", "Leipzig", "Nuernberg", "Duisburg", "Bochum",
+            "Wuppertal", "Bielefeld", "Bonn", "Mannheim", "Karlsruhe"
+        };
+
+        // Wortfragmente, die typischerweise durch Silbentrennung am Zeilenende entstehen.
+        // Werden zusammen mit der Zeilenumbruch-Normalisierung aus dem Text entfernt/
+        // zusammengefuehrt, damit sie nicht als eigenstaendige (Personen-)Tokens erkannt
+        // werden (Task #204: Wo-, Las-).
+        // Die Liste ist bewusst KURZ gehalten: sie enthaelt nur die vom Review gemeldeten
+        // Fragmente. Die Zeilenumbruch-Normalisierung selbst verhindert generisch, dass
+        // irgendein Wort mit Bindestrich vor Zeilenumbruch als eigenes Token erkannt wird.
+        private static readonly HashSet<string> _germanWordFragmentStoplist = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Wo", "Las", "Beschein", "Miet", "Park", "Wohn", "Last",
+            "Ver", "Klaeg", "Beklagt", "Antrags", "Beweis", "Gutacht",
+            "Vollmacht", "Vollstreck", "Zahlungs", "Rueck", "Wider"
+        };
+
+        // Fasst Silbentrennungen am Zeilenumbruch zusammen: "Wo-\n\\t\\t...nung" → "Wohnung".
+        // Schützt gleichzeitig die Fragmente vor der spaCy-NER-Pipeline, da sie danach nicht
+        // mehr als eigene Woerter auftauchen. Der Regex entfernt den Bindestrich und den
+        // Zeilenumbruch-Zwischenraum, wenn das naechste sichtbare Zeichen ein Kleinbuchstabe
+        // ist (d.h. es handelt sich um die Fortsetzung desselben Wortes).
+        private static readonly System.Text.RegularExpressions.Regex _rxHyphenLineBreak =
+            new(@"-(\s*\r?\n\s*)(?=[a-zäöüß])",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        // Einfacher Heuristik-Check, ob ein Token ein typisches deutsches Substantiv/Wortfragment
+        // ist. Nicht nur die exakte Stopwortliste: auch Wortfragmente, die mit typischen
+        // Suffixen deutscher Substantive enden, werden abgelehnt, damit spaCy-Fehler, die
+        // unsere Liste nicht exakt abdeckt, trotzdem nicht durchschluepfen.
+        private static bool IsGermanCommonWordOrFragment(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return true;
+            var clean = text.Trim('[', ']').Trim();
+            if (_germanCommonWords.Contains(clean)) return true;
+
+            // Silbentrennungs-Fragmente (ohne nachfolgenden Bindestrich) ablehnen.
+            var withoutHyphen = clean.TrimEnd('-');
+            if (_germanWordFragmentStoplist.Contains(withoutHyphen)) return true;
+
+            return false;
+        }
+
         public static async Task<string> AnonymizeTextAsync(string text, List<Entity> entities)
         {
-            string result = text;
+            // Schützt bereits vergebene Alias-Werte (Personen-/Adress-Aliase, Platzhalter-Codes
+            // wie [STEUER-5]/[ORT-4], Fake-IBANs/E-Mails/Beträge/Daten) vor erneuter Erkennung,
+            // bevor irgendeine Regex- oder NER-Erkennung läuft. Ohne diesen Schutz würde ein
+            // bereits (teil-)anonymisierter Text bei wiederholter Verarbeitung Alias-Ketten
+            // erzeugen (Task #202: Erkol -> Dr. Watson -> Prof. Moriarty -> Verleihnix -> Robin).
+            var aliasRestoreMap = new Dictionary<string, string>();
+            string result = ProtectKnownAliases(text, aliasRestoreMap);
+
+            // Zeilenumbruch-Silbentrennungen entfernen, BEVOR die NER-Pipeline laeuft,
+            // damit Fragmente wie "Wo-" oder "Las-" nicht als Pseudo-Personen erkannt werden
+            // (Task #204). Der Bindestrich wird entfernt, damit "Wo-\nnung" zu "Wohnung"
+            // wird und spaCy den Originaltext nicht als zwei separate Tokens sieht.
+            result = _rxHyphenLineBreak.Replace(result, "");
 
             result = ReplaceWithAlias(result, _rxSteuernummer, EntityType.Aktenzeichen, () => _fakeSteuernummern[_steuerIdx++ % _fakeSteuernummern.Length], entities);
             result = ReplaceWithAlias(result, _rxUstIdNr,       EntityType.Aktenzeichen, () => _fakeUstIdNr[_ustIdx++ % _fakeUstIdNr.Length],               entities);
@@ -239,14 +561,15 @@ namespace Anonymisierer
             result = ReplaceWithAlias(result, _rxAktenzeichen, EntityType.Aktenzeichen, () => $"[AZ-{_counter++}]",                                       entities);
             result = ReplaceWithAlias(result, _rxTelefon,      EntityType.Telefon,      () => $"[TEL-{_counter++}]",                                      entities);
             result = ReplaceWithAlias(result, _rxEmail,        EntityType.Email,        () => _fakeEmails[_emailIdx++ % _fakeEmails.Length],               entities);
-            result = ReplaceWithAlias(result, _rxBetrag,       EntityType.Betrag,       () => _fakeBetraege[_betragIdx++ % _fakeBetraege.Length],          entities);
-            result = ReplaceWithAlias(result, _rxDatum,        EntityType.Datum,        () => _fakeDaten[_datumIdx++ % _fakeDaten.Length],                 entities);
-            result = ReplaceWithAlias(result, _rxAdresse,      EntityType.Adresse,      () => $"[{AdressPool[_addrIdx++ % AdressPool.Length]}]",           entities);
+            result = ReplaceWithAlias(result, _rxBetrag,       EntityType.Betrag,       () => GenerateUniqueBetrag(_betragIdx++),          entities);
+            result = ReplaceWithAlias(result, _rxDatum,        EntityType.Datum,        () => GenerateUniqueDatum(_datumIdx++),                 entities);
+            result = ReplaceWithAlias(result, _rxAdresse,      EntityType.Adresse,      () => GenerateUniqueAdresse(_addrIdx++),           entities);
             result = ReplaceWithAlias(result, _rxPlz,          EntityType.Adresse,      () => $"[ORT-{_counter++}]",                                      entities);
             result = ReplaceStrasseLabelZeile(result, entities);
             result = ReplaceWohnortLabelZeile(result, entities);
             result = await ReplacePersonsAsync(result, entities);
 
+            result = RestoreProtectedAliases(result, aliasRestoreMap);
             return result;
         }
 
@@ -278,38 +601,95 @@ namespace Anonymisierer
         }
 
         // Sucht einen Alias für eine Namens-Variante, die noch nicht exakt/normalisiert bekannt
-        // ist, aber vermutlich dieselbe Person wie ein bereits gemapptes Personen-Mapping meint
-        // (z.B. "Ali Erkol" vs. bereits bekanntem "Ali Izzet Erkol"). Nachname muss übereinstimmen
-        // UND mindestens ein weiterer Namens-Token, um Fehlzuordnungen bei zufällig gleichem
-        // Nachnamen zu vermeiden (kein Match allein über den Vornamen).
+        // ist, aber vermutlich dieselbe Person wie ein bereits gemapptes Personen-Mapping meint,
+        // z.B.:
+        //   - "Ali Erkol" vs. bekanntem "Ali Izzet Erkol" (Zwischenname fehlt im Fragment)
+        //   - "Ali Izzet" vs. bekanntem "Ali Izzet Erkol" (Nachname fehlt im Fragment komplett,
+        //     Task #203: der Nachname-Abgleich allein greift hier nicht, weil "Izzet" im
+        //     kürzeren Fragment gar nicht als Nachname vorkommt)
+        //   - "Ali" allein vs. bekanntem "Ali Izzet Erkol" (nur Vorname)
+        // Über ALLE bekannten Personen-Einträge iterieren und bei mehreren unterschiedlichen
+        // Treffern (z.B. "Ali Izzet Erkol" UND ein unabhängiges "Ali Yilmaz") konservativ KEINEN
+        // Alias liefern, statt zu raten — echte Mehrdeutigkeit darf nie zu einer Fehlzuordnung führen.
         private static bool TryFindAliasForNameVariant(string name, out string alias)
         {
             var tokens = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length >= 2)
+            if (tokens.Length == 0)
             {
-                var surname = tokens[^1];
-                if (surname.Length >= 4)
-                {
-                    foreach (var kvp in _mapping)
-                    {
-                        if (!_entityTypes.TryGetValue(kvp.Key, out var type) || type != EntityType.Person)
-                            continue;
-                        var knownTokens = kvp.Key.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (knownTokens.Length < 2) continue; // nur volle Namen, keine Nachname-Solo-Einträge
-                        if (!knownTokens[^1].Equals(surname, StringComparison.OrdinalIgnoreCase)) continue;
+                alias = string.Empty;
+                return false;
+            }
 
-                        var extraMatch = tokens.Take(tokens.Length - 1)
-                            .Any(t => knownTokens.Take(knownTokens.Length - 1)
-                                .Any(kt => kt.Equals(t, StringComparison.OrdinalIgnoreCase)));
-                        if (extraMatch)
-                        {
-                            alias = kvp.Value;
-                            return true;
-                        }
-                    }
+            string? foundAlias = null;
+            foreach (var kvp in _mapping)
+            {
+                if (!_entityTypes.TryGetValue(kvp.Key, out var type) || type != EntityType.Person)
+                    continue;
+                var knownTokens = kvp.Key.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (knownTokens.Length < 2) continue; // nur volle Namen, keine Nachname-Solo-Einträge
+                if (!IsLikelySamePerson(tokens, knownTokens)) continue;
+
+                if (foundAlias != null && !foundAlias.Equals(kvp.Value, StringComparison.Ordinal))
+                {
+                    // Mehrdeutig: Fragment passt auf mindestens zwei unterschiedliche bekannte
+                    // Personen (z.B. gleicher Vorname bei zwei verschiedenen Nachnamen) -> lieber
+                    // keinen Alias wiederverwenden als eine falsche Zusammenführung zu riskieren.
+                    alias = string.Empty;
+                    return false;
+                }
+                foundAlias = kvp.Value;
+            }
+
+            if (foundAlias != null)
+            {
+                alias = foundAlias;
+                return true;
+            }
+
+            alias = string.Empty;
+            return false;
+        }
+
+        // Prüft, ob zwei Namens-Tokenlisten vermutlich dieselbe Person meinen:
+        //  (a) identischer Nachname (letztes Token) UND mindestens ein weiterer gemeinsamer Token
+        //      (fängt fehlenden Zwischennamen ab, z.B. "Ali Erkol" vs. "Ali Izzet Erkol")
+        //  (b) die kürzere Tokenliste ist ein Präfix der längeren, Token für Token
+        //      (fängt ein komplett fehlendes Nachnamen-Fragment ab, z.B. "Ali Izzet" oder "Ali"
+        //      allein vs. "Ali Izzet Erkol" — hier kommt der Nachname im kürzeren Fragment gar
+        //      nicht vor, weshalb Fall (a) allein nicht greifen würde)
+        // Kurze Tokens (<3 Zeichen, z.B. Initialen) werden für den Präfix-Vergleich in (b)
+        // bewusst ausgeschlossen, um Fehlzuordnungen über zu generische Fragmente zu vermeiden.
+        private static bool IsLikelySamePerson(string[] tokensA, string[] tokensB)
+        {
+            if (tokensA.Length >= 2 && tokensB.Length >= 2)
+            {
+                var surnameA = tokensA[^1];
+                var surnameB = tokensB[^1];
+                if (surnameA.Length >= 4 && surnameA.Equals(surnameB, StringComparison.OrdinalIgnoreCase))
+                {
+                    var extraMatch = tokensA.Take(tokensA.Length - 1)
+                        .Any(t => tokensB.Take(tokensB.Length - 1)
+                            .Any(kt => kt.Equals(t, StringComparison.OrdinalIgnoreCase)));
+                    if (extraMatch) return true;
                 }
             }
-            alias = string.Empty;
+
+            var shorter = tokensA.Length <= tokensB.Length ? tokensA : tokensB;
+            var longer  = tokensA.Length <= tokensB.Length ? tokensB : tokensA;
+            if (shorter.Length >= 1 && shorter.Length < longer.Length)
+            {
+                bool allMatch = true;
+                for (int i = 0; i < shorter.Length; i++)
+                {
+                    if (shorter[i].Length < 3 || !shorter[i].Equals(longer[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        allMatch = false;
+                        break;
+                    }
+                }
+                if (allMatch) return true;
+            }
+
             return false;
         }
 
@@ -320,6 +700,33 @@ namespace Anonymisierer
             _mapping[original] = alias;
             _entityTypes[original] = type;
             _mappingByNormalizedKey[NormalizeKey(original)] = alias;
+            _knownAliasValues.Add(alias);
+        }
+
+        // Ersetzt jedes Vorkommen eines bereits bekannten Alias-Werts im Text durch ein
+        // eindeutiges Sentinel-Token, BEVOR irgendeine Erkennungs-Regex oder der NER-Pass
+        // läuft. Ohne diesen Schutz matcht z.B. die Anrede-Regex "Dr." auch innerhalb eines
+        // bereits erzeugten Alias wie "[Dr. Watson]" erneut und erzeugt eine Alias-Kette
+        // (Task #202). Längere Aliase zuerst, damit keine Teil-Überschneidungen entstehen.
+        private static string ProtectKnownAliases(string text, Dictionary<string, string> restoreMap)
+        {
+            if (_knownAliasValues.Count == 0) return text;
+            int i = 0;
+            foreach (var alias in _knownAliasValues.OrderByDescending(a => a.Length))
+            {
+                if (string.IsNullOrEmpty(alias) || !text.Contains(alias)) continue;
+                var token = $"{i++}";
+                restoreMap[token] = alias;
+                text = text.Replace(alias, token);
+            }
+            return text;
+        }
+
+        private static string RestoreProtectedAliases(string text, Dictionary<string, string> restoreMap)
+        {
+            foreach (var kvp in restoreMap)
+                text = text.Replace(kvp.Key, kvp.Value);
+            return text;
         }
 
         private static string ReplaceWithAlias(
@@ -361,7 +768,7 @@ namespace Anonymisierer
                 }
                 else
                 {
-                    alias = $"[{AdressPool[_addrIdx++ % AdressPool.Length]}]";
+                    alias = GenerateUniqueAdresse(_addrIdx++);
                 }
                 RegisterMapping(original, alias, EntityType.Adresse);
                 if (!entities.Any(e => e.Text == original))
@@ -384,7 +791,7 @@ namespace Anonymisierer
                 }
                 else
                 {
-                    alias = $"[{CityPool[_cityIdx++ % CityPool.Length]}]";
+                    alias = GenerateUniqueCity(_cityIdx++);
                 }
                 RegisterMapping(original, alias, EntityType.Adresse);
                 if (!entities.Any(e => e.Text == original))
@@ -401,10 +808,21 @@ namespace Anonymisierer
         // auftaucht, z.B. als Absender-/Unterschriftsort oder in Fusszeilen-Boilerplate.
         public static string ApplyKnownMappings(string text, List<Entity> entities)
         {
+            // Volltext-Sweep bleibt unangetastet, solange ein "Original" selbst ein bereits
+            // vergebener Alias-Wert ist — sonst würde z.B. eine (fehlerhaft) als Original
+            // registrierte Alias-Teilzeichenkette erneut in einem anderen Alias gefunden und
+            // ersetzt und so eine Alias-Kette fortsetzen (Task #202).
             var relevantEntries = _mapping
                 .Where(kvp => _entityTypes.TryGetValue(kvp.Key, out var t) && (t == EntityType.Person || t == EntityType.Adresse))
+                .Where(kvp => !_knownAliasValues.Contains(kvp.Key))
                 .OrderByDescending(kvp => kvp.Key.Length)
                 .ToList();
+
+            // Schützt bereits im Text vorhandene Alias-Werte vor diesem Sweep, damit deren
+            // Inhalt (z.B. "Watson" in "[Dr. Watson]") nicht versehentlich als Substring eines
+            // anderen bekannten Originals getroffen und ersetzt wird.
+            var aliasRestoreMap = new Dictionary<string, string>();
+            text = ProtectKnownAliases(text, aliasRestoreMap);
 
             foreach (var (orig, alias) in relevantEntries)
             {
@@ -416,11 +834,19 @@ namespace Anonymisierer
                     entities.Add(new Entity { Text = orig, Type = type, AnonymizedText = alias });
                 }
             }
+
+            text = RestoreProtectedAliases(text, aliasRestoreMap);
             return text;
         }
 
         private static async Task<string> ReplacePersonsAsync(string text, List<Entity> entities)
         {
+            // Zeilenumbruch-Silbentrennungen entfernen, BEVOR die Anrede-Regex greift,
+            // damit Fragmente wie "Wo-" oder "Las-" nicht als Namensbestandteil gesehen
+            // werden (Task #204). Der Bindestrich wird entfernt, sodass "Wo-\nnung" zu
+            // "Wohnung" wird.
+            text = _rxHyphenLineBreak.Replace(text, "");
+
             // Pass 1: Salutation-basiert (Frau/Herr/Dr./Prof.) — bleibt unverändert, sehr zuverlässig
             text = _rxPersonSalutation.Replace(text, match =>
             {
@@ -457,7 +883,11 @@ namespace Anonymisierer
             return text;
         }
 
-        // Ruft POST /ner auf, ersetzt neue PER-Entitäten und speichert Alias + Teilnamen im Mapping
+        // Ruft POST /ner auf, ersetzt neue PER-Entitäten und speichert Alias + Teilnamen im Mapping.
+        // Vor der Alias-Vergabe wird jede Entität gegen eine Stopwortliste deutscher
+        // Allerweltswörter und Silbentrennungs-Fragmente geprüft (Task #204), damit
+        // spaCy-False-Positive wie "Bescheinigt", "Mieters", "Parken", "Wo-" oder "Las-"
+        // nicht mehr als Person anonymisiert werden.
         private static async Task<string> ReplaceViaSpacyNer(string text, List<Entity> entities)
         {
             NerResponse? nerResult = null;
@@ -476,15 +906,13 @@ namespace Anonymisierer
 
             if (nerResult == null || nerResult.entities.Count == 0) return text;
 
-            // Entitäten von hinten nach vorne ersetzen, damit Offsets gültig bleiben
-            // (Text wurde durch Pre-Pass ggf. bereits verändert → neu suchen per Contains)
             foreach (var ent in nerResult.entities.OrderByDescending(e => e.start))
             {
-                // Entität auf die erste Zeile begrenzen (spaCy verbindet manchmal Name+Adresse)
                 var name = ent.text.Contains('\n') ? ent.text[..ent.text.IndexOf('\n')].Trim() : ent.text.Trim();
                 if (name.Length < 2) continue;
-                if (!text.Contains(name)) continue;          // bereits durch Pre-Pass ersetzt
-                if (TryGetKnownAlias(name, out _)) continue; // Race-condition-Schutz
+                if (IsGermanCommonWordOrFragment(name)) continue;
+                if (!text.Contains(name)) continue;
+                if (TryGetKnownAlias(name, out _)) continue;
 
                 string alias;
                 if (TryFindAliasForNameVariant(name, out var variantAlias))
@@ -796,13 +1224,26 @@ namespace Anonymisierer
             return reverse;
         }
 
-        // Ordner-Mapping-Datei setzen und laden (beim Öffnen eines Ordners aufrufen)
+        // Ordner-Mapping-Datei setzen und laden (beim Öffnen eines Ordners aufrufen).
+        // Wird derselbe Ordner erneut geöffnet (z.B. erneute Verarbeitung desselben Batches),
+        // werden bestehende In-Memory-Mappings NICHT verworfen — es wird nur mit dem Inhalt
+        // der Datei gemergt (siehe LoadMappingFromFile), damit noch nicht gespeicherte, aber
+        // bereits im Speicher vorhandene Zuordnungen nicht verloren gehen bzw. durch einen
+        // blinden Reload erneut "frisch" verarbeitet werden (Task #202).
         public static void SetMappingFile(string folderPath)
         {
-            _mappingFilePath = Path.Combine(folderPath, ".lexwolf_mapping.json");
+            var newPath = Path.Combine(folderPath, ".lexwolf_mapping.json");
+            if (newPath == _mappingFilePath)
+            {
+                LoadMappingFromFile();
+                return;
+            }
+
+            _mappingFilePath = newPath;
             _mapping.Clear();
             _entityTypes.Clear();
             _mappingByNormalizedKey.Clear();
+            _knownAliasValues.Clear();
             _personIdx = _addrIdx = _datumIdx = _betragIdx = _ibanIdx = _emailIdx = 0;
             _counter = 1;
             LoadMappingFromFile();
@@ -811,6 +1252,8 @@ namespace Anonymisierer
         // Mapping aus JSON-Datei laden und Person-Einträge per NER validieren
         // Falsch-positive Einträge (spaCy erkennt nicht als PER) werden entfernt + geloggt
         // Fallback: Wenn NER nicht erreichbar, werden alle Einträge behalten
+        // Merged nur fehlende Einträge in den Speicher, statt bestehende (evtl. bereits im
+        // laufenden Batch neu hinzugekommene) Einträge blind zu überschreiben (Task #202).
         private static void LoadMappingFromFile()
         {
             if (!File.Exists(_mappingFilePath)) return;
@@ -822,9 +1265,11 @@ namespace Anonymisierer
 
                 foreach (var e in data.Entries)
                 {
+                    if (_mapping.ContainsKey(e.Original)) continue;
                     _mapping[e.Original] = e.Alias;
                     _entityTypes[e.Original] = e.Type;
                     _mappingByNormalizedKey[NormalizeKey(e.Original)] = e.Alias;
+                    _knownAliasValues.Add(e.Alias);
                     switch (e.Type)
                     {
                         case EntityType.Person:       _personIdx++;  break;
