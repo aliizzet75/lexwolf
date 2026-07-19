@@ -277,6 +277,42 @@ namespace Anonymisierer
             return false;
         }
 
+        // Sucht einen Alias für eine Namens-Variante, die noch nicht exakt/normalisiert bekannt
+        // ist, aber vermutlich dieselbe Person wie ein bereits gemapptes Personen-Mapping meint
+        // (z.B. "Ali Erkol" vs. bereits bekanntem "Ali Izzet Erkol"). Nachname muss übereinstimmen
+        // UND mindestens ein weiterer Namens-Token, um Fehlzuordnungen bei zufällig gleichem
+        // Nachnamen zu vermeiden (kein Match allein über den Vornamen).
+        private static bool TryFindAliasForNameVariant(string name, out string alias)
+        {
+            var tokens = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length >= 2)
+            {
+                var surname = tokens[^1];
+                if (surname.Length >= 4)
+                {
+                    foreach (var kvp in _mapping)
+                    {
+                        if (!_entityTypes.TryGetValue(kvp.Key, out var type) || type != EntityType.Person)
+                            continue;
+                        var knownTokens = kvp.Key.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        if (knownTokens.Length < 2) continue; // nur volle Namen, keine Nachname-Solo-Einträge
+                        if (!knownTokens[^1].Equals(surname, StringComparison.OrdinalIgnoreCase)) continue;
+
+                        var extraMatch = tokens.Take(tokens.Length - 1)
+                            .Any(t => knownTokens.Take(knownTokens.Length - 1)
+                                .Any(kt => kt.Equals(t, StringComparison.OrdinalIgnoreCase)));
+                        if (extraMatch)
+                        {
+                            alias = kvp.Value;
+                            return true;
+                        }
+                    }
+                }
+            }
+            alias = string.Empty;
+            return false;
+        }
+
         // Registriert ein Mapping in beiden Dictionaries. Immer aufrufen statt _mapping direkt
         // zu befüllen, damit _mappingByNormalizedKey konsistent bleibt.
         private static void RegisterMapping(string original, string alias, EntityType type)
@@ -396,6 +432,12 @@ namespace Anonymisierer
                     if (!entities.Any(e => e.Text == original))
                         entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
                 }
+                else if (TryFindAliasForNameVariant(original, out var variantAlias))
+                {
+                    alias = variantAlias;
+                    if (!entities.Any(e => e.Text == original))
+                        entities.Add(new Entity { Text = original, Type = EntityType.Person, AnonymizedText = alias });
+                }
                 else
                 {
                     alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
@@ -444,7 +486,15 @@ namespace Anonymisierer
                 if (!text.Contains(name)) continue;          // bereits durch Pre-Pass ersetzt
                 if (TryGetKnownAlias(name, out _)) continue; // Race-condition-Schutz
 
-                var alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
+                string alias;
+                if (TryFindAliasForNameVariant(name, out var variantAlias))
+                {
+                    alias = variantAlias;
+                }
+                else
+                {
+                    alias = $"[{PersonPool[_personIdx++ % PersonPool.Length]}]";
+                }
                 StorePersonAlias(name, alias);
                 entities.Add(new Entity { Text = name, Type = EntityType.Person, AnonymizedText = alias });
                 text = text.Replace(name, alias);
@@ -463,6 +513,62 @@ namespace Anonymisierer
             {
                 RegisterMapping(lastName, alias, EntityType.Person);
             }
+        }
+
+        // Prüft, ob der Dateiname offensichtlich zu einer bereits bekannten Person gehört
+        // (z.B. "KFZ Anmeldung Ali Erkol.pdf" bei bekanntem Mapping "Ali Izzet Erkol" -> Alias)
+        // und ersetzt den Namens-Anteil im Dateinamen durch diesen Alias. Muss erst aufgerufen
+        // werden, nachdem das globale Mapping über alle Dokumente eines Batch-Laufs vollständig
+        // ist (Cross-Dokument-Sweep), damit z.B. ein gescanntes PDF ohne extrahierbaren Text
+        // trotzdem über den Dateinamen anonymisiert werden kann.
+        public static string AnonymizeFileName(string fileName)
+        {
+            var ext = Path.GetExtension(fileName);
+            var baseName = Path.GetFileNameWithoutExtension(fileName);
+
+            var personEntries = _mapping
+                .Where(kvp => _entityTypes.TryGetValue(kvp.Key, out var t) && t == EntityType.Person)
+                .Where(kvp => kvp.Key.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2)
+                .OrderByDescending(kvp => kvp.Key.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length)
+                .ThenByDescending(kvp => kvp.Key.Length)
+                .ToList();
+
+            foreach (var (fullName, alias) in personEntries)
+            {
+                var nameTokens = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var surname = nameTokens[^1];
+                if (surname.Length < 4) continue;
+
+                // Nachname muss als eigenes Wort im Dateinamen vorkommen.
+                var surnameMatch = System.Text.RegularExpressions.Regex.Match(
+                    baseName, $@"\b{System.Text.RegularExpressions.Regex.Escape(surname)}\b",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (!surnameMatch.Success) continue;
+
+                // Mindestens ein weiterer Namens-Token (z.B. Vorname) muss ebenfalls vorkommen,
+                // damit ein Nachname allein (der zufällig auch ein normales Wort sein könnte)
+                // nicht schon als "offensichtlich zugehörig" zählt.
+                var otherTokenMatches = nameTokens.Take(nameTokens.Length - 1)
+                    .Select(t => System.Text.RegularExpressions.Regex.Match(
+                        baseName, $@"\b{System.Text.RegularExpressions.Regex.Escape(t)}\b",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    .Where(m => m.Success)
+                    .ToList();
+                if (otherTokenMatches.Count == 0) continue;
+
+                // Zusammenhängenden Bereich von erstem bis letztem Treffer (Vorname(n) +
+                // Nachname) durch den Alias ersetzen; der Rest des Dateinamens (z.B.
+                // "KFZ Anmeldung ") bleibt erhalten.
+                var allMatches = otherTokenMatches.Append(surnameMatch).OrderBy(m => m.Index).ToList();
+                int start = allMatches.First().Index;
+                int end = allMatches.Last().Index + allMatches.Last().Length;
+
+                var aliasName = alias.Trim('[', ']');
+                var newBaseName = (baseName[..start] + aliasName + baseName[end..]).Trim();
+                return newBaseName + ext;
+            }
+
+            return fileName;
         }
 
         // De-Anonymisierung

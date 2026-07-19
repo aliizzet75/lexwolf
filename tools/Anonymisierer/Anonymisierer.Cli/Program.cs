@@ -54,7 +54,7 @@ namespace Anonymisierer.Cli
 
             // Phase 1: alle Dokumente einzeln anonymisieren (Ergebnis erst im Speicher halten,
             // noch nicht auf Platte schreiben).
-            var pending = new List<(string DocName, string BaseName, string AnonPath, string Original, string Anonymized, List<Entity> Entities)>();
+            var pending = new List<(string DocName, string BaseName, string Original, string Anonymized, List<Entity> Entities)>();
 
             foreach (var file in files)
             {
@@ -76,12 +76,11 @@ namespace Anonymisierer.Cli
 
                 var entities = new List<Entity>();
                 var anonymized = await Anonymizer.AnonymizeTextAsync(original, entities);
-                var anonPath = Path.Combine(outFolder, baseName + "_anon.txt");
 
                 if (Environment.GetEnvironmentVariable("ANON_CLI_DUMP_ORIGINAL") == "1")
                     File.WriteAllText(Path.Combine(outFolder, baseName + "_orig.txt"), original);
 
-                pending.Add((docName, baseName, anonPath, original, anonymized, entities));
+                pending.Add((docName, baseName, original, anonymized, entities));
             }
 
             // Phase 2: Cross-Dokument-Sweep. Manche Entitaeten (z.B. eine Stadt) werden erst in
@@ -90,17 +89,24 @@ namespace Anonymisierer.Cli
             // z.B. in einer Fusszeile oder Unterschriftszeile) bereits in einem frueher
             // verarbeiteten Dokument auf. Erst wenn alle Dokumente durchlaufen sind, ist das
             // Gesamt-Mapping vollstaendig — daher hier ein abschliessender Sweep ueber alle
-            // bereits anonymisierten Texte, bevor sie geschrieben werden.
+            // bereits anonymisierten Texte, bevor sie geschrieben werden. Aus demselben Grund
+            // wird auch der Ausgabe-Dateiname erst hier (statt in Phase 1) ueber
+            // AnonymizeFileName() bestimmt: nur so kann z.B. "KFZ Anmeldung Ali Erkol.pdf" noch
+            // auf den bereits aus einem anderen Dokument bekannten Alias von "Ali Izzet Erkol"
+            // treffen, selbst wenn das KFZ-Dokument selbst keinen extrahierbaren Personennamen
+            // im Text liefert (z.B. gescanntes PDF ohne OCR).
             var docReports = new List<DocReport>();
             foreach (var item in pending)
             {
                 var finalText = Anonymizer.ApplyKnownMappings(item.Anonymized, item.Entities);
-                File.WriteAllText(item.AnonPath, finalText);
+                var aliasedFileName = Anonymizer.AnonymizeFileName(item.DocName);
+                var anonPath = Path.Combine(outFolder, aliasedFileName + "_anon.txt");
+                File.WriteAllText(anonPath, finalText);
 
                 docReports.Add(new DocReport
                 {
                     Document = item.DocName,
-                    AnonTextFile = Path.GetFileName(item.AnonPath),
+                    AnonTextFile = Path.GetFileName(anonPath),
                     OriginalLength = item.Original.Length,
                     AnonymizedLength = finalText.Length,
                     Entities = item.Entities.Select(e => new EntityDto
@@ -111,7 +117,7 @@ namespace Anonymisierer.Cli
                     }).ToList()
                 });
 
-                Console.WriteLine($"OK: {item.DocName} -> {Path.GetFileName(item.AnonPath)} ({item.Entities.Count} Entitaeten)");
+                Console.WriteLine($"OK: {item.DocName} -> {Path.GetFileName(anonPath)} ({item.Entities.Count} Entitaeten)");
             }
 
             Anonymizer.SaveMapping();
