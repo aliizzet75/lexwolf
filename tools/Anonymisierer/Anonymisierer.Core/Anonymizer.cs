@@ -1223,6 +1223,21 @@ namespace Anonymisierer
         // werden, nachdem das globale Mapping über alle Dokumente eines Batch-Laufs vollständig
         // ist (Cross-Dokument-Sweep), damit z.B. ein gescanntes PDF ohne extrahierbaren Text
         // trotzdem über den Dateinamen anonymisiert werden kann.
+        // \b behandelt "_" (und Ziffern) als Wortzeichen, weshalb es KEINE Grenze zwischen
+        // Buchstabe und "_" erkennt. Bei diesem Tool sind unterstrich-getrennte Dateinamen
+        // (z.B. "Schreiben_Erkol_Ali_2024.pdf") bzw. direkt an einen Namen anschließende
+        // Datumsziffern (z.B. "Erkol2024_Akte.pdf") gängig — mit \b würde der Name dort NICHT
+        // gefunden. Diese Grenze verwendet stattdessen ausschließlich Buchstaben als
+        // Wortzeichen, sodass "_", Ziffern, "-" und Leerzeichen als Trenner zählen.
+        private static readonly string _fileNameWordBoundary = "[A-Za-zÄÖÜäöüß]";
+
+        private static System.Text.RegularExpressions.Match MatchFileNameToken(string baseName, string token)
+        {
+            var pattern = $@"(?<!{_fileNameWordBoundary}){System.Text.RegularExpressions.Regex.Escape(token)}(?!{_fileNameWordBoundary})";
+            return System.Text.RegularExpressions.Regex.Match(
+                baseName, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
         public static string AnonymizeFileName(string fileName)
         {
             var ext = Path.GetExtension(fileName);
@@ -1242,18 +1257,14 @@ namespace Anonymisierer
                 if (surname.Length < 4) continue;
 
                 // Nachname muss als eigenes Wort im Dateinamen vorkommen.
-                var surnameMatch = System.Text.RegularExpressions.Regex.Match(
-                    baseName, $@"\b{System.Text.RegularExpressions.Regex.Escape(surname)}\b",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var surnameMatch = MatchFileNameToken(baseName, surname);
                 if (!surnameMatch.Success) continue;
 
                 // Mindestens ein weiterer Namens-Token (z.B. Vorname) muss ebenfalls vorkommen,
                 // damit ein Nachname allein (der zufällig auch ein normales Wort sein könnte)
                 // nicht schon als "offensichtlich zugehörig" zählt.
                 var otherTokenMatches = nameTokens.Take(nameTokens.Length - 1)
-                    .Select(t => System.Text.RegularExpressions.Regex.Match(
-                        baseName, $@"\b{System.Text.RegularExpressions.Regex.Escape(t)}\b",
-                        System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    .Select(t => MatchFileNameToken(baseName, t))
                     .Where(m => m.Success)
                     .ToList();
                 if (otherTokenMatches.Count == 0) continue;
