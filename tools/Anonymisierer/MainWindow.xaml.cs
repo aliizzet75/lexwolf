@@ -444,38 +444,64 @@ namespace Anonymisierer
             int success = 0, failed = 0;
             var snapshot = _files.ToList();
             double total = snapshot.Count;
+            string? zipPath = null;
 
             await Task.Run(() =>
             {
+                // Phase 1: jede Datei einzeln anonymisieren, Ergebnis erst im Speicher halten
+                // (noch nicht auf Platte schreiben).
+                var pending = new List<(FileEntry File, string Anonymized, List<Entity> Entities)>();
                 for (int i = 0; i < snapshot.Count; i++)
                 {
                     var file = snapshot[i];
                     try
                     {
                         var content    = UnifiedFileReader.ReadFile(file.Path);
-                        var anonymized = Anonymizer.AnonymizeText(content, out _);
-                        var destPath   = ExportService.GetDestPath(file.Path, outputDir, _scanRootPath);
-                        ExportService.WriteFile(file.Path, destPath, anonymized, new List<Entity>());
-
-                        // Task #196: Create _anon.txt in the same folder as the original file
-                        // This enables LexWolf ingestion by providing plaintext versions
-                        var dir = Path.GetDirectoryName(file.Path)!;
-                        var name = Path.GetFileNameWithoutExtension(file.Path);
-                        var anonFilePath = Path.Combine(dir, name + "_anon.txt");
-                        System.IO.File.WriteAllText(anonFilePath, anonymized, System.Text.Encoding.UTF8);
-
-                        success++;
+                        var anonymized = Anonymizer.AnonymizeText(content, out var entities);
+                        pending.Add((file, anonymized, entities));
                     }
                     catch { failed++; }
 
-                    double progress = ((i + 1) / total) * 100;
+                    double progress = ((i + 1) / total) * 50;
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         var pb = GetProgressBar();
                         if (pb != null) pb.Value = progress;
                     });
                 }
+
+                // Phase 2: Cross-Dokument-Sweep, damit Aliase aus anderen Dokumenten desselben
+                // Batches auch hier greifen, bevor Inhalt und (anonymisierter) Dateiname
+                // feststehen und geschrieben werden.
+                for (int i = 0; i < pending.Count; i++)
+                {
+                    var (file, anonymized, entities) = pending[i];
+                    try
+                    {
+                        var finalText       = Anonymizer.ApplyKnownMappings(anonymized, entities);
+                        var aliasedFileName = Anonymizer.AnonymizeFileName(Path.GetFileName(file.Path));
+                        var destPath        = ExportService.GetDestPath(file.Path, outputDir, _scanRootPath, aliasedFileName);
+
+                        ExportService.WriteFile(file.Path, destPath, finalText, entities);
+                        success++;
+                    }
+                    catch { failed++; }
+
+                    double progress = 50 + ((i + 1) / total) * 50;
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var pb = GetProgressBar();
+                        if (pb != null) pb.Value = progress;
+                    });
+                }
+
                 Anonymizer.SaveMapping();
+
+                if (success > 0)
+                {
+                    try { zipPath = ExportService.CreateZip(outputDir); }
+                    catch { zipPath = null; }
+                }
             });
 
             Cursor = System.Windows.Input.Cursors.Arrow;
@@ -483,9 +509,16 @@ namespace Anonymisierer
 
             MessageBox.Show(
                 $"Export abgeschlossen!\n\n{success} Datei(en) → {outputDir}" +
+                (zipPath != null ? $"\nZIP: {zipPath}" : "") +
                 (failed > 0 ? $"\n{failed} konnten nicht exportiert werden." : ""),
                 "Export", MessageBoxButton.OK,
                 failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+
+            if (zipPath != null)
+            {
+                try { System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{zipPath}\""); }
+                catch { /* Explorer-Auswahl ist nur Komfort, Export ist unabhängig davon erfolgreich */ }
+            }
         }
     }
 }

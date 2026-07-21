@@ -21,11 +21,27 @@ namespace Anonymisierer.Services
             return Path.Combine(outputDir, relPath);
         }
 
+        public static string GetDestPath(string sourcePath, string outputDir, string scanRootPath, string destFileName)
+        {
+            var relDir = Path.GetDirectoryName(Path.GetRelativePath(scanRootPath, sourcePath)) ?? string.Empty;
+            return Path.Combine(outputDir, relDir, destFileName);
+        }
+
         public static string GetAnonFilePath(string sourcePath)
         {
             var dir = Path.GetDirectoryName(sourcePath)!;
             var name = Path.GetFileNameWithoutExtension(sourcePath);
             return Path.Combine(dir, name + "_anon.txt");
+        }
+
+        public static string CreateZip(string outputDir)
+        {
+            var zipPath = outputDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + ".zip";
+            if (File.Exists(zipPath))
+                File.Delete(zipPath);
+            System.IO.Compression.ZipFile.CreateFromDirectory(
+                outputDir, zipPath, System.IO.Compression.CompressionLevel.Optimal, includeBaseDirectory: false);
+            return zipPath;
         }
 
         public static void WriteFile(string sourcePath, string destPath, string anonymizedText, List<Anonymisierer.Entity> entities)
