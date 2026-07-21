@@ -289,6 +289,25 @@ namespace Anonymisierer
             return false;
         }
 
+        // Entfernt eine fuehrende Anrede (z.B. "Frau ", "Herrn ") von einem Kandidatentext.
+        // Der spaCy-NER-Pass liefert Anrede + Name haeufig als EINEN zusammenhaengenden
+        // PER-Span (z.B. "Frau Auenland-Weg"), waehrend der bekannte Adress-Alias selbst
+        // keine Anrede enthaelt (Task #208 Nachbesserung).
+        private static readonly System.Text.RegularExpressions.Regex _rxLeadingSalutation =
+            new(@"^(?:Herr(?:n|in)?|Frau(?:en)?|Dr\.|Prof\.(?:in)?|Dipl\.[-\w]*\.)\s+",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        // Entfernt einen abschliessenden "(Haus N)"-Variationszusatz sowie das letzte
+        // Leerzeichen-getrennte Token, falls es eine Ziffer enthaelt (Hausnummer, z.B.
+        // "221b", "3", "9¾"). So wird aus einem Adress-Alias wie "Auenland-Weg 3" oder
+        // "Baker Street 221b (Haus 2)" der reine Strassenname "Auenland-Weg"/"Baker Street"
+        // fuer den Vergleich gewonnen (Task #208 Nachbesserung).
+        private static readonly System.Text.RegularExpressions.Regex _rxTrailingHausVariant =
+            new(@"\s*\(Haus\s*\d+\)\s*$",
+                System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        private static readonly System.Text.RegularExpressions.Regex _rxTrailingNumericToken =
+            new(@"\s+\S*\d\S*$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
         // Prueft, ob 'text' identisch mit einem bereits vergebenen Alias-Wert ist oder
         // ein Teilstring/davon-Teiltoken davon (z.B. "Baker Street" innerhalb von
         // "[Baker Street 221b]", "Entenhausen" innerhalb von "[Entenhausen]", "ORT-4"
@@ -302,20 +321,41 @@ namespace Anonymisierer
             var clean = text.Trim('[', ']').Trim();
             if (clean.Length < 2) return false;
 
+            // Variante ohne fuehrende Anrede, falls der NER-Span Anrede + Name als ein
+            // Stueck geliefert hat (z.B. "Frau Auenland-Weg" -> "Auenland-Weg").
+            var cleanNoSalutation = _rxLeadingSalutation.Replace(clean, "").Trim();
+            if (cleanNoSalutation.Length < 2) cleanNoSalutation = clean;
+
             foreach (var alias in _knownAliasValues)
             {
                 if (string.IsNullOrWhiteSpace(alias)) continue;
                 var aliasClean = alias.Trim('[', ']').Trim();
                 if (aliasClean.Length < 2) continue;
 
-                // Exakte Uebereinstimmung (mit/ohne Klammern)
-                if (clean.Equals(aliasClean, StringComparison.OrdinalIgnoreCase)) return true;
+                // Alias-Kern ohne Hausnummer/Variationszusatz (z.B. "Auenland-Weg 3" ->
+                // "Auenland-Weg"), damit ein spaeteres Wiederauftauchen ohne Hausnummer
+                // (z.B. in Anrede-Kontext "Frau Auenland-Weg") ebenfalls erkannt wird.
+                var aliasCore = _rxTrailingHausVariant.Replace(aliasClean, "");
+                aliasCore = _rxTrailingNumericToken.Replace(aliasCore, "").Trim();
+                if (aliasCore.Length < 2) aliasCore = aliasClean;
 
-                // 'clean' ist Teilstring des Alias (z.B. "Baker Street" in "Baker Street 221b")
-                if (aliasClean.Contains(clean, StringComparison.OrdinalIgnoreCase)) return true;
+                foreach (var candidate in new[] { clean, cleanNoSalutation })
+                {
+                    // Exakte Uebereinstimmung (mit/ohne Klammern)
+                    if (candidate.Equals(aliasClean, StringComparison.OrdinalIgnoreCase)) return true;
 
-                // Der Alias ist Teilstring von 'clean' (z.B. "ORT-4" in "Mein ORT-4 Text")
-                if (clean.Contains(aliasClean, StringComparison.OrdinalIgnoreCase)) return true;
+                    // 'candidate' ist Teilstring des Alias (z.B. "Baker Street" in "Baker Street 221b")
+                    if (aliasClean.Contains(candidate, StringComparison.OrdinalIgnoreCase)) return true;
+
+                    // Der Alias ist Teilstring von 'candidate' (z.B. "ORT-4" in "Mein ORT-4 Text")
+                    if (candidate.Contains(aliasClean, StringComparison.OrdinalIgnoreCase)) return true;
+
+                    // Vergleich gegen den Alias-Kern ohne Hausnummer (z.B. "Auenland-Weg"
+                    // in "Frau Auenland-Weg" trotz fehlender Hausnummer "3" im Original-Alias)
+                    if (candidate.Equals(aliasCore, StringComparison.OrdinalIgnoreCase)) return true;
+                    if (aliasCore.Contains(candidate, StringComparison.OrdinalIgnoreCase)) return true;
+                    if (candidate.Contains(aliasCore, StringComparison.OrdinalIgnoreCase)) return true;
+                }
             }
 
             return false;

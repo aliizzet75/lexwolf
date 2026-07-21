@@ -103,6 +103,9 @@ verify_*.py
 final_verification_*.py
 migrate_*.py
 debug_*.py
+
+# Ausnahme: Projekt-Acceptance-Tests unter tests/acceptance/
+!tests/acceptance/test_*.py
 backend/api/routes/
 backend/crawlers/ris_crawler.py
 backend/llm_judge.py
