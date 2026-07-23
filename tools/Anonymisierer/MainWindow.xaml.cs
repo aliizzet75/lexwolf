@@ -448,6 +448,20 @@ namespace Anonymisierer
 
             await Task.Run(() =>
             {
+                // Alten Output-Ordner (und ZIP) aus einem vorherigen Export verwerfen. Sonst
+                // bleiben darin Dateien mit den alten (z.B. noch original benannten) Ergebnissen
+                // liegen und landen ueber CreateZip() zusammen mit den neu geschriebenen,
+                // korrekt aliasierten Dateien im ZIP.
+                try
+                {
+                    if (Directory.Exists(outputDir))
+                        Directory.Delete(outputDir, recursive: true);
+                    var staleZip = outputDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + ".zip";
+                    if (File.Exists(staleZip))
+                        File.Delete(staleZip);
+                }
+                catch { /* bestmoeglich; Export laeuft trotzdem weiter */ }
+
                 // Phase 1: jede Datei einzeln anonymisieren, Ergebnis erst im Speicher halten
                 // (noch nicht auf Platte schreiben).
                 var pending = new List<(FileEntry File, string Anonymized, List<Entity> Entities)>();
