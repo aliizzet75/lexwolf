@@ -1243,42 +1243,64 @@ namespace Anonymisierer
             var ext = Path.GetExtension(fileName);
             var baseName = Path.GetFileNameWithoutExtension(fileName);
 
+            // Alle bekannten Personen-Mapping-Einträge berücksichtigen — nicht nur volle
+            // Namen (Vor- + Nachname), sondern auch einzeln registrierte Nachnamen (siehe
+            // StorePersonAlias). Aktennummer_Nachname-Dateinamen (z.B. "31_Erkol_Mietvertrag.pdf")
+            // enthalten oft nur den Nachnamen, keinen Vornamen.
             var personEntries = _mapping
                 .Where(kvp => _entityTypes.TryGetValue(kvp.Key, out var t) && t == EntityType.Person)
-                .Where(kvp => kvp.Key.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2)
                 .OrderByDescending(kvp => kvp.Key.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length)
                 .ThenByDescending(kvp => kvp.Key.Length)
                 .ToList();
 
-            foreach (var (fullName, alias) in personEntries)
+            foreach (var (name, alias) in personEntries)
             {
-                var nameTokens = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var surname = nameTokens[^1];
-                if (surname.Length < 4) continue;
-
-                // Nachname muss als eigenes Wort im Dateinamen vorkommen.
-                var surnameMatch = MatchFileNameToken(baseName, surname);
-                if (!surnameMatch.Success) continue;
-
-                // Mindestens ein weiterer Namens-Token (z.B. Vorname) muss ebenfalls vorkommen,
-                // damit ein Nachname allein (der zufällig auch ein normales Wort sein könnte)
-                // nicht schon als "offensichtlich zugehörig" zählt.
-                var otherTokenMatches = nameTokens.Take(nameTokens.Length - 1)
-                    .Select(t => MatchFileNameToken(baseName, t))
-                    .Where(m => m.Success)
-                    .ToList();
-                if (otherTokenMatches.Count == 0) continue;
-
-                // Zusammenhängenden Bereich von erstem bis letztem Treffer (Vorname(n) +
-                // Nachname) durch den Alias ersetzen; der Rest des Dateinamens (z.B.
-                // "KFZ Anmeldung ") bleibt erhalten.
-                var allMatches = otherTokenMatches.Append(surnameMatch).OrderBy(m => m.Index).ToList();
-                int start = allMatches.First().Index;
-                int end = allMatches.Last().Index + allMatches.Last().Length;
-
+                var nameTokens = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 var aliasName = alias.Trim('[', ']');
-                var newBaseName = (baseName[..start] + aliasName + baseName[end..]).Trim();
-                return newBaseName + ext;
+
+                if (nameTokens.Length >= 2)
+                {
+                    var surname = nameTokens[^1];
+                    if (surname.Length < 4) continue;
+
+                    // Nachname muss als eigenes Wort im Dateinamen vorkommen.
+                    var surnameMatch = MatchFileNameToken(baseName, surname);
+                    if (!surnameMatch.Success) continue;
+
+                    // Mindestens ein weiterer Namens-Token (z.B. Vorname) muss ebenfalls vorkommen,
+                    // damit ein Nachname allein (der zufällig auch ein normales Wort sein könnte)
+                    // nicht schon als "offensichtlich zugehörig" zählt — hier, wo ein voller
+                    // Name im Mapping steht, verlangen wir also weiterhin beide Teile.
+                    var otherTokenMatches = nameTokens.Take(nameTokens.Length - 1)
+                        .Select(t => MatchFileNameToken(baseName, t))
+                        .Where(m => m.Success)
+                        .ToList();
+                    if (otherTokenMatches.Count == 0) continue;
+
+                    // Zusammenhängenden Bereich von erstem bis letztem Treffer (Vorname(n) +
+                    // Nachname) durch den Alias ersetzen; der Rest des Dateinamens (z.B.
+                    // "KFZ Anmeldung ") bleibt erhalten.
+                    var allMatches = otherTokenMatches.Append(surnameMatch).OrderBy(m => m.Index).ToList();
+                    int start = allMatches.First().Index;
+                    int end = allMatches.Last().Index + allMatches.Last().Length;
+
+                    var newBaseName = (baseName[..start] + aliasName + baseName[end..]).Trim();
+                    return newBaseName + ext;
+                }
+                else
+                {
+                    // Einzelner Namens-Token im Mapping (typischerweise der separat
+                    // registrierte Nachname, siehe StorePersonAlias). Der Nachname allein
+                    // reicht hier aus, weil er bereits als Teil einer im Batch erkannten
+                    // Person bestätigt ist — kein zusätzlicher Vorname im Dateinamen nötig.
+                    if (name.Length < 4) continue;
+
+                    var match = MatchFileNameToken(baseName, name);
+                    if (!match.Success) continue;
+
+                    var newBaseName = (baseName[..match.Index] + aliasName + baseName[(match.Index + match.Length)..]).Trim();
+                    return newBaseName + ext;
+                }
             }
 
             return fileName;

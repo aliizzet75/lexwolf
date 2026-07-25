@@ -55,5 +55,27 @@ namespace Anonymisierer.Tests
                 Directory.Delete(tempFolder, true);
             }
         }
+
+        [Fact]
+        public void Dateiname_Mit_Nachname_Allein_Wird_Anonymisiert()
+        {
+            var tempFolder = NewTempFolder();
+            try
+            {
+                Anonymizer.SetMappingFile(tempFolder);
+
+                // Person wird im Batch anderswo mit vollem Namen erkannt, registriert
+                // dabei auch den Nachnamen allein (siehe StorePersonAlias).
+                Anonymizer.AnonymizeText("Sehr geehrter Herr Ali Erkol, ...", out _);
+
+                var result = Anonymizer.AnonymizeFileName("31_Erkol_Mietvertrag.pdf");
+
+                Assert.DoesNotContain("Erkol", result, StringComparison.OrdinalIgnoreCase);
+            }
+            finally
+            {
+                Directory.Delete(tempFolder, true);
+            }
+        }
     }
 }
