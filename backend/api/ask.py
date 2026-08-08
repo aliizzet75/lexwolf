@@ -315,6 +315,41 @@ def _direct_tag_search(query: str, db_svc, limit: int = 3) -> list:
         return []
 
 
+_PARAGRAPH_RE = re.compile(r"§+\s*(\d+[a-zA-Zäöü]{0,2})\b")
+
+
+def _direct_paragraph_search(text: str, db_svc, limit: int = 3) -> list:
+    """Erkennt explizite §-Verweise mit Gesetzeskürzel (z.B. '§ 433 BGB', '823 BGB')
+    und sucht den Paragraphen direkt über den Titel. Notwendig weil die reine
+    Vektorsuche bei kurzen, zahlenlastigen Anfragen unzuverlässig ist — '823 BGB'
+    landete im Test bei Sozialgesetzbuch-Treffern statt bei § 823 BGB selbst."""
+    m = _PARAGRAPH_RE.search(text)
+    if not m:
+        return []
+    nr = m.group(1)
+    abbrevs = [a.lower() for a in re.findall(r"\b[A-ZÄÖÜ]{2,6}\b", text)]
+    if not abbrevs:
+        return []
+    try:
+        from sqlalchemy import text as sqltxt
+        db = db_svc.SessionLocal()
+        try:
+            for abbrev in abbrevs:
+                rows = db.execute(sqltxt(
+                    "SELECT id, title, text, tags FROM legal_chunks "
+                    "WHERE tags ILIKE :tag_prefix AND title ILIKE :title_pattern "
+                    "ORDER BY id LIMIT :n"
+                ), {"tag_prefix": f"{abbrev}%", "title_pattern": f"§ {nr} %", "n": limit}).fetchall()
+                if rows:
+                    return [{"id": r.id, "title": r.title, "text": r.text,
+                             "tags": r.tags, "score": 0.99, "source": r.tags} for r in rows]
+            return []
+        finally:
+            db.close()
+    except Exception:
+        return []
+
+
 def _get_dokument_info(text: str):
     """Gibt (embed_query, tags, fts) für bekannte Dokumenttypen zurück, sonst None."""
     lower = text.lower()
@@ -329,7 +364,11 @@ def _extract_query(text: str, intent: str = "frage") -> str:
         info = _get_dokument_info(text)
         if info:
             return info[0]  # embed_query
-    words = re.findall(r"[a-zA-ZäöüÄÖÜß]{4,}", text)
+    # Wörter ab 4 Buchstaben, ODER durchgehend großgeschriebene Gesetzeskürzel
+    # (BGB, ZPO, GG, ...), ODER Paragraphen-/Artikelnummern (433, 823a, ...).
+    # Ohne die letzten beiden Alternativen gingen exakt die Begriffe verloren,
+    # die eine Rechtsfrage eindeutig machen — "Was regelt §433 BGB?" wurde zu "regelt".
+    words = re.findall(r"[a-zA-ZäöüÄÖÜß]{4,}|\b[A-ZÄÖÜ]{2,}\b|\d+[a-zäöü]?", text)
     keywords = [w for w in words if w.lower() not in _STOP]
     return " ".join(keywords[:8]) if keywords else text
 
@@ -482,8 +521,12 @@ async def ask(request: AskRequest):
             raw = direct + search.hybrid_search_with_graph(embed_q, limit=max(0, 8-len(direct)), fast_mode=True)
         else:
             enriched = _enrich_query(embed_query)
+            # Expliziter §-Verweis mit Gesetzeskürzel geht vor — höchste Priorität
+            para_hits = _direct_paragraph_search(text, search.database_service, limit=3)
             # Direkte Tag-Suche für erkannte Rechtsgebiete (verhindert Nischenrecht)
-            direct = _direct_tag_search(enriched, search.database_service, limit=3)
+            tag_hits = _direct_tag_search(enriched, search.database_service, limit=3)
+            para_ids = {c.get("id") for c in para_hits}
+            direct = para_hits + [c for c in tag_hits if c.get("id") not in para_ids]
             rest_limit = max(0, 8 - len(direct))
             fused = search.hybrid_search_with_graph(enriched, limit=rest_limit, fast_mode=True)
             direct_ids = {c.get("id") for c in direct}
