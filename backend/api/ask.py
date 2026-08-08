@@ -518,7 +518,8 @@ async def ask(request: AskRequest):
                                            "tags": r.tags, "score": 0.95, "source": r.tags})
                 finally:
                     db.close()
-            raw = direct + search.hybrid_search_with_graph(embed_q, limit=max(0, 8-len(direct)), fast_mode=True)
+            # Direkte Tag-Treffer bereits präzise genug — HyDE nur zuschalten wenn nichts gefunden wurde
+            raw = direct + search.hybrid_search_with_graph(embed_q, limit=max(0, 8-len(direct)), fast_mode=bool(direct))
         else:
             enriched = _enrich_query(embed_query)
             # Expliziter §-Verweis mit Gesetzeskürzel geht vor — höchste Priorität
@@ -528,7 +529,11 @@ async def ask(request: AskRequest):
             para_ids = {c.get("id") for c in para_hits}
             direct = para_hits + [c for c in tag_hits if c.get("id") not in para_ids]
             rest_limit = max(0, 8 - len(direct))
-            fused = search.hybrid_search_with_graph(enriched, limit=rest_limit, fast_mode=True)
+            # Exakter §-Treffer schon da → schnelle Ergänzungssuche reicht.
+            # Sonst: HyDE zuschalten, damit das LLM die Frage inhaltlich versteht
+            # statt sich auf die Keyword-Extraktion verlassen zu müssen.
+            fast_mode = bool(para_hits)
+            fused = search.hybrid_search_with_graph(enriched, limit=rest_limit, fast_mode=fast_mode)
             direct_ids = {c.get("id") for c in direct}
             raw = direct + [r for r in fused if r.get("id") not in direct_ids]
         # Distanz → Score: bester Treffer = 100%, Rest relativ dazu normalisiert
