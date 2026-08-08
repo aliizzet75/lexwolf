@@ -54,16 +54,30 @@ public class UpdateChecker
     /// Lädt den Installer in einen Temp-Pfad herunter — für den Silent-Self-Update
     /// (Installer wird danach mit /S ausgeführt statt dem Nutzer zum manuellen
     /// Ausführen im Browser-Download-Ordner überlassen zu werden).
+    /// progress meldet 0-100 (Prozent), falls der Server Content-Length liefert —
+    /// sonst bleibt es bei den Aufrufen aus, kein Fehler.
     /// </summary>
-    public async Task<string> DownloadInstallerAsync(string downloadUrl)
+    public async Task<string> DownloadInstallerAsync(string downloadUrl, IProgress<double>? progress = null)
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"LexWolf-Update-{Guid.NewGuid():N}.exe");
         using var response = await _http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
-        await using (var fs = File.Create(tempPath))
+
+        var totalBytes = response.Content.Headers.ContentLength;
+        await using var httpStream = await response.Content.ReadAsStreamAsync();
+        await using var fs = File.Create(tempPath);
+
+        var buffer = new byte[81920];
+        long readSoFar = 0;
+        int read;
+        while ((read = await httpStream.ReadAsync(buffer)) > 0)
         {
-            await response.Content.CopyToAsync(fs);
+            await fs.WriteAsync(buffer.AsMemory(0, read));
+            readSoFar += read;
+            if (totalBytes is > 0)
+                progress?.Report(readSoFar * 100.0 / totalBytes.Value);
         }
+
         return tempPath;
     }
 }

@@ -69,13 +69,27 @@ public partial class MainWindow : Window
         // mit /S ohne UI ausführen — der Installer killt eine evtl. noch laufende
         // Instanz selbst (siehe .nsi) und startet die neue Version danach automatisch.
         // Kein manueller Download+Doppelklick mehr nötig.
+        Dispatcher.Invoke(() =>
+        {
+            ProgressBar.Value = 0;
+            ProgressBar.IsEnabled = true;
+            SetStatus(null, "Update wird heruntergeladen... 0%");
+        });
+        var downloadProgress = new Progress<double>(percent => Dispatcher.Invoke(() =>
+        {
+            ProgressBar.Value = percent;
+            SetStatus(null, $"Update wird heruntergeladen... {percent:0}%");
+        }));
+
         try
         {
-            var installerPath = await checker.DownloadInstallerAsync(update.DownloadUrl);
+            var installerPath = await checker.DownloadInstallerAsync(update.DownloadUrl, downloadProgress);
+            Dispatcher.Invoke(() => SetStatus(null, "Update wird installiert..."));
             Process.Start(new ProcessStartInfo(installerPath, "/S") { UseShellExecute = true });
         }
         catch (Exception ex)
         {
+            Dispatcher.Invoke(() => ProgressBar.IsEnabled = false);
             Dispatcher.Invoke(() => System.Windows.MessageBox.Show(
                 this, $"Update fehlgeschlagen: {ex.Message}", "Fehler",
                 MessageBoxButton.OK, MessageBoxImage.Error));
