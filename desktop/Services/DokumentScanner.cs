@@ -135,28 +135,22 @@ namespace LexWolf.Services
             }
         }
 
-        // Minimal .pdf-Reader: extrahiert printbare ASCII-Strings
+        // PdfPig-basierter Reader. Der bisherige Ansatz (rohe Bytes nach
+        // "(...)"-Mustern durchsuchen) fand nur unkomprimierte PDF-Content-Streams —
+        // praktisch alle modernen PDFs komprimieren diese (Flate/zlib), wodurch
+        // fast nie Text extrahiert wurde. PdfPig dekomprimiert und parst korrekt.
+        // Bei rein gescannten Dokumenten ohne Textebene (z.B. abfotografierte
+        // beglaubigte Abschriften) bleibt der Text trotzdem leer — das würde OCR
+        // brauchen, was PdfPig nicht macht.
         private static string ReadPdf(string path)
         {
             try
             {
-                var bytes = File.ReadAllBytes(path);
+                using var document = UglyToad.PdfPig.PdfDocument.Open(path);
                 var sb = new StringBuilder();
-                int i = 0;
-                while (i < bytes.Length)
+                foreach (var page in document.GetPages())
                 {
-                    if (bytes[i] == '(' )
-                    {
-                        i++;
-                        while (i < bytes.Length && bytes[i] != ')')
-                        {
-                            if (bytes[i] >= 32 && bytes[i] < 128)
-                                sb.Append((char)bytes[i]);
-                            i++;
-                        }
-                        sb.Append(' ');
-                    }
-                    i++;
+                    sb.AppendLine(page.Text);
                 }
                 return sb.ToString();
             }
