@@ -243,7 +243,8 @@ public partial class MainWindow : Window
 
     private void OnInputKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (e.Key == System.Windows.Input.Key.Return && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
+        // InputBox ist einzeilig (kein AcceptsReturn) — Return schickt direkt ab.
+        if (e.Key == System.Windows.Input.Key.Return)
         {
             e.Handled = true;
             OnSend(sender, e);
@@ -720,17 +721,16 @@ public partial class MainWindow : Window
 
     private async void OnScanFolderClicked(object sender, RoutedEventArgs e)
     {
-        var folderDialog = new Microsoft.Win32.OpenFileDialog
+        var folderDialog = new Forms.FolderBrowserDialog
         {
-            Title = "Verzeichnis zum Scannen auswählen",
-            Filter = "Ordner|.",
-            Multiselect = false
+            Description = "Verzeichnis zum Scannen auswählen",
+            UseDescriptionForTitle = true,
         };
 
         var result = folderDialog.ShowDialog();
-        if (result == true)
+        if (result == Forms.DialogResult.OK)
         {
-            var folderPath = System.IO.Path.GetDirectoryName(folderDialog.FileName);
+            var folderPath = folderDialog.SelectedPath;
             if (!string.IsNullOrEmpty(folderPath))
             {
                 ProgressBar.Value = 0;
