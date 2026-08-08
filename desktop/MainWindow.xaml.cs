@@ -87,6 +87,17 @@ public partial class MainWindow : Window
         return Task.CompletedTask;
     }
 
+    private void OnShowInfo(object sender, RoutedEventArgs e)
+    {
+        var version = UpdateChecker.CurrentVersion;
+        System.Windows.MessageBox.Show(
+            this,
+            $"LexWolf\nVersion {version}",
+            "Info",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
     private void OnOpenSettings(object sender, RoutedEventArgs e)
     {
         var dlg = new SettingsDialog(_settings) { Owner = this };

@@ -23,6 +23,10 @@
                         DockPanel.Dock="Right"
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
                         FontSize="15" Cursor="Hand" Padding="8,0" ToolTip="Einstellungen"/>
+                <Button x:Name="InfoBtn" Content="?" Click="OnShowInfo"
+                        DockPanel.Dock="Right"
+                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
+                        FontSize="15" FontWeight="Bold" Cursor="Hand" Padding="8,0" ToolTip="Info"/>
                 
                 <!-- FolderPicker-Button für Verzeichnis-Scanning -->
                 <Button x:Name="ScanFolderBtn" Content="📂 Ordner scannen" Click="OnScanFolderClicked"
