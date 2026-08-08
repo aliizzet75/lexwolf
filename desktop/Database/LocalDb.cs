@@ -76,6 +76,18 @@ namespace LexWolf.Database
             cmd.ExecuteNonQuery();
         }
 
+        public System.Collections.Generic.List<(string Id, string Name)> GetMandanten()
+        {
+            var result = new System.Collections.Generic.List<(string, string)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT id, name FROM mandanten ORDER BY name COLLATE NOCASE;";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                result.Add((reader.GetString(0), reader.GetString(1)));
+            return result;
+        }
+
         // --- Dokumente ---
 
         public void UpsertDokumentChunk(string id, string mandantId, string pfad,

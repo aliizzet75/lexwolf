@@ -30,9 +30,9 @@ public partial class MainWindow : Window
     private readonly List<ChatMessage> _history = new();
     private readonly LocalDb _db = new();
     private DokumentScanner? _scanner;
-    private int? _activeMandantId = null;
+    private string? _activeMandantId = null;
     private string? _activeMandantName = null;
-    private readonly List<(int Id, string Name)> _mandanten = new();
+    private readonly List<(string Id, string Name)> _mandanten = new();
 
     public MainWindow()
     {
@@ -95,6 +95,10 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(path);
             _scanner = new DokumentScanner(path, _db);
             _scanner.ScanAll();
+            // Dropdown mit den gerade gescannten Mandanten befüllen — vorher lief
+            // LoadMandantenAsync() schon beim Start, BEVOR überhaupt gescannt wurde.
+            _ = LoadMandantenAsync();
+            _scanner.OnNeuerMandant = () => Dispatcher.Invoke(() => _ = LoadMandantenAsync());
             _scanner.StartWatching();
             Dispatcher.Invoke(() => AddReasoning("📂", $"Dokumente indexiert: {path}"));
         }
@@ -178,31 +182,28 @@ public partial class MainWindow : Window
 
     // ── Mandanten ─────────────────────────────────────────────────────────────
 
-    private async Task LoadMandantenAsync()
+    private Task LoadMandantenAsync()
     {
-        try
+        // Mandanten kommen aus der lokalen Scanner-DB (Ordnername je Mandant unter
+        // DokumentePfad), nicht vom Server — die Server-Tabelle "mandanten" ist leer
+        // und hat keinen Endpoint zum Befüllen; Mandantendaten sollen laut
+        // Datenschutz-Konzept ohnehin nie den Anwalts-PC verlassen.
+        var mandanten = _db.GetMandanten();
+        _mandanten.Clear();
+        _mandanten.AddRange(mandanten);
+        Dispatcher.Invoke(() =>
         {
-            var json = await _http.GetStringAsync($"{BackendUrl}/mandant/search");
-            using var doc = JsonDocument.Parse(json);
-            _mandanten.Clear();
-            foreach (var item in doc.RootElement.EnumerateArray())
-            {
-                var id   = item.GetProperty("id").GetInt32();
-                var name = item.TryGetProperty("name", out var n) ? n.GetString() ?? "?" : "?";
-                _mandanten.Add((id, name));
-                _db.UpsertMandant(id.ToString(), name, "");
-            }
-            Dispatcher.Invoke(() =>
-            {
-                var prev = MandantBox.SelectedIndex;
-                MandantBox.Items.Clear();
-                MandantBox.Items.Add("— kein Mandant —");
-                foreach (var (_, name) in _mandanten)
-                    MandantBox.Items.Add(name);
-                MandantBox.SelectedIndex = prev >= 0 ? Math.Min(prev, MandantBox.Items.Count - 1) : 0;
-            });
-        }
-        catch { /* Backend noch nicht erreichbar */ }
+            var prevName = MandantBox.SelectedIndex > 0
+                ? MandantBox.SelectedItem as string
+                : null;
+            MandantBox.Items.Clear();
+            MandantBox.Items.Add("— kein Mandant —");
+            foreach (var (_, name) in _mandanten)
+                MandantBox.Items.Add(name);
+            var restoredIdx = prevName is not null ? MandantBox.Items.IndexOf(prevName) : -1;
+            MandantBox.SelectedIndex = restoredIdx >= 0 ? restoredIdx : 0;
+        });
+        return Task.CompletedTask;
     }
 
     private void OnMandantChanged(object sender, SelectionChangedEventArgs e)

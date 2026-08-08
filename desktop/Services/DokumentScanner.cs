@@ -12,6 +12,11 @@ namespace LexWolf.Services
         private readonly LocalDb _db;
         private readonly List<FileSystemWatcher> _watchers = new();
 
+        /// <summary>Wird aufgerufen wenn zur Laufzeit ein neuer Mandanten-Ordner
+        /// (Top-Level-Verzeichnis unter basePath) auftaucht — UI kann damit das
+        /// Mandanten-Dropdown neu laden ohne Neustart.</summary>
+        public Action? OnNeuerMandant;
+
         private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
             ".docx", ".pdf", ".txt", ".eml"
@@ -214,6 +219,7 @@ namespace LexWolf.Services
                     var id   = ToId(name);
                     _db.UpsertMandant(id, name, name);
                     AttachWatcher(e.FullPath);
+                    OnNeuerMandant?.Invoke();
                 }
             };
             _watchers.Add(rootWatcher);

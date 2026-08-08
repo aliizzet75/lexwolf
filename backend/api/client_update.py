@@ -6,9 +6,9 @@ router = APIRouter(prefix="/client", tags=["client-update"])
 # Solange wir nicht produktiv sind: 0.x-Versionierung.
 # Bei jedem Release manuell erhöhen — download_url bleibt stabil (kein
 # Versions-Suffix im Dateinamen), nur die Datei dahinter wird ersetzt.
-LATEST_VERSION = "0.3.0"
+LATEST_VERSION = "0.4.0"
 DOWNLOAD_URL = "http://212.227.180.66:8000/client/download/LexWolf-Setup.exe"
-RELEASE_NOTES = "Echter Silent-Update: Client tauscht sich beim Update selbst aus und startet automatisch neu."
+RELEASE_NOTES = "Mandanten-Dropdown liest jetzt aus der lokalen Scanner-DB statt einer leeren Server-Tabelle."
 
 
 @router.get("/version")
