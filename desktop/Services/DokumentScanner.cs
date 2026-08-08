@@ -152,12 +152,33 @@ namespace LexWolf.Services
                 {
                     sb.AppendLine(page.Text);
                 }
-                return sb.ToString();
+                var text = sb.ToString();
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text;
+                // Kein Fehler, aber leerer Text -> PdfPig konnte öffnen, es gibt
+                // schlicht keine Textebene (typisch für gescannte/abfotografierte
+                // Dokumente). Weiter unten per OCR versuchen statt hier aufzugeben.
             }
-            catch
+            catch (Exception ex)
             {
-                return string.Empty;
+                Console.Error.WriteLine($"[DokumentScanner] PdfPig-Lesefehler bei {path}: {ex}");
+                // Auch bei einem harten PdfPig-Fehler noch OCR versuchen — manche
+                // Dateien lassen sich zwar nicht textparsen, aber rastern.
             }
+
+            try
+            {
+                var ocrText = OcrService.TryReadPdfViaOcrAsync(path).GetAwaiter().GetResult();
+                if (!string.IsNullOrWhiteSpace(ocrText))
+                    return ocrText!;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[DokumentScanner] OCR-Fallback fehlgeschlagen bei {path}: {ex}");
+            }
+
+            return $"[{Path.GetFileName(path)}: Weder Textebene noch OCR-Ergebnis gefunden — " +
+                   "PDF evtl. beschädigt, leer, oder kein passendes OCR-Sprachpaket auf diesem System installiert.]";
         }
 
         // -------------------------------------------------------------------------
