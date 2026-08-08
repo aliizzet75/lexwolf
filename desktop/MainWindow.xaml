@@ -135,17 +135,11 @@
 
                     <Border Grid.Row="2" Background="#161b22" Padding="12,10" BorderBrush="#30363d" BorderThickness="0,1,0,0">
                         <DockPanel>
-                            <TextBox x:Name="InputBox"
-                                     DockPanel.Dock="Left"
-                                     Margin="0,0,8,0"
-                                     Height="36"
-                                     Background="#0d1117"
-                                     Foreground="#c9d1d9"
-                                     BorderBrush="#30363d"
-                                     BorderThickness="1"
-                                     TextWrapping="Wrap"
-                                     VerticalContentAlignment="Center"
-                                     KeyDown="OnInputKeyDown"/>
+                            <!-- SendBtn zuerst + Dock=Right, damit InputBox als letztes Kind
+                                 (DockPanel-Default LastChildFill=True) den Rest ausfüllt.
+                                 Umgekehrte Reihenfolge machte InputBox faktisch unsichtbar,
+                                 da SendBtn sonst als letztes Kind alles füllt und sein
+                                 eigenes Dock="Right" ignoriert wird. -->
                             <Button x:Name="SendBtn" Content="Senden"
                                     DockPanel.Dock="Right"
                                     Width="100"
@@ -155,6 +149,16 @@
                                     BorderBrush="#30363d"
                                     BorderThickness="1"
                                     Padding="10,5"/>
+                            <TextBox x:Name="InputBox"
+                                     Margin="0,0,8,0"
+                                     Height="36"
+                                     Background="#0d1117"
+                                     Foreground="#c9d1d9"
+                                     BorderBrush="#30363d"
+                                     BorderThickness="1"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Center"
+                                     KeyDown="OnInputKeyDown"/>
                         </DockPanel>
                     </Border>
                 </Grid>
