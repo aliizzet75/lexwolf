@@ -37,6 +37,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        MandantBox.AddHandler(
+            System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
+            new TextChangedEventHandler(OnMandantTextChanged));
         _ = CheckConnectionAsync(showConnecting: true);
         _ = PeriodicHealthCheckAsync();
         _ = LoadMandantenAsync();
@@ -72,7 +75,7 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(() =>
         {
             ProgressBar.Value = 0;
-            ProgressBar.IsEnabled = true;
+            SetProgressBusy(true);
             SetStatus(null, "Update wird heruntergeladen... 0%");
         });
         var downloadProgress = new Progress<double>(percent => Dispatcher.Invoke(() =>
@@ -174,6 +177,12 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SetProgressBusy(bool busy)
+    {
+        ProgressBar.IsEnabled = busy;
+        ProgressBar.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void SetStatus(bool? online, string message)
     {
         Dispatcher.Invoke(() =>
@@ -196,6 +205,9 @@ public partial class MainWindow : Window
 
     // ── Mandanten ─────────────────────────────────────────────────────────────
 
+    private const string KeinMandantLabel = "— kein Mandant —";
+    private bool _suppressMandantEvents = false;
+
     private Task LoadMandantenAsync()
     {
         // Mandanten kommen aus der lokalen Scanner-DB (Ordnername je Mandant unter
@@ -205,41 +217,83 @@ public partial class MainWindow : Window
         var mandanten = _db.GetMandanten();
         _mandanten.Clear();
         _mandanten.AddRange(mandanten);
-        Dispatcher.Invoke(() =>
-        {
-            var prevName = MandantBox.SelectedIndex > 0
-                ? MandantBox.SelectedItem as string
-                : null;
-            MandantBox.Items.Clear();
-            MandantBox.Items.Add("— kein Mandant —");
-            foreach (var (_, name) in _mandanten)
-                MandantBox.Items.Add(name);
-            var restoredIdx = prevName is not null ? MandantBox.Items.IndexOf(prevName) : -1;
-            MandantBox.SelectedIndex = restoredIdx >= 0 ? restoredIdx : 0;
-        });
+        Dispatcher.Invoke(() => ApplyMandantFilter(MandantBox.Text));
         return Task.CompletedTask;
+    }
+
+    /// <summary>Befüllt die Dropdown-Liste case-insensitiv gefiltert nach dem
+    /// aktuell eingegebenen Text — Suche/Autovervollständigung fürs Mandanten-Feld.</summary>
+    private void ApplyMandantFilter(string? filterText)
+    {
+        _suppressMandantEvents = true;
+        try
+        {
+            var filter = (filterText ?? "").Trim();
+            MandantBox.Items.Clear();
+            if (string.IsNullOrEmpty(filter))
+                MandantBox.Items.Add(KeinMandantLabel);
+            foreach (var (_, name) in _mandanten)
+            {
+                if (string.IsNullOrEmpty(filter) || name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    MandantBox.Items.Add(name);
+            }
+        }
+        finally
+        {
+            _suppressMandantEvents = false;
+        }
+    }
+
+    private void OnMandantTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressMandantEvents) return;
+        ApplyMandantFilter(MandantBox.Text);
+        MandantBox.IsDropDownOpen = MandantBox.Items.Count > 0 && !string.IsNullOrEmpty(MandantBox.Text);
+    }
+
+    private void OnMandantBoxKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != System.Windows.Input.Key.Return) return;
+        var typed = (MandantBox.Text ?? "").Trim();
+        if (string.IsNullOrEmpty(typed)) return;
+
+        var exact = _mandanten.FirstOrDefault(m => string.Equals(m.Name, typed, StringComparison.OrdinalIgnoreCase));
+        var toSelect = exact.Name;
+        if (toSelect is null)
+        {
+            var candidates = _mandanten.Where(m => m.Name.Contains(typed, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (candidates.Count == 1) toSelect = candidates[0].Name;
+        }
+        if (toSelect is not null)
+        {
+            MandantBox.IsDropDownOpen = false;
+            MandantBox.SelectedItem = toSelect;
+            e.Handled = true;
+        }
     }
 
     private void OnMandantChanged(object sender, SelectionChangedEventArgs e)
     {
-        var idx = MandantBox.SelectedIndex - 1;
+        if (_suppressMandantEvents) return;
+        var selected = MandantBox.SelectedItem as string;
         _history.Clear();
         ChatPanel.Children.Clear();
         UnterhaltBtn.Visibility = Visibility.Collapsed;
 
-        if (idx < 0 || idx >= _mandanten.Count)
+        if (string.IsNullOrEmpty(selected) || selected == KeinMandantLabel)
         {
             _activeMandantId   = null;
             _activeMandantName = null;
             AppendSystemMessage("Kein Mandant ausgewählt — allgemeines Gespräch.");
+            return;
         }
-        else
-        {
-            var (id, name) = _mandanten[idx];
-            _activeMandantId   = id;
-            _activeMandantName = name;
-            AppendSystemMessage($"Mandant: {name} — Chat-Kontext aktiv.");
-        }
+
+        var match = _mandanten.FirstOrDefault(m => string.Equals(m.Name, selected, StringComparison.OrdinalIgnoreCase));
+        if (match.Name is null) return; // getippter Text ohne (eindeutigen) Treffer
+
+        _activeMandantId   = match.Id;
+        _activeMandantName = match.Name;
+        AppendSystemMessage($"Mandant: {match.Name} — Chat-Kontext aktiv.");
     }
 
     // ── Chat ──────────────────────────────────────────────────────────────────
@@ -767,7 +821,7 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(folderPath))
             {
                 ProgressBar.Value = 0;
-                ProgressBar.IsEnabled = true;
+                SetProgressBusy(true);
 
                 await Task.Run(() =>
                 {
@@ -794,7 +848,7 @@ public partial class MainWindow : Window
                     }
                 });
 
-                ProgressBar.IsEnabled = false;
+                SetProgressBusy(false);
                 MessageBox.Show($"Scan abgeschlossen. Dateien wurden indexiert.");
             }
         }
@@ -839,7 +893,7 @@ public partial class MainWindow : Window
         var inputFolder = ""; // Dies müsste aus den Dateibaum-Dateien ermittelt werden
 
         // Export-Fortschritt
-        ProgressBar.IsEnabled = true;
+        SetProgressBusy(true);
         ProgressBar.Value = 0;
         
         // Alle Dateien im Input-Ordner rekursiv durchlaufen
@@ -854,14 +908,14 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show($"Fehler beim Scannen: {ex.Message}");
-            ProgressBar.IsEnabled = false;
+            SetProgressBusy(false);
             return;
         }
 
         if (allFiles.Count == 0)
         {
             System.Windows.MessageBox.Show("Keine unterstützten Dateien gefunden.");
-            ProgressBar.IsEnabled = false;
+            SetProgressBusy(false);
             return;
         }
 
@@ -902,7 +956,7 @@ public partial class MainWindow : Window
             }
         }
 
-        ProgressBar.IsEnabled = false;
+        SetProgressBusy(false);
         System.Windows.MessageBox.Show($"Export abgeschlossen. {exportedCount} Dateien wurden in {outputFolder} gespeichert.");
     }
 

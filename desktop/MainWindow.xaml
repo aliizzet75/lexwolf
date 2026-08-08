@@ -6,6 +6,116 @@
         Width="1200" Height="750"
         MinWidth="900" MinHeight="550"
         Background="#0d1117">
+    <Window.Resources>
+        <!-- Dark-Theme ComboBox: die Standard-Vorlage ignoriert Background/Foreground
+             für Popup und Chrome weitgehend — ohne eigenes ControlTemplate wirkt sie
+             auf dunklem Grund ausgegraut / kaum lesbar. -->
+        <Style x:Key="DarkComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#161b22"/>
+            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#30363d"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#21262d"/>
+                                <Setter Property="Foreground" Value="#e8a838"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Background" Value="#0d1117"/>
+            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItemStyle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="22"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border x:Name="MainBorder" Grid.ColumnSpan="2"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4"/>
+
+                            <ToggleButton x:Name="ToggleBtn" Grid.ColumnSpan="2"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <TextBlock Grid.Column="1" Text="▾" Foreground="#8b949e" FontSize="10"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsHitTestVisible="False"/>
+
+                            <TextBox x:Name="PART_EditableTextBox"
+                                     Grid.Column="0"
+                                     Margin="{TemplateBinding Padding}"
+                                     Background="Transparent" Foreground="{TemplateBinding Foreground}"
+                                     CaretBrush="{TemplateBinding Foreground}"
+                                     BorderThickness="0"
+                                     VerticalAlignment="Center"
+                                     Visibility="Collapsed"
+                                     Focusable="{TemplateBinding IsEditable}"/>
+
+                            <ContentPresenter x:Name="ContentSite"
+                                              Grid.Column="0"
+                                              Margin="{TemplateBinding Padding}"
+                                              IsHitTestVisible="False"
+                                              VerticalAlignment="Center"
+                                              Content="{TemplateBinding SelectionBoxItem}"/>
+
+                            <Popup x:Name="PART_Popup"
+                                   Grid.ColumnSpan="2"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="None">
+                                <Border Background="#161b22" BorderBrush="#30363d" BorderThickness="1"
+                                        MaxHeight="240"
+                                        Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEditable" Value="True">
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <DockPanel>
 
         <!-- Top: status bar -->
@@ -36,18 +146,22 @@
                         ToolTip="Verzeichnis rekursiv scannen (.docx, .pdf, .txt, .eml)"/>
                 
                 <!-- ProgressBar für Fortschritt -->
+                <!-- Nur sichtbar während Scan/Download läuft (SetProgressBusy) — sonst
+                     leicht mit einem leeren Eingabefeld zu verwechseln. -->
                 <ProgressBar x:Name="ProgressBar" Width="150" Height="20" Margin="12,0,0,0"
                              DockPanel.Dock="Right" Minimum="0" Maximum="100" Value="0"
-                             Visibility="Visible"/>
+                             Visibility="Collapsed"/>
                 
                 <ComboBox x:Name="MandantBox"
                           DockPanel.Dock="Right" Width="220"
                           VerticalAlignment="Center" Margin="0,0,8,0"
-                          Background="#21262d" Foreground="#c9d1d9"
-                          BorderBrush="#30363d" BorderThickness="1"
-                          FontSize="12"
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True"
                           SelectionChanged="OnMandantChanged"
-                          ToolTip="Aktiven Mandanten wählen"/>
+                          PreviewKeyDown="OnMandantBoxKeyDown"
+                          ToolTip="Mandant suchen oder auswählen"/>
+                <TextBlock Text="Mandant:" Foreground="#8b949e" FontSize="12"
+                           DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <TextBlock x:Name="StatusText" Text="Verbinde..." Foreground="#8b949e"
                            VerticalAlignment="Center" FontSize="12"/>
             </DockPanel>
