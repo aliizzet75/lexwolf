@@ -80,4 +80,17 @@ public class UpdateChecker
 
         return tempPath;
     }
+
+    /// <summary>
+    /// Lädt den Installer und startet ihn still (/S) — gemeinsame Logik für den
+    /// automatischen Check beim Programmstart und den manuellen Check über den
+    /// Info-Dialog. Beendet die App NICHT selbst — das macht der Aufrufer, je
+    /// nachdem in welchem UI-Kontext er sich befindet.
+    /// </summary>
+    public async Task ApplyUpdateAsync(UpdateInfo update, IProgress<double>? progress = null)
+    {
+        var installerPath = await DownloadInstallerAsync(update.DownloadUrl, progress);
+        System.Diagnostics.Process.Start(
+            new System.Diagnostics.ProcessStartInfo(installerPath, "/S") { UseShellExecute = true });
+    }
 }

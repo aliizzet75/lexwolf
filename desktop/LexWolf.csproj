@@ -8,7 +8,8 @@
     <RootNamespace>LexWolf</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Version>0.4.2</Version>
+    <Version>0.4.3</Version>
+    <ApplicationIcon>Assets\lexwolf.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,5 +17,12 @@
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.0" />
     <PackageReference Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
     <PackageReference Include="DiffPlex" Version="1.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ApplicationIcon setzt nur das .exe-Icon (Explorer/Taskleiste-Datei) —
+         als WPF-Resource eingebunden, damit die Icon="Assets/..."-Referenzen
+         in MainWindow.xaml / den Dialogen zur Laufzeit auflösbar sind. -->
+    <Resource Include="Assets\lexwolf.ico" />
   </ItemGroup>
 </Project>

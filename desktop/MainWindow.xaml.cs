@@ -86,13 +86,12 @@ public partial class MainWindow : Window
 
         try
         {
-            var installerPath = await checker.DownloadInstallerAsync(update.DownloadUrl, downloadProgress);
+            await checker.ApplyUpdateAsync(update, downloadProgress);
             Dispatcher.Invoke(() => SetStatus(null, "Update wird installiert..."));
-            Process.Start(new ProcessStartInfo(installerPath, "/S") { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            Dispatcher.Invoke(() => ProgressBar.IsEnabled = false);
+            Dispatcher.Invoke(() => SetProgressBusy(false));
             Dispatcher.Invoke(() => System.Windows.MessageBox.Show(
                 this, $"Update fehlgeschlagen: {ex.Message}", "Fehler",
                 MessageBoxButton.OK, MessageBoxImage.Error));
@@ -128,13 +127,8 @@ public partial class MainWindow : Window
 
     private void OnShowInfo(object sender, RoutedEventArgs e)
     {
-        var version = UpdateChecker.CurrentVersion;
-        System.Windows.MessageBox.Show(
-            this,
-            $"LexWolf\nVersion {version}",
-            "Info",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var dlg = new LexWolf.Dialogs.InfoDialog(BackendUrl, _http) { Owner = this };
+        dlg.ShowDialog();
     }
 
     private void OnOpenSettings(object sender, RoutedEventArgs e)
