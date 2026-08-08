@@ -110,6 +110,49 @@ namespace LexWolf.Database
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>Alle gescannten Dokumente eines Mandanten, gruppiert nach Datei
+        /// (mehrere Chunks pro Datei werden zusammengefügt, gedeckelt pro Datei und
+        /// Gesamtanzahl damit der Chat-Kontext nicht ausufert). Wird für den lokalen
+        /// Mandanten-Kontext im Chat gebraucht — ohne das sieht das LLM nur Name/ID,
+        /// nicht was tatsächlich im Mandantenordner liegt.</summary>
+        public System.Collections.Generic.List<(string Titel, string Text)> GetDokumenteForMandant(
+            string mandantId, int maxChunksProDokument = 4, int maxDokumente = 12)
+        {
+            var byPfad = new System.Collections.Generic.Dictionary<string, (string Titel, System.Text.StringBuilder Text, int Count)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT titel, pfad, inhalt_chunk FROM dokumente
+                WHERE mandant_id = $mandantId
+                ORDER BY pfad, id;
+            ";
+            cmd.Parameters.AddWithValue("$mandantId", mandantId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var titel = reader.GetString(0);
+                var pfad  = reader.GetString(1);
+                var chunk = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                if (!byPfad.TryGetValue(pfad, out var entry))
+                    entry = (titel, new System.Text.StringBuilder(), 0);
+                if (entry.Count < maxChunksProDokument)
+                {
+                    if (entry.Text.Length > 0) entry.Text.Append(' ');
+                    entry.Text.Append(chunk);
+                    entry = (entry.Titel, entry.Text, entry.Count + 1);
+                }
+                byPfad[pfad] = entry;
+            }
+
+            var result = new System.Collections.Generic.List<(string, string)>();
+            foreach (var (titel, text, _) in byPfad.Values)
+            {
+                result.Add((titel, text.ToString().Trim()));
+                if (result.Count >= maxDokumente) break;
+            }
+            return result;
+        }
+
         // --- Chat History ---
 
         public void AddChatMessage(string mandantId, string role, string content)

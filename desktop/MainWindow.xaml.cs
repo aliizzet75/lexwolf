@@ -385,10 +385,26 @@ public partial class MainWindow : Window
             ? $"Mandant: {_activeMandantName} (ID: {_activeMandantId})"
             : null;
 
+        // Ohne das sah das LLM nur Name/ID des Mandanten, nie die tatsächlich im
+        // Mandantenordner gescannten Dokumente (z.B. eine Unterhaltsrechnung) —
+        // dadurch kamen bei "was lief bisher"-Fragen erfundene bzw. unvollständige
+        // Antworten zustande, weil schlicht kein Fallkontext vorlag.
+        string? mandantDokumenteContext = null;
+        if (_activeMandantId is not null)
+        {
+            var dokumente = _db.GetDokumenteForMandant(_activeMandantId);
+            if (dokumente.Count > 0)
+            {
+                var parts = dokumente.Select(d => $"[{d.Titel}]\n{d.Text}");
+                mandantDokumenteContext = "Dokumente dieses Mandanten (lokal gescannt):\n\n" + string.Join("\n\n---\n\n", parts);
+            }
+        }
+
         var templateContext = GetLatestTemplateContext();
         var attorneyContext = GetAttorneyContext();
         var contextParts = new List<string>();
         if (!string.IsNullOrWhiteSpace(mandantContext)) contextParts.Add(mandantContext);
+        if (!string.IsNullOrWhiteSpace(mandantDokumenteContext)) contextParts.Add(mandantDokumenteContext);
         if (!string.IsNullOrWhiteSpace(attorneyContext)) contextParts.Add(attorneyContext);
         if (!string.IsNullOrWhiteSpace(templateContext)) contextParts.Add(templateContext);
 
@@ -419,7 +435,7 @@ public partial class MainWindow : Window
 
     private static System.Windows.Controls.TextBox CreateSelectableTextBox(string text, System.Windows.Media.Brush foreground, double fontSize = 13)
     {
-        return new System.Windows.Controls.TextBox
+        var box = new System.Windows.Controls.TextBox
         {
             Text = text,
             Foreground = foreground,
@@ -436,6 +452,23 @@ public partial class MainWindow : Window
             VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Disabled,
             HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Disabled,
         };
+
+        // Explizites Kontextmenü — funktioniert unabhängig davon, ob Drag-Selektion
+        // im konkreten Layout mal hakt; garantiert einen sicheren Copy-Weg.
+        var copyItem = new System.Windows.Controls.MenuItem { Header = "Kopieren" };
+        copyItem.Click += (_, _) =>
+        {
+            var toCopy = box.SelectionLength > 0 ? box.SelectedText : box.Text;
+            if (!string.IsNullOrEmpty(toCopy)) System.Windows.Clipboard.SetText(toCopy);
+        };
+        var selectAllItem = new System.Windows.Controls.MenuItem { Header = "Alles auswählen" };
+        selectAllItem.Click += (_, _) => box.SelectAll();
+        box.ContextMenu = new System.Windows.Controls.ContextMenu
+        {
+            Items = { copyItem, selectAllItem }
+        };
+
+        return box;
     }
 
     private void AppendSystemMessage(string text)
@@ -860,14 +893,9 @@ public partial class MainWindow : Window
                 Margin            = new Thickness(0, 0, 8, 0),
                 VerticalAlignment = VerticalAlignment.Top,
             });
-            row.Children.Add(new TextBlock
-            {
-                Text              = text,
-                Foreground        = new SolidColorBrush(Color.FromRgb(201, 209, 217)),
-                FontSize          = 12,
-                TextWrapping      = TextWrapping.Wrap,
-                VerticalAlignment = VerticalAlignment.Top,
-            });
+            var textBox = CreateSelectableTextBox(text, new SolidColorBrush(Color.FromRgb(201, 209, 217)), 12);
+            textBox.VerticalAlignment = VerticalAlignment.Top;
+            row.Children.Add(textBox);
             ReasoningPanel.Children.Add(row);
         });
     }
