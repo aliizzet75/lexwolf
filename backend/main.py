@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import os
 
 # Import API routers
@@ -14,6 +15,9 @@ from api.subscription import router as subscription_router
 from api.chat import router as chat_router
 from api.mandant import router as mandant_router
 from api.ner import router as ner_router
+from api.client_update import router as client_update_router
+from api.tool_update import router as tool_update_router
+from api.downloads import router as downloads_router
 
 # Import Neo4j service
 from services.neo4j_service import Neo4jService
@@ -65,6 +69,19 @@ app.include_router(subscription_router)
 app.include_router(chat_router)
 app.include_router(mandant_router)
 app.include_router(ner_router)
+app.include_router(client_update_router)
+app.include_router(tool_update_router)
+app.include_router(downloads_router)
+app.mount(
+    "/client/download",
+    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static", "client-releases")),
+    name="client-downloads",
+)
+app.mount(
+    "/tools/download",
+    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static", "tool-releases")),
+    name="tool-downloads",
+)
 
 @app.get("/")
 async def root():
