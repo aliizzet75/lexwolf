@@ -159,8 +159,13 @@ class LegalDatabaseCrawler:
 
 
 async def main():
+    # Ohne LEXWOLF_CRAWL_LIMIT: voller Lauf über den ganzen Gesetzeskatalog
+    # (chunk_hash-Dedup macht unveränderte Gesetze billig). Für einen schnellen
+    # manuellen Testlauf: LEXWOLF_CRAWL_LIMIT=5 setzen.
+    limit_env = os.getenv("LEXWOLF_CRAWL_LIMIT")
+    limit = int(limit_env) if limit_env else None
     crawler = LegalDatabaseCrawler()
-    await crawler.crawl_all_sources(limit_per_source=5)
+    await crawler.crawl_all_sources(limit_per_source=limit)
 
 
 if __name__ == "__main__":
