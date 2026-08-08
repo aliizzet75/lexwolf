@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -47,5 +48,22 @@ public class UpdateChecker
             // soll den Programmstart nicht beeinträchtigen.
             return null;
         }
+    }
+
+    /// <summary>
+    /// Lädt den Installer in einen Temp-Pfad herunter — für den Silent-Self-Update
+    /// (Installer wird danach mit /S ausgeführt statt dem Nutzer zum manuellen
+    /// Ausführen im Browser-Download-Ordner überlassen zu werden).
+    /// </summary>
+    public async Task<string> DownloadInstallerAsync(string downloadUrl)
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"LexWolf-Update-{Guid.NewGuid():N}.exe");
+        using var response = await _http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+        await using (var fs = File.Create(tempPath))
+        {
+            await response.Content.CopyToAsync(fs);
+        }
+        return tempPath;
     }
 }

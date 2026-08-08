@@ -51,20 +51,38 @@ public partial class MainWindow : Window
         var update = await checker.CheckForUpdateAsync();
         if (update is null) return;
 
+        var proceed = false;
         Dispatcher.Invoke(() =>
         {
             var result = System.Windows.MessageBox.Show(
                 this,
-                $"Eine neue LexWolf-Version ist verfügbar: {update.Version}\n\n{update.Notes}\n\nJetzt herunterladen?",
+                $"Eine neue LexWolf-Version ist verfügbar: {update.Version}\n\n{update.Notes}\n\n" +
+                "Jetzt automatisch aktualisieren? LexWolf wird dazu kurz neu gestartet.",
                 "Update verfügbar",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Information);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                Process.Start(new ProcessStartInfo(update.DownloadUrl) { UseShellExecute = true });
-            }
+            proceed = result == MessageBoxResult.Yes;
         });
+        if (!proceed) return;
+
+        // Silent-Self-Update (wie z.B. Notepad++): Installer im Hintergrund laden,
+        // mit /S ohne UI ausführen — der Installer killt eine evtl. noch laufende
+        // Instanz selbst (siehe .nsi) und startet die neue Version danach automatisch.
+        // Kein manueller Download+Doppelklick mehr nötig.
+        try
+        {
+            var installerPath = await checker.DownloadInstallerAsync(update.DownloadUrl);
+            Process.Start(new ProcessStartInfo(installerPath, "/S") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.Invoke(() => System.Windows.MessageBox.Show(
+                this, $"Update fehlgeschlagen: {ex.Message}", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error));
+            return;
+        }
+
+        Dispatcher.Invoke(() => System.Windows.Application.Current.Shutdown());
     }
 
     private Task StartDocumentScannerAsync()
