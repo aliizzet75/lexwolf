@@ -510,8 +510,12 @@ public partial class MainWindow : Window
 
     private async Task<(string content, string suggestedAction)> PostChatAsync()
     {
-        AddReasoning("🔍", "Suche in Rechtsdatenbank...");
-
+        // Früher standen hier zusätzlich "Suche in Rechtsdatenbank..." und
+        // "Generiere juristische Antwort..." als eigene Schritte — beides pauschale
+        // Behauptungen, die client-seitig zu diesem Zeitpunkt noch gar nicht
+        // stattgefunden haben (Suche+Generierung passieren serverseitig in einem
+        // einzigen HTTP-Call). Wirkte nach mehr Einzelschritten als tatsächlich
+        // passiert; ein ehrlicher "läuft"-Status reicht.
         string? mandantContext = _activeMandantName is not null
             ? $"Mandant: {_activeMandantName} (ID: {_activeMandantId})"
             : null;
@@ -565,7 +569,6 @@ public partial class MainWindow : Window
         });
         var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
 
-        AddReasoning("🤖", "Generiere juristische Antwort...");
         var response = await _http.PostAsync($"{BackendUrl}/chat", httpContent);
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync();
@@ -720,7 +723,26 @@ public partial class MainWindow : Window
             }
             else if (suggestedAction == "berechne_unterhalt")
             {
-                container.Children.Add(BuildUnterhaltForm());
+                // War: komplettes Formular wurde direkt in die Antwort eingebettet,
+                // auch wenn die Frage schon inhaltlich aus den Mandanten-Dokumenten
+                // beantwortet war ("wieviel bekommt X" triggert die grobe Keyword-
+                // Erkennung in chat.py). Jetzt wie bei "erstelle_dokument" nur ein
+                // Button — der ohnehin vorhandene UnterhaltBtn wird zusätzlich sichtbar.
+                var btn = new Button
+                {
+                    Content             = "⚖ Unterhalt berechnen",
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Background          = new SolidColorBrush(Color.FromRgb(33, 38, 45)),
+                    Foreground          = new SolidColorBrush(Color.FromRgb(232, 168, 56)),
+                    BorderBrush         = new SolidColorBrush(Color.FromRgb(48, 54, 61)),
+                    BorderThickness     = new Thickness(1),
+                    Padding             = new Thickness(12, 6, 12, 6),
+                    Margin              = new Thickness(0, 6, 0, 0),
+                    FontSize            = 12,
+                    Cursor              = Cursors.Hand,
+                };
+                btn.Click += (s, e) => OnUnterhaltBtnClick(s, e);
+                container.Children.Add(btn);
             }
 
             ChatPanel.Children.Add(container);

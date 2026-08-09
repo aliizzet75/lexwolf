@@ -13,7 +13,7 @@
     <RootNamespace>LexWolf</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Version>0.4.9</Version>
+    <Version>0.4.10</Version>
     <ApplicationIcon>Assets\lexwolf.ico</ApplicationIcon>
   </PropertyGroup>
 
