@@ -5,12 +5,16 @@ eine Antwort des Rechtsassistenten zurück.
 """
 import os
 import json
+import logging
 import urllib.request as _urlreq
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional
 
 from services.search_service import HybridSearchService
+from api.ask import _direct_paragraph_search
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
@@ -59,10 +63,20 @@ def _intent_to_action(intent: str) -> str:
 
 
 def _search_chunks(query: str) -> str:
-    """Sucht relevante Chunks und gibt sie als kompakten Text zurück."""
+    """Sucht relevante Chunks und gibt sie als kompakten Text zurück.
+    Expliziter §-Verweis (z.B. "§433 BGB") geht zuerst über die direkte
+    Paragraphen-Suche — ohne die fand die reine Vektorsuche hier schon mal
+    ZPO § 433 statt BGB § 433 (falsches Gesetz, gleiche Nummer)."""
     try:
         search = _get_search()
-        results = search.hybrid_search_with_graph(query, limit=5, fast_mode=True)
+        para_hits = _direct_paragraph_search(query, search.database_service, limit=3)
+        rest_limit = max(0, 5 - len(para_hits))
+        fused = (
+            search.hybrid_search_with_graph(query, limit=rest_limit, fast_mode=bool(para_hits))
+            if rest_limit else []
+        )
+        para_ids = {c.get("id") for c in para_hits}
+        results = para_hits + [r for r in fused if r.get("id") not in para_ids]
         if not results:
             return ""
         parts = []
@@ -78,9 +92,10 @@ def _search_chunks(query: str) -> str:
 
 def _call_ollama(messages: list) -> str:
     """Ruft Ollama Chat Completions API auf und gibt den Antworttext zurück.
-    Nutzt deepseek-v3.2:cloud (3-4s) statt kimi (20-50s) für schnelle Chat-Antworten."""
-    # Chat braucht snappy Antworten — deepseek ist ~10x schneller als kimi für kurze Texte
-    model = "deepseek-v3.2:cloud"
+    deepseek-v3.2:cloud wurde am 2026-07-15 retired (lieferte nur noch API-Fehler,
+    /chat war dadurch komplett down). Ersetzt durch kimi-k2.7-code:cloud (~2s,
+    mit DB-Grounding im System-Prompt getestet: liefert korrekte, saubere Antworten)."""
+    model = os.environ.get("CHAT_MODEL", "kimi-k2.7-code:cloud")
     ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
     payload = json.dumps({
@@ -116,6 +131,23 @@ def _call_ollama(messages: list) -> str:
     raise RuntimeError(f"Ollama nicht erreichbar: {last_error}")
 
 
+_REASONING_LEAK_MARKERS = (
+    "the user ask", "i need to", "let me", "i should", "let's parse",
+    "we need answer", "the instruction says", "final answer:",
+)
+
+
+def _looks_like_reasoning_leak(text: str) -> bool:
+    """Erkennt, wenn das Modell sein Denkprotokoll statt einer fertigen
+    Antwort ausgibt (englische Meta-Sätze, ungewöhnlich lang für eine
+    Chat-Antwort). Beobachtet bei kimi-k2.7-code:cloud wenn die gelieferten
+    DB-Chunks nicht zur Frage passten."""
+    if len(text) < 800:
+        return False
+    lower = text.lower()
+    return sum(lower.count(m) for m in _REASONING_LEAK_MARKERS) >= 2
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
     # 1. Letzte 10 Messages begrenzen
@@ -138,8 +170,10 @@ async def chat(request: ChatRequest) -> ChatResponse:
     if request.mandant_context:
         system_parts.append(f"\nMandanteninformation: {request.mandant_context}")
     system_parts.append(
-        "\nBeantworte Fragen präzise auf Basis der Rechtsgrundlagen. "
-        "Stelle Rückfragen wenn wichtige Informationen fehlen."
+        "\nBeantworte Fragen präzise auf Basis der Rechtsgrundlagen, auf Deutsch. "
+        "Stelle Rückfragen wenn wichtige Informationen fehlen. "
+        "Gib ausschließlich die fertige Antwort aus — keine Zwischengedanken, "
+        "keine Meta-Kommentare zur Aufgabenstellung, kein Denkprotokoll."
     )
     system_prompt = "\n".join(system_parts)
 
@@ -148,8 +182,22 @@ async def chat(request: ChatRequest) -> ChatResponse:
     for m in messages:
         ollama_messages.append({"role": m.role, "content": m.content})
 
-    # 6. Ollama aufrufen
+    # 6. Ollama aufrufen — bei Denkprotokoll-Leckage einmal mit Verstärkung retryen
     content = _call_ollama(ollama_messages)
+    if _looks_like_reasoning_leak(content):
+        logger.warning("Reasoning-Leak erkannt (%d Zeichen) — Retry mit verstärkter Anweisung", len(content))
+        reinforced = ollama_messages + [{
+            "role": "system",
+            "content": "Wichtig: Antworte NUR mit der fertigen Antwort auf Deutsch, "
+                       "ohne jegliche Zwischengedanken oder Erklärung deines Vorgehens.",
+        }]
+        content = _call_ollama(reinforced)
+        if _looks_like_reasoning_leak(content):
+            logger.warning("Reasoning-Leak nach Retry weiterhin vorhanden — gebe Fallback-Antwort")
+            content = (
+                "Entschuldigung, ich konnte dazu gerade keine klare Antwort formulieren. "
+                "Können Sie die Frage etwas anders formulieren oder präzisieren?"
+            )
 
     # 7. Intent erkennen und Aktion ableiten
     intent = _detect_intent(last_user_msg)

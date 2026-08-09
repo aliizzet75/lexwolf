@@ -88,6 +88,11 @@ tools/*/obj/
 tools/**/bin/
 tools/**/obj/
 
+# Installer-Binaries — liegen nur live auf dem Server für /client/download & /tools/download,
+# nicht ins Repo (Größe). READMEs in den jeweiligen Ordnern bleiben getrackt.
+backend/static/client-releases/*.exe
+backend/static/tool-releases/**/*.exe
+
 # Anonymisierer test artifacts (enthalten teils echte Mandanten-PII)
 tools/Anonymisierer/Anonymisierer.Tests/.lexwolf_mapping.json
 tools/Anonymisierer/Anonymisierer.Tests/entities.json

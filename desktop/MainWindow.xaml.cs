@@ -41,7 +41,30 @@ public partial class MainWindow : Window
         _ = PeriodicHealthCheckAsync();
         _ = LoadMandantenAsync();
         _ = Task.Run(StartDocumentScannerAsync);
+        _ = CheckForUpdateAsync();
         AppendSystemMessage("Willkommen bei LexWolf. Wie kann ich Ihnen helfen?");
+    }
+
+    private async Task CheckForUpdateAsync()
+    {
+        var checker = new UpdateChecker(BackendUrl, _http);
+        var update = await checker.CheckForUpdateAsync();
+        if (update is null) return;
+
+        Dispatcher.Invoke(() =>
+        {
+            var result = System.Windows.MessageBox.Show(
+                this,
+                $"Eine neue LexWolf-Version ist verfügbar: {update.Version}\n\n{update.Notes}\n\nJetzt herunterladen?",
+                "Update verfügbar",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                Process.Start(new ProcessStartInfo(update.DownloadUrl) { UseShellExecute = true });
+            }
+        });
     }
 
     private Task StartDocumentScannerAsync()

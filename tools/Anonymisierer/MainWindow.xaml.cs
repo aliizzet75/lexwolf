@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
@@ -23,6 +25,9 @@ namespace Anonymisierer
 {
     public partial class MainWindow : Window
     {
+        private const string BackendUrl = "http://212.227.180.66:8000";
+        private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(120) };
+
         private ObservableCollection<FileEntry> _files = new();
         private string _scanRootPath = string.Empty;
         private FileTreeViewModel _fileTreeViewModel = new();
@@ -41,6 +46,29 @@ namespace Anonymisierer
         public MainWindow()
         {
             InitializeComponent();
+            _ = CheckForUpdateAsync();
+        }
+
+        private async Task CheckForUpdateAsync()
+        {
+            var checker = new UpdateChecker(BackendUrl, _http);
+            var update = await checker.CheckForUpdateAsync();
+            if (update is null) return;
+
+            Dispatcher.Invoke(() =>
+            {
+                var result = MessageBox.Show(
+                    this,
+                    $"Eine neue Anonymisierer-Version ist verfügbar: {update.Version}\n\n{update.Notes}\n\nJetzt herunterladen?",
+                    "Update verfügbar",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    Process.Start(new ProcessStartInfo(update.DownloadUrl) { UseShellExecute = true });
+                }
+            });
         }
 
         // ── Accessoren ────────────────────────────────────────────────────────

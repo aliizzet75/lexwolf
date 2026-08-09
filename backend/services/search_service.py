@@ -21,11 +21,12 @@ class HybridSearchService:
         self.database_service = DatabaseService()
 
     def _call_ollama(self, prompt: str, max_tokens: int = 200) -> str:
-        """Call Ollama LLM für HyDE — nutzt deepseek-v3.2:cloud (schnell, ~3s).
-        Fallback auf HYDE_MODEL env var falls gesetzt."""
+        """Call Ollama LLM für HyDE — nutzt kimi-k2.7-code:cloud (~2s).
+        deepseek-v3.2:cloud wurde am 2026-07-15 retired, HyDE fiel seitdem lautlos
+        auf reines Query-Embedding zurück. Fallback auf HYDE_MODEL env var falls gesetzt."""
         import urllib.request as _urlreq
         import json as _json
-        model = os.environ.get('HYDE_MODEL', 'deepseek-v3.2:cloud')
+        model = os.environ.get('HYDE_MODEL', 'kimi-k2.7-code:cloud')
         # Try configured URL first, then localhost fallback
         urls_to_try = []
         configured = os.environ.get('OLLAMA_URL', '')
