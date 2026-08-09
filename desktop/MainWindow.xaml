@@ -260,7 +260,22 @@
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="#0d1117" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
-                        <StackPanel x:Name="ReasoningPanel"/>
+                        <Grid>
+                            <StackPanel x:Name="ReasoningPanel"/>
+                            <StackPanel x:Name="WolfLoadingPanel" Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
+                                <StackPanel.Resources>
+                                    <Storyboard x:Key="WolfPulseStoryboard" RepeatBehavior="Forever" AutoReverse="True">
+                                        <DoubleAnimation Storyboard.TargetName="WolfLoadingImage"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         From="0.4" To="1.0" Duration="0:0:0.8"/>
+                                    </Storyboard>
+                                </StackPanel.Resources>
+                                <Image x:Name="WolfLoadingImage" Source="Assets/lexwolf.ico" Width="32" Height="32"
+                                       RenderOptions.BitmapScalingMode="HighQuality" Opacity="1.0"/>
+                                <TextBlock Text="Anfrage wird verarbeitet..." Foreground="#8b949e" FontSize="12"
+                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
                     </Border>
 
                     <ScrollViewer x:Name="ChatScrollViewer"

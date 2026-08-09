@@ -12,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Forms = System.Windows.Forms;
 using LexWolf.Database;
 using LexWolf.Services;
@@ -476,7 +477,9 @@ public partial class MainWindow : Window
         _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "user", text);
 
         ReasoningPanel.Children.Clear();
-        AddReasoning("⏳", "Anfrage wird verarbeitet...");
+        WolfLoadingPanel.Visibility = Visibility.Visible;
+        var wolfStoryboard = (Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"];
+        wolfStoryboard.Begin(WolfLoadingPanel);
 
         try
         {
@@ -492,6 +495,8 @@ public partial class MainWindow : Window
                     : Visibility.Collapsed);
 
             ReasoningPanel.Children.Clear();
+            WolfLoadingPanel.Visibility = Visibility.Collapsed;
+            wolfStoryboard.Stop(WolfLoadingPanel);
             AddReasoning("✅", "Fertig");
             SetStatus(true, $"Verbunden — {BackendUrl}");
         }
@@ -499,11 +504,15 @@ public partial class MainWindow : Window
         {
             SetStatus(false, "Backend nicht erreichbar");
             ReasoningPanel.Children.Clear();
+            WolfLoadingPanel.Visibility = Visibility.Collapsed;
+            wolfStoryboard.Stop(WolfLoadingPanel);
             AddReasoning("❌", $"Fehler: {ex.Message}");
             AppendAiMessage($"Verbindungsfehler: {ex.Message}", "frage");
         }
         finally
         {
+            WolfLoadingPanel.Visibility = Visibility.Collapsed;
+            wolfStoryboard.Stop(WolfLoadingPanel);
             SendBtn.IsEnabled = true;
         }
     }
