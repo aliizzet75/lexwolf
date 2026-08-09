@@ -90,11 +90,16 @@ def _search_chunks(query: str) -> str:
         return ""
 
 
-def _call_ollama(messages: list) -> str:
+def _call_ollama(messages: list, max_tokens: int = 6000) -> str:
     """Ruft Ollama Chat Completions API auf und gibt den Antworttext zurück.
     deepseek-v3.2:cloud wurde am 2026-07-15 retired (lieferte nur noch API-Fehler,
     /chat war dadurch komplett down). Ersetzt durch kimi-k2.7-code:cloud (~2s,
-    mit DB-Grounding im System-Prompt getestet: liefert korrekte, saubere Antworten)."""
+    mit DB-Grounding im System-Prompt getestet: liefert korrekte, saubere Antworten).
+    max_tokens war 2000 — bei verschachtelten Tabellen (z.B. Zahlbeträge-Aufstellung
+    in einer Unterhaltsberechnung) verbraucht das "denkende" Modell das komplette
+    Budget fürs Durchrechnen im reasoning-Feld und "content" bleibt leer, was der
+    Reasoning-Leak-Schutz dann als Fallback-Antwort auffängt statt der eigentlich
+    fast fertig durchgerechneten Lösung."""
     model = os.environ.get("CHAT_MODEL", "kimi-k2.7-code:cloud")
     ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
@@ -102,7 +107,7 @@ def _call_ollama(messages: list) -> str:
         "model": model,
         "messages": messages,
         "stream": False,
-        "max_tokens": 2000,
+        "max_tokens": max_tokens,
         "temperature": 0.3,
     }).encode()
 
@@ -173,7 +178,20 @@ async def chat(request: ChatRequest) -> ChatResponse:
         "\nBeantworte Fragen präzise auf Basis der Rechtsgrundlagen, auf Deutsch. "
         "Stelle Rückfragen wenn wichtige Informationen fehlen. "
         "Gib ausschließlich die fertige Antwort aus — keine Zwischengedanken, "
-        "keine Meta-Kommentare zur Aufgabenstellung, kein Denkprotokoll."
+        "keine Meta-Kommentare zur Aufgabenstellung, kein Denkprotokoll.\n"
+        "\nWichtig zu Mandanten-Dokumenten:\n"
+        "- Ein Dokument gilt nur dann als NICHT lesbar, wenn sein Text explizit eine "
+        "Fehlermeldung in eckigen Klammern enthält (z.B. '[Datei: PDF konnte nicht "
+        "gelesen werden ...]' oder '[... OCR ...]'). In jedem anderen Fall wurde es "
+        "erfolgreich gelesen — behaupte dann NIEMALS, es sei 'nicht auswertbar' oder "
+        "'nicht lesbar'. Wenn die gesuchte Information/Person darin schlicht nicht "
+        "vorkommt, sag das direkt (z.B. 'Dieses Dokument betrifft eine andere Person/"
+        "einen anderen Sachverhalt: ...'), statt einen Lesefehler zu unterstellen.\n"
+        "- Mehrere Dokumente desselben Mandanten gehören oft zusammen. Rollen- oder "
+        "Kürzel-Bezeichnungen in einem Dokument (z.B. 'Mann'/'Frau', 'Hauptverdiener'/"
+        "'Zweitverdiener', 'Antragsteller'/'Antragsgegnerin') können sich auf konkret "
+        "benannte Personen aus einem anderen Dokument desselben Mandanten beziehen — "
+        "prüfe das und verknüpfe die Angaben, statt jedes Dokument isoliert zu lesen."
     )
     system_prompt = "\n".join(system_parts)
 

@@ -181,11 +181,29 @@
                 <Border DockPanel.Dock="Top" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
                     <TextBlock Text="Dateibaum" Foreground="#8b949e" FontSize="11" FontWeight="SemiBold"/>
                 </Border>
+                <Border DockPanel.Dock="Top" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="10,8">
+                    <TextBox x:Name="FileTreeSearchBox"
+                             Background="#0d1117" Foreground="#c9d1d9"
+                             BorderBrush="#30363d" BorderThickness="1"
+                             Padding="6,4" FontSize="12"
+                             TextChanged="OnFileTreeSearchChanged"
+                             ToolTip="Dateien/Ordner durchsuchen"/>
+                </Border>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,8">
-                    <TreeView x:Name="FileTree" SelectedItemChanged="OnFileTreeItemSelected" Margin="0,0,0,10">
+                    <!-- Einfacher Klick wählt nur aus. Doppelklick öffnet die Datei im
+                         Standardprogramm (OnFileTreeDoubleClick). Rechtsklick bietet
+                         Priorisieren fürs Chat-Kontext an (OnTogglePrioritize). -->
+                    <TreeView x:Name="FileTree" PreviewMouseDoubleClick="OnFileTreeDoubleClick" Margin="0,0,0,10">
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal">
+                                    <StackPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="⭐ Priorisierung umschalten"
+                                                      Click="OnTogglePrioritize"
+                                                      CommandParameter="{Binding}"/>
+                                        </ContextMenu>
+                                    </StackPanel.ContextMenu>
                                     <TextBlock Text="{Binding Icon}" FontSize="16" Margin="0,0,8,0"/>
                                     <TextBlock Text="{Binding Name}" FontSize="14"/>
                                 </StackPanel>

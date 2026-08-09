@@ -10,7 +10,21 @@ namespace LexWolf.Models
         public string Path { get; set; } = string.Empty;
         public long Size { get; set; }
         public bool IsFolder { get; set; }
-        public string Icon => IsFolder ? "📁" : "📄";
+
+        private bool _isPrioritized;
+        public bool IsPrioritized
+        {
+            get => _isPrioritized;
+            set
+            {
+                if (_isPrioritized == value) return;
+                _isPrioritized = value;
+                OnPropertyChanged(nameof(IsPrioritized));
+                OnPropertyChanged(nameof(Icon));
+            }
+        }
+
+        public string Icon => IsPrioritized ? "⭐" : (IsFolder ? "📁" : "📄");
         public ObservableCollection<FileTreeNode> Children { get; } = new();
 
         // Konstruktor für Ordner

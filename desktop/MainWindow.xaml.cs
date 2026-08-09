@@ -33,6 +33,8 @@ public partial class MainWindow : Window
     private string? _activeMandantId = null;
     private string? _activeMandantName = null;
     private readonly List<(string Id, string Name)> _mandanten = new();
+    private readonly HashSet<string> _prioritizedPaths = new(StringComparer.OrdinalIgnoreCase);
+    private System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode> _fileTreeRoots = new();
 
     public MainWindow()
     {
@@ -114,8 +116,8 @@ public partial class MainWindow : Window
             // Dropdown mit den gerade gescannten Mandanten befüllen — vorher lief
             // LoadMandantenAsync() schon beim Start, BEVOR überhaupt gescannt wurde.
             _ = LoadMandantenAsync();
-            BuildFileTree();
-            _scanner.OnNeuerMandant = () => Dispatcher.Invoke(() => { _ = LoadMandantenAsync(); BuildFileTree(); });
+            BuildFileTree(_activeMandantName);
+            _scanner.OnNeuerMandant = () => Dispatcher.Invoke(() => { _ = LoadMandantenAsync(); BuildFileTree(_activeMandantName); });
             _scanner.StartWatching();
             Dispatcher.Invoke(() => AddReasoning("📂", $"Dokumente indexiert: {path}"));
         }
@@ -280,6 +282,7 @@ public partial class MainWindow : Window
             _activeMandantId   = null;
             _activeMandantName = null;
             AppendSystemMessage("Kein Mandant ausgewählt — allgemeines Gespräch.");
+            BuildFileTree(null);
             return;
         }
 
@@ -289,29 +292,36 @@ public partial class MainWindow : Window
         _activeMandantId   = match.Id;
         _activeMandantName = match.Name;
         AppendSystemMessage($"Mandant: {match.Name} — Chat-Kontext aktiv.");
+        BuildFileTree(match.Name);
     }
 
     /// <summary>Baut den Dateibaum (links) aus DokumentePfad neu auf — ein Mandanten-
-    /// Ordner pro Wurzelknoten. FileTree.ItemsSource wurde bisher nirgends gesetzt,
-    /// der Baum war deshalb immer leer, unabhängig vom Scan-Ergebnis.</summary>
-    private void BuildFileTree()
+    /// Ordner pro Wurzelknoten, oder bei aktivem Mandanten nur dessen Ordner
+    /// (gefiltert). FileTree.ItemsSource wurde ursprünglich nirgends gesetzt, der
+    /// Baum war deshalb immer leer, unabhängig vom Scan-Ergebnis.</summary>
+    private void BuildFileTree(string? filterMandantName = null)
     {
         var basePath = _settings.DokumentePfad;
         var roots = new System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode>();
         if (Directory.Exists(basePath))
         {
-            foreach (var mandantDir in Directory.EnumerateDirectories(basePath)
-                         .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            var mandantDirs = Directory.EnumerateDirectories(basePath);
+            if (!string.IsNullOrEmpty(filterMandantName))
+                mandantDirs = mandantDirs.Where(d =>
+                    string.Equals(Path.GetFileName(d), filterMandantName, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var mandantDir in mandantDirs.OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
             {
                 var node = new Models.FileTreeNode(Path.GetFileName(mandantDir), mandantDir, isFolder: true);
                 AddFileTreeChildren(node, mandantDir);
                 roots.Add(node);
             }
         }
-        Dispatcher.Invoke(() => FileTree.ItemsSource = roots);
+        _fileTreeRoots = roots;
+        Dispatcher.Invoke(() => ApplyFileTreeSearch(FileTreeSearchBox.Text));
     }
 
-    private static void AddFileTreeChildren(Models.FileTreeNode parent, string dirPath)
+    private void AddFileTreeChildren(Models.FileTreeNode parent, string dirPath)
     {
         try
         {
@@ -325,12 +335,89 @@ public partial class MainWindow : Window
             foreach (var file in Directory.EnumerateFiles(dirPath)
                          .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase))
             {
-                parent.AddChild(new Models.FileTreeNode(file));
+                var fileNode = new Models.FileTreeNode(file) { IsPrioritized = _prioritizedPaths.Contains(file) };
+                parent.AddChild(fileNode);
             }
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[FileTree] Fehler bei {dirPath}: {ex.Message}");
+        }
+    }
+
+    /// <summary>Case-insensitive Namenssuche im Dateibaum — Ordner bleiben sichtbar
+    /// wenn ein Nachfahre matcht, auch wenn der Ordnername selbst nicht passt.</summary>
+    private void ApplyFileTreeSearch(string? searchText)
+    {
+        var text = (searchText ?? "").Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            FileTree.ItemsSource = _fileTreeRoots;
+            return;
+        }
+        var filtered = new System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode>();
+        foreach (var root in _fileTreeRoots)
+        {
+            var match = FilterFileTreeNode(root, text);
+            if (match is not null) filtered.Add(match);
+        }
+        FileTree.ItemsSource = filtered;
+    }
+
+    private static Models.FileTreeNode? FilterFileTreeNode(Models.FileTreeNode node, string searchText)
+    {
+        if (node.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            return node; // Name passt -> kompletter Teilbaum bleibt sichtbar
+
+        if (!node.IsFolder) return null;
+
+        var copy = new Models.FileTreeNode(node.Name, node.Path, isFolder: true) { IsPrioritized = node.IsPrioritized };
+        foreach (var child in node.Children)
+        {
+            var filteredChild = FilterFileTreeNode(child, searchText);
+            if (filteredChild is not null) copy.AddChild(filteredChild);
+        }
+        return copy.Children.Count > 0 ? copy : null;
+    }
+
+    private void OnFileTreeSearchChanged(object sender, TextChangedEventArgs e)
+    {
+        ApplyFileTreeSearch(FileTreeSearchBox.Text);
+    }
+
+    /// <summary>Doppelklick öffnet die Datei im Standardprogramm. Einfacher Klick
+    /// wählt nur aus (kein Seiteneffekt mehr) — Priorisieren läuft über Rechtsklick.</summary>
+    private void OnFileTreeDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (FileTree.SelectedItem is not Models.FileTreeNode selectedNode) return;
+        if (selectedNode.IsFolder || string.IsNullOrEmpty(selectedNode.Path) || !File.Exists(selectedNode.Path)) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(selectedNode.Path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            AddReasoning("⚠️", $"Datei konnte nicht geöffnet werden: {ex.Message}");
+        }
+    }
+
+    /// <summary>Rechtsklick-Menüpunkt: Dokument im Chat-Kontext hervorheben (oder
+    /// Hervorhebung aufheben). Betrifft nur Dateien, keine Ordner.</summary>
+    private void OnTogglePrioritize(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node } || node.IsFolder)
+            return;
+
+        if (_prioritizedPaths.Contains(node.Path))
+        {
+            _prioritizedPaths.Remove(node.Path);
+            node.IsPrioritized = false;
+        }
+        else
+        {
+            _prioritizedPaths.Add(node.Path);
+            node.IsPrioritized = true;
         }
     }
 
@@ -439,8 +526,27 @@ public partial class MainWindow : Window
             var dokumente = _db.GetDokumenteForMandant(_activeMandantId);
             if (dokumente.Count > 0)
             {
-                var parts = dokumente.Select(d => $"[{d.Titel}]\n{d.Text}");
-                mandantDokumenteContext = "Dokumente dieses Mandanten (lokal gescannt):\n\n" + string.Join("\n\n---\n\n", parts);
+                // Per Rechtsklick im Dateibaum priorisierte Dokumente zuerst und
+                // gesondert hervorgehoben — hilft bei Mandanten mit vielen
+                // Dokumenten, wo nicht alles gleich relevant für die aktuelle
+                // Frage ist, ohne die übrigen Dokumente komplett auszuschließen.
+                var prioritized = dokumente.Where(d => _prioritizedPaths.Contains(d.Pfad)).ToList();
+                var rest = dokumente.Where(d => !_prioritizedPaths.Contains(d.Pfad)).ToList();
+
+                var sections = new List<string>();
+                if (prioritized.Count > 0)
+                {
+                    var parts = prioritized.Select(d => $"[{d.Titel}]\n{d.Text}");
+                    sections.Add("Besonders relevant für diese Frage (vom Anwalt priorisiert):\n\n" +
+                                 string.Join("\n\n---\n\n", parts));
+                }
+                if (rest.Count > 0)
+                {
+                    var parts = rest.Select(d => $"[{d.Titel}]\n{d.Text}");
+                    sections.Add("Weitere Dokumente dieses Mandanten (lokal gescannt):\n\n" +
+                                 string.Join("\n\n---\n\n", parts));
+                }
+                mandantDokumenteContext = string.Join("\n\n", sections);
             }
         }
 
@@ -797,21 +903,6 @@ public partial class MainWindow : Window
 
     private void ScrollToBottom() => ChatScrollViewer.ScrollToBottom();
 
-    private void OnFileTreeItemSelected(object sender, System.Windows.RoutedPropertyChangedEventArgs<object> e)
-    {
-        if (sender is System.Windows.Controls.TreeView treeView && treeView.SelectedItem is Models.FileTreeNode selectedNode)
-        {
-            if (!selectedNode.IsFolder && !string.IsNullOrEmpty(selectedNode.Path))
-            {
-                // Dateivorschau laden
-                var content = LoadFileContent(selectedNode.Path);
-                Dispatcher.Invoke(() =>
-                {
-                    InputBox.Text = content;
-                });
-            }
-        }
-    }
 
     private string LoadFileContent(string filePath)
     {

@@ -111,12 +111,16 @@ namespace LexWolf.Database
         }
 
         /// <summary>Alle gescannten Dokumente eines Mandanten, gruppiert nach Datei
-        /// (mehrere Chunks pro Datei werden zusammengefügt, gedeckelt pro Datei und
-        /// Gesamtanzahl damit der Chat-Kontext nicht ausufert). Wird für den lokalen
+        /// (mehrere Chunks pro Datei werden zusammengefügt). Wird für den lokalen
         /// Mandanten-Kontext im Chat gebraucht — ohne das sieht das LLM nur Name/ID,
-        /// nicht was tatsächlich im Mandantenordner liegt.</summary>
-        public System.Collections.Generic.List<(string Titel, string Text)> GetDokumenteForMandant(
-            string mandantId, int maxChunksProDokument = 4, int maxDokumente = 12)
+        /// nicht was tatsächlich im Mandantenordner liegt.
+        /// Kein Deckel pro Dokument mehr (war 4 Chunks ≈ 1700 Zeichen) — ein
+        /// mehrseitiges Dokument wurde dadurch mitten im Satz abgeschnitten, bevor
+        /// die verknüpfende Information (z.B. "Frau: 2.331,87 €" auf Seite 2) das
+        /// Modell überhaupt erreichte. Nur die Anzahl Dokumente bleibt gedeckelt,
+        /// als Schutz gegen einen sehr großen Mandantenordner.</summary>
+        public System.Collections.Generic.List<(string Titel, string Pfad, string Text)> GetDokumenteForMandant(
+            string mandantId, int maxChunksProDokument = int.MaxValue, int maxDokumente = 20)
         {
             var byPfad = new System.Collections.Generic.Dictionary<string, (string Titel, System.Text.StringBuilder Text, int Count)>();
             using var conn = GetConnection();
@@ -144,10 +148,10 @@ namespace LexWolf.Database
                 byPfad[pfad] = entry;
             }
 
-            var result = new System.Collections.Generic.List<(string, string)>();
-            foreach (var (titel, text, _) in byPfad.Values)
+            var result = new System.Collections.Generic.List<(string, string, string)>();
+            foreach (var (pfad, (titel, text, _)) in byPfad)
             {
-                result.Add((titel, text.ToString().Trim()));
+                result.Add((titel, pfad, text.ToString().Trim()));
                 if (result.Count >= maxDokumente) break;
             }
             return result;
