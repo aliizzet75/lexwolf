@@ -13,7 +13,7 @@
     <RootNamespace>LexWolf</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Version>0.4.6</Version>
+    <Version>0.4.7</Version>
     <ApplicationIcon>Assets\lexwolf.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -29,5 +29,13 @@
          als WPF-Resource eingebunden, damit die Icon="Assets/..."-Referenzen
          in MainWindow.xaml / den Dialogen zur Laufzeit auflösbar sind. -->
     <Resource Include="Assets\lexwolf.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- LexWolf.Tests ist ein eigenes Projekt im selben Ordner (plattformunabhängig,
+         damit PDF-Extraktion auch unter Linux/CI testbar ist) — sonst globbt das
+         Haupt-SDK-Projekt dessen .cs-Dateien versehentlich mit ein. -->
+    <Compile Remove="LexWolf.Tests\**\*.cs" />
+    <None Remove="LexWolf.Tests\**\*.cs" />
   </ItemGroup>
 </Project>

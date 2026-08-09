@@ -6,9 +6,9 @@ router = APIRouter(prefix="/client", tags=["client-update"])
 # Solange wir nicht produktiv sind: 0.x-Versionierung.
 # Bei jedem Release manuell erhöhen — download_url bleibt stabil (kein
 # Versions-Suffix im Dateinamen), nur die Datei dahinter wird ersetzt.
-LATEST_VERSION = "0.4.6"
+LATEST_VERSION = "0.4.7"
 DOWNLOAD_URL = "http://212.227.180.66:8000/client/download/LexWolf-Setup.exe"
-RELEASE_NOTES = "OCR-Fallback fuer gescannte PDFs ohne Textebene (Windows-eigene OCR), PDF-Lesefehler jetzt sichtbar statt lautlos leer."
+RELEASE_NOTES = "PDF-Extraktion in eigene Klasse, mit echtem Test gegen Praxis-PDFs verifiziert (beide Testdateien lesen sich korrekt aus)."
 
 
 @router.get("/version")

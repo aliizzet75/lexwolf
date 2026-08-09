@@ -146,13 +146,7 @@ namespace LexWolf.Services
         {
             try
             {
-                using var document = UglyToad.PdfPig.PdfDocument.Open(path);
-                var sb = new StringBuilder();
-                foreach (var page in document.GetPages())
-                {
-                    sb.AppendLine(page.Text);
-                }
-                var text = sb.ToString();
+                var text = PdfTextExtractor.ExtractText(path);
                 if (!string.IsNullOrWhiteSpace(text))
                     return text;
                 // Kein Fehler, aber leerer Text -> PdfPig konnte öffnen, es gibt

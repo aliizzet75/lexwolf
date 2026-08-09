@@ -83,6 +83,8 @@ backend/=5.0
 # .NET build artifacts
 desktop/bin/
 desktop/obj/
+desktop/LexWolf.Tests/bin/
+desktop/LexWolf.Tests/obj/
 tools/*/bin/
 tools/*/obj/
 tools/**/bin/
