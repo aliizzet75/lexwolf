@@ -114,7 +114,8 @@ public partial class MainWindow : Window
             // Dropdown mit den gerade gescannten Mandanten befüllen — vorher lief
             // LoadMandantenAsync() schon beim Start, BEVOR überhaupt gescannt wurde.
             _ = LoadMandantenAsync();
-            _scanner.OnNeuerMandant = () => Dispatcher.Invoke(() => _ = LoadMandantenAsync());
+            BuildFileTree();
+            _scanner.OnNeuerMandant = () => Dispatcher.Invoke(() => { _ = LoadMandantenAsync(); BuildFileTree(); });
             _scanner.StartWatching();
             Dispatcher.Invoke(() => AddReasoning("📂", $"Dokumente indexiert: {path}"));
         }
@@ -288,6 +289,49 @@ public partial class MainWindow : Window
         _activeMandantId   = match.Id;
         _activeMandantName = match.Name;
         AppendSystemMessage($"Mandant: {match.Name} — Chat-Kontext aktiv.");
+    }
+
+    /// <summary>Baut den Dateibaum (links) aus DokumentePfad neu auf — ein Mandanten-
+    /// Ordner pro Wurzelknoten. FileTree.ItemsSource wurde bisher nirgends gesetzt,
+    /// der Baum war deshalb immer leer, unabhängig vom Scan-Ergebnis.</summary>
+    private void BuildFileTree()
+    {
+        var basePath = _settings.DokumentePfad;
+        var roots = new System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode>();
+        if (Directory.Exists(basePath))
+        {
+            foreach (var mandantDir in Directory.EnumerateDirectories(basePath)
+                         .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            {
+                var node = new Models.FileTreeNode(Path.GetFileName(mandantDir), mandantDir, isFolder: true);
+                AddFileTreeChildren(node, mandantDir);
+                roots.Add(node);
+            }
+        }
+        Dispatcher.Invoke(() => FileTree.ItemsSource = roots);
+    }
+
+    private static void AddFileTreeChildren(Models.FileTreeNode parent, string dirPath)
+    {
+        try
+        {
+            foreach (var subDir in Directory.EnumerateDirectories(dirPath)
+                         .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            {
+                var subNode = new Models.FileTreeNode(Path.GetFileName(subDir), subDir, isFolder: true);
+                AddFileTreeChildren(subNode, subDir);
+                parent.AddChild(subNode);
+            }
+            foreach (var file in Directory.EnumerateFiles(dirPath)
+                         .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase))
+            {
+                parent.AddChild(new Models.FileTreeNode(file));
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[FileTree] Fehler bei {dirPath}: {ex.Message}");
+        }
     }
 
     // ── Chat ──────────────────────────────────────────────────────────────────
@@ -811,17 +855,17 @@ public partial class MainWindow : Window
 
     private static string ReadPdf(string path)
     {
+        // War eine dritte, noch primitivere PDF-Lese-Kopie (druckbare Bytes aus der
+        // Rohdatei filtern -> reiner Datenmüll). Bisher unerreichbar, weil FileTree
+        // nie befüllt war und diese Methode dadurch faktisch nie aufgerufen wurde.
         try
         {
-            var bytes = System.IO.File.ReadAllBytes(path);
-            var sb = new System.Text.StringBuilder();
-            foreach (byte b in bytes)
-            {
-                if (b >= 32 && b < 127) sb.Append((char)b);
-            }
-            return sb.ToString();
+            return Services.PdfTextExtractor.ExtractText(path);
         }
-        catch { return string.Empty; }
+        catch (Exception ex)
+        {
+            return $"[PDF konnte nicht gelesen werden: {ex.Message}]";
+        }
     }
 
     private static string ReadEml(string path)
