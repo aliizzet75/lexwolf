@@ -222,7 +222,7 @@ public partial class MainWindow : Window
 
     private void OnFeatureWunschClick(object sender, RoutedEventArgs e)
     {
-        var dlg = new LexWolf.Dialogs.FeatureWunschDialog(_http, BackendUrl) { Owner = this };
+        var dlg = new LexWolf.Dialogs.FeatureWunschDialog(_db, _http, BackendUrl) { Owner = this };
         dlg.ShowDialog();
     }
 

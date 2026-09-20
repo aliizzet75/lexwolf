@@ -9,23 +9,39 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using LexWolf.Database;
 
 namespace LexWolf.Dialogs;
 
 public partial class FeatureWunschDialog : Window
 {
+    private readonly LocalDb _db;
     private readonly HttpClient _http;
     private readonly string _backendUrl;
     private readonly List<(string Role, string Content)> _messages = new();
     private JsonNode? _pendingSummary;
     private bool _busy;
 
-    public FeatureWunschDialog(HttpClient http, string backendUrl)
+    public FeatureWunschDialog(LocalDb db, HttpClient http, string backendUrl)
     {
         InitializeComponent();
+        _db = db;
         _http = http;
         _backendUrl = backendUrl;
-        AddBubble("assistant", "Was wünschst du dir für LexWolf? Beschreib es kurz, ich frage bei Bedarf nach.");
+
+        var verlauf = _db.GetFeatureWunschHistory();
+        if (verlauf.Count > 0)
+        {
+            foreach (var (role, content, _) in verlauf)
+            {
+                AddBubble(role, content);
+                _messages.Add((role, content));
+            }
+        }
+        else
+        {
+            AddBubble("assistant", "Was wünschst du dir für LexWolf? Beschreib es kurz, ich frage bei Bedarf nach.");
+        }
         InputBox.Focus();
     }
 
@@ -49,6 +65,7 @@ public partial class FeatureWunschDialog : Window
         InputBox.Text = string.Empty;
         AddBubble("user", text);
         _messages.Add(("user", text));
+        _db.AddFeatureWunschMessage("user", text);
         SetBusy(true);
 
         try
@@ -69,6 +86,7 @@ public partial class FeatureWunschDialog : Window
 
             AddBubble("assistant", reply);
             _messages.Add(("assistant", reply));
+            _db.AddFeatureWunschMessage("assistant", reply);
 
             if (status == "ready" && root.TryGetProperty("summary", out var summaryEl) && summaryEl.ValueKind == JsonValueKind.Object)
             {
@@ -130,7 +148,9 @@ public partial class FeatureWunschDialog : Window
             response.EnsureSuccessStatusCode();
 
             HideSummary();
-            AddBubble("assistant", "✅ Danke! Wird jetzt umgesetzt — du bekommst das Feature automatisch beim nächsten Neustart von LexWolf.");
+            const string erfolgsText = "✅ Danke! Wird jetzt umgesetzt — du bekommst das Feature automatisch beim nächsten Neustart von LexWolf.";
+            AddBubble("assistant", erfolgsText);
+            _db.AddFeatureWunschMessage("assistant", erfolgsText);
             InputBox.IsEnabled = false;
             SendBtn.IsEnabled = false;
         }

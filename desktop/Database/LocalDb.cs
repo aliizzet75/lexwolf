@@ -79,6 +79,13 @@ namespace LexWolf.Database
                     quellen_hash TEXT,
                     erstellt    TEXT
                 );
+
+                CREATE TABLE IF NOT EXISTS feature_wunsch_history (
+                    id        TEXT PRIMARY KEY,
+                    role      TEXT,
+                    content   TEXT,
+                    timestamp TEXT
+                );
             ";
             cmd.ExecuteNonQuery();
         }
@@ -407,6 +414,53 @@ namespace LexWolf.Database
                 ? (DateTime?)null
                 : DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind);
             return (text, hash, erstellt);
+        }
+
+        // --- Feature-Wunsch-Verlauf ---
+
+        public void AddFeatureWunschMessage(string role, string content)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO feature_wunsch_history (id, role, content, timestamp)
+                VALUES ($id, $role, $content, $timestamp);
+            ";
+            cmd.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
+            cmd.Parameters.AddWithValue("$role", role);
+            cmd.Parameters.AddWithValue("$content", content);
+            cmd.Parameters.AddWithValue("$timestamp", DateTime.UtcNow.ToString("o"));
+            cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>Letzte Feature-Wunsch-Nachrichten in chronologischer Reihenfolge
+        /// (älteste zuerst). Wird beim Öffnen des Feature-Wunsch-Dialogs geladen,
+        /// damit frühere Fragen/Antworten sichtbar bleiben und die KI Kontext hat,
+        /// falls der Anwalt sich auf einen älteren Wunsch bezieht.</summary>
+        public System.Collections.Generic.List<(string Role, string Content, DateTime Timestamp)> GetFeatureWunschHistory(int limit = 40)
+        {
+            var result = new System.Collections.Generic.List<(string, string, DateTime)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT role, content, timestamp FROM (
+                    SELECT role, content, timestamp FROM feature_wunsch_history
+                    ORDER BY timestamp DESC
+                    LIMIT $limit
+                )
+                ORDER BY timestamp ASC;
+            ";
+            cmd.Parameters.AddWithValue("$limit", limit);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind)
+                ));
+            }
+            return result;
         }
 
         public DateTime? GetMaxGeaendert(string mandantId)

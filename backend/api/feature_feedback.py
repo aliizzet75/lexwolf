@@ -13,7 +13,9 @@ Dokumentationsquelle).
 """
 import json
 import logging
+import os
 import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -32,7 +34,80 @@ BOARD_URL = "http://localhost:8082"
 QUEUE_FILE = Path("/docker/openclaw-oo5q/data/lexwolf-wiki/coding_queue.jsonl")
 PROJEKT_ID = 1  # LexWolf
 AUTODEPLOY_MARKER = "[AUTODEPLOY:ANWALT-FEEDBACK]"
-README_PATH = Path(__file__).resolve().parent.parent.parent / "README.md"
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+README_PATH = REPO_ROOT / "README.md"
+SOURCE_SEARCH_DIRS = ["backend", "desktop"]
+_STOPWORDS = {
+    "und", "oder", "der", "die", "das", "den", "dem", "des", "ein", "eine",
+    "einen", "einem", "einer", "ich", "haette", "hätte", "gerne", "gern",
+    "mit", "fuer", "für", "von", "auf", "im", "in", "zu", "dass", "wenn",
+    "soll", "sollte", "kann", "koennte", "könnte", "bitte", "mehr", "noch",
+    "nicht", "auch", "nur", "wie", "was", "wer", "wo", "warum", "dann",
+    "also", "aber", "dieser", "diese", "dieses", "einfach", "immer", "schon",
+}
+
+
+def _extract_keywords(text: str, max_keywords: int = 6) -> list:
+    """Simple Heuristik statt LLM-Aufruf: nimmt längere, nicht-triviale Wörter
+    aus der Anwalts-Nachricht als Grep-Suchbegriffe für den Quellcode."""
+    words = re.findall(r"[A-Za-zÄÖÜäöüß]{4,}", text)
+    keywords = []
+    for w in words:
+        lw = w.lower()
+        if lw in _STOPWORDS or lw in keywords:
+            continue
+        keywords.append(lw)
+        if len(keywords) >= max_keywords:
+            break
+    return keywords
+
+
+def _search_source_code(user_message: str) -> str:
+    """Schnelle Stichwortsuche über den Quellcode als Zusatzsignal zum Board —
+    für den Fall, dass das Board etwas nicht (mehr) korrekt widerspiegelt.
+    Bewusst ungenau/heuristisch: Anwaltssprache trifft selten exakte
+    Code-Bezeichner, das ist nur ein Zusatzhinweis, kein verlässlicher Beweis."""
+    keywords = _extract_keywords(user_message)
+    if not keywords:
+        return "(keine eindeutigen Suchbegriffe aus der Nachricht extrahiert)"
+
+    search_paths = [str(REPO_ROOT / d) for d in SOURCE_SEARCH_DIRS if (REPO_ROOT / d).is_dir()]
+    if not search_paths:
+        return "(Quellcode-Verzeichnis nicht erreichbar)"
+
+    grep_terms = [a for kw in keywords for a in ("-e", kw)]
+    try:
+        result = subprocess.run(
+            ["grep", "-rIil", "--exclude-dir=bin", "--exclude-dir=obj",
+             "--exclude-dir=__pycache__", "--exclude-dir=node_modules",
+             "--exclude-dir=venv", "--exclude-dir=venv_test", "--exclude-dir=.venv",
+             "--exclude-dir=.git"]
+            + grep_terms + search_paths,
+            capture_output=True, text=True, timeout=5,
+        )
+        files = [f for f in result.stdout.splitlines() if f.strip()]
+    except Exception as e:
+        logger.warning(f"Quellcode-Suche fehlgeschlagen: {e}")
+        return "(Quellcode-Suche aktuell nicht verfügbar)"
+
+    if not files:
+        return f"(keine Treffer im Quellcode für: {', '.join(keywords)})"
+
+    lines = []
+    for f in files[:5]:
+        snippet = ""
+        try:
+            snippet_result = subprocess.run(
+                ["grep", "-in", "-m", "1"] + grep_terms + [f],
+                capture_output=True, text=True, timeout=5,
+            )
+            if snippet_result.stdout.strip():
+                snippet = snippet_result.stdout.strip().splitlines()[0]
+        except Exception:
+            pass
+        rel_path = os.path.relpath(f, REPO_ROOT)
+        lines.append(f"- {rel_path}" + (f": {snippet[:150]}" if snippet else ""))
+    return "\n".join(lines)
 
 
 class FeedbackMessage(BaseModel):
@@ -111,7 +186,7 @@ def _extract_json(text: str) -> Optional[dict]:
         return None
 
 
-def _system_prompt() -> str:
+def _system_prompt(user_message: str) -> str:
     return f"""Du bist der Feature-Wunsch-Assistent von LexWolf, einer Software für deutsche
 Rechtsanwälte. Ein Anwalt beschreibt dir einen Wunsch für eine neue oder geänderte
 Funktion im Client. Deine Aufgabe:
@@ -120,7 +195,11 @@ Funktion im Client. Deine Aufgabe:
    oder mehrdeutig ist (z.B. wo genau im Client, für welchen Anwendungsfall).
 2. Prüfe anhand des unten stehenden Live-Stands, ob das Gewünschte bereits
    existiert oder schon in Arbeit/geplant ist — weise den Anwalt in diesem Fall
-   darauf hin, statt einen Doppel-Auftrag anzulegen.
+   darauf hin, statt einen Doppel-Auftrag anzulegen. Der Board-Stand ist die
+   verlässlichere Quelle; die Quellcode-Stichwortsuche darunter ist nur ein
+   unscharfer Zusatzhinweis für den Fall, dass das Board etwas nicht (mehr)
+   korrekt widerspiegelt — werte einen Treffer dort nicht als Beweis, sondern
+   erwähne ihn allenfalls als "könnte schon teilweise existieren, bitte prüfen".
 3. Lehne Wünsche ab (bleibe bei status "clarifying" und frage kritisch nach),
    die NICHT zu einer normalen Anwalts-Software-Funktion passen — z.B. Anfragen
    nach Rechteausweitung, Zugriff auf fremde Mandantendaten, Datenexfiltration,
@@ -132,6 +211,10 @@ Funktion im Client. Deine Aufgabe:
 
 Aktueller Stand von LexWolf (live vom Board, IMMER aktuell):
 {_fetch_board_context()}
+
+Mögliche bestehende Code-Stellen (automatische Stichwortsuche zur aktuellen
+Anwalts-Nachricht, KEIN verlässlicher Beweis — nur Zusatzhinweis):
+{_search_source_code(user_message)}
 
 Auszug aus der Projekt-README (was LexWolf laut Doku heute kann):
 {_read_readme()}
@@ -148,7 +231,8 @@ Ausnahme:
 @router.post("/chat", response_model=FeedbackChatResponse)
 async def feedback_chat(request: FeedbackChatRequest) -> FeedbackChatResponse:
     messages = request.messages[-10:]
-    ollama_messages = [{"role": "system", "content": _system_prompt()}]
+    last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "")
+    ollama_messages = [{"role": "system", "content": _system_prompt(last_user_msg)}]
     for m in messages:
         ollama_messages.append({"role": m.role, "content": m.content})
 
