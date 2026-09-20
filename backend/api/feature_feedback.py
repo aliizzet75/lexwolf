@@ -78,7 +78,6 @@ def _search_source_code(user_message: str) -> str:
     exclude_dirs = ["--exclude-dir=bin", "--exclude-dir=obj", "--exclude-dir=__pycache__",
                     "--exclude-dir=node_modules", "--exclude-dir=venv", "--exclude-dir=venv_test",
                     "--exclude-dir=.venv", "--exclude-dir=.git"]
-    grep_terms = [a for kw in keywords for a in ("-e", kw)]
 
     # Pro Keyword einzeln suchen und Treffer zählen statt einer naiven OR-Suche:
     # eine Datei, die MEHRERE Suchbegriffe enthält, ist relevanter als eine, die
