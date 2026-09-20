@@ -34,6 +34,12 @@
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
                         FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
                         ToolTip="Feature-Wunsch an LexWolf senden"/>
+                <Button x:Name="TestknopfBtn" Content="Testknopf" Click="OnTestknopfClick"
+                        DockPanel.Dock="Right"
+                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
+                        FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
+                        ToolTip="Test-Popup für Build-/Deploy-Pipeline"/>
+                
                 
                 <!-- FolderPicker-Button für Verzeichnis-Scanning -->
                 <Button x:Name="ScanFolderBtn" Content="📂 Ordner scannen" Click="OnScanFolderClicked"

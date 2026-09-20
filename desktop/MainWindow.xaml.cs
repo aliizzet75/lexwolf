@@ -226,6 +226,16 @@ public partial class MainWindow : Window
         dlg.ShowDialog();
     }
 
+    private void OnTestknopfClick(object sender, RoutedEventArgs e)
+    {
+        System.Windows.MessageBox.Show(
+            this,
+            "Hallo vom Anwalts-Feedback-Test",
+            "Testknopf",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
     private async void OnZusammenfassungClick(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_activeMandantId)) return;
