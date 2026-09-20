@@ -75,26 +75,36 @@ def _search_source_code(user_message: str) -> str:
     if not search_paths:
         return "(Quellcode-Verzeichnis nicht erreichbar)"
 
+    exclude_dirs = ["--exclude-dir=bin", "--exclude-dir=obj", "--exclude-dir=__pycache__",
+                    "--exclude-dir=node_modules", "--exclude-dir=venv", "--exclude-dir=venv_test",
+                    "--exclude-dir=.venv", "--exclude-dir=.git"]
     grep_terms = [a for kw in keywords for a in ("-e", kw)]
+
+    # Pro Keyword einzeln suchen und Treffer zählen statt einer naiven OR-Suche:
+    # eine Datei, die MEHRERE Suchbegriffe enthält, ist relevanter als eine, die
+    # nur zufällig ein einzelnes generisches Wort (z.B. "mandanten") trifft —
+    # sonst gewinnt oft nur die alphabetisch erste Zufallsdatei.
+    hit_counts: dict = {}
     try:
-        result = subprocess.run(
-            ["grep", "-rIil", "--exclude-dir=bin", "--exclude-dir=obj",
-             "--exclude-dir=__pycache__", "--exclude-dir=node_modules",
-             "--exclude-dir=venv", "--exclude-dir=venv_test", "--exclude-dir=.venv",
-             "--exclude-dir=.git"]
-            + grep_terms + search_paths,
-            capture_output=True, text=True, timeout=5,
-        )
-        files = [f for f in result.stdout.splitlines() if f.strip()]
+        for kw in keywords:
+            result = subprocess.run(
+                ["grep", "-rIli", *exclude_dirs, "-e", kw] + search_paths,
+                capture_output=True, text=True, timeout=5,
+            )
+            for f in result.stdout.splitlines():
+                if f.strip():
+                    hit_counts[f] = hit_counts.get(f, 0) + 1
     except Exception as e:
         logger.warning(f"Quellcode-Suche fehlgeschlagen: {e}")
         return "(Quellcode-Suche aktuell nicht verfügbar)"
 
-    if not files:
+    if not hit_counts:
         return f"(keine Treffer im Quellcode für: {', '.join(keywords)})"
 
+    ranked = sorted(hit_counts, key=lambda f: hit_counts[f], reverse=True)[:5]
+
     lines = []
-    for f in files[:5]:
+    for f in ranked:
         snippet = ""
         try:
             snippet_result = subprocess.run(
