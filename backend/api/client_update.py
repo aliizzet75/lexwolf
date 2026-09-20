@@ -2,13 +2,13 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/client", tags=["client-update"])
 
-# Aktuellste veröffentlichte Desktop-Client-Version.
+# Aktuellste veroeffentlichte Desktop-Client-Version.
 # Solange wir nicht produktiv sind: 0.x-Versionierung.
-# Bei jedem Release manuell erhöhen — download_url bleibt stabil (kein
+# Bei jedem Release manuell erhoehen — download_url bleibt stabil (kein
 # Versions-Suffix im Dateinamen), nur die Datei dahinter wird ersetzt.
-LATEST_VERSION = "0.6.3"
+LATEST_VERSION = "0.7.0"
 DOWNLOAD_URL = "http://212.227.180.66:8000/client/download/LexWolf-Setup.exe"
-RELEASE_NOTES = "Neu: Notizen koennen jetzt geloescht werden (mit Bestaetigungsdialog)."
+RELEASE_NOTES = "Neuer Testknopf im Hauptfenster (Pipeline-Validierung)"
 
 
 @router.get("/version")
