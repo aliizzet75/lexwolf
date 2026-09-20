@@ -6,9 +6,9 @@ router = APIRouter(prefix="/client", tags=["client-update"])
 # Solange wir nicht produktiv sind: 0.x-Versionierung.
 # Bei jedem Release manuell erhoehen — download_url bleibt stabil (kein
 # Versions-Suffix im Dateinamen), nur die Datei dahinter wird ersetzt.
-LATEST_VERSION = "0.8.0"
+LATEST_VERSION = "0.9.0"
 DOWNLOAD_URL = "http://212.227.180.66:8000/client/download/LexWolf-Setup.exe"
-RELEASE_NOTES = "Der bereits umgesetzte, dauerhaft sichtbare Button „Testknopf“ im Hauptfenster des LexWolf-Clients soll entfernt werden. Dabei soll auch das bisherige Popup-Verhalten beim Klick auf den Button aus der"
+RELEASE_NOTES = "Der dauerhaft sichtbare Button „Testknopf“ im Hauptfenster des LexWolf-Clients soll entfernt werden. Dabei soll auch das bisherige Klick-Verhalten bzw. Popup entfernt werden. Der Anwalt hat diesen Wun"
 
 
 @router.get("/version")
