@@ -155,6 +155,7 @@ public partial class MainWindow : Window
         // Kein manueller Download+Doppelklick mehr nötig.
         Dispatcher.Invoke(() =>
         {
+            this.IsEnabled = false;
             ProgressBar.Value = 0;
             SetProgressBusy(true);
             SetStatus(null, "Update wird heruntergeladen... 0%");
@@ -172,10 +173,14 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Dispatcher.Invoke(() => SetProgressBusy(false));
-            Dispatcher.Invoke(() => System.Windows.MessageBox.Show(
-                this, $"Update fehlgeschlagen: {ex.Message}", "Fehler",
-                MessageBoxButton.OK, MessageBoxImage.Error));
+            Dispatcher.Invoke(() =>
+            {
+                this.IsEnabled = true;
+                SetProgressBusy(false);
+                System.Windows.MessageBox.Show(
+                    this, $"Update fehlgeschlagen: {ex.Message}", "Fehler",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            });
             return;
         }
 
