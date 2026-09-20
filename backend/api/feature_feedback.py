@@ -103,16 +103,22 @@ def _search_source_code(user_message: str) -> str:
 
     ranked = sorted(hit_counts, key=lambda f: hit_counts[f], reverse=True)[:5]
 
+    # Schnipsel: die Zeile mit den MEISTEN Keyword-Treffern im Dokument, nicht
+    # einfach die erste Trefferzeile — sonst zeigt eine mehrfach relevante Datei
+    # (z.B. MainWindow.xaml mit vielen Buttons) zufällig eine irrelevante Zeile
+    # und führt die KI in die Irre statt ihr zu helfen.
     lines = []
     for f in ranked:
         snippet = ""
         try:
-            snippet_result = subprocess.run(
-                ["grep", "-in", "-m", "1"] + grep_terms + [f],
-                capture_output=True, text=True, timeout=5,
-            )
-            if snippet_result.stdout.strip():
-                snippet = snippet_result.stdout.strip().splitlines()[0]
+            with open(f, "r", encoding="utf-8", errors="ignore") as fh:
+                best_line, best_score = "", 0
+                for file_line in fh:
+                    lower = file_line.lower()
+                    score = sum(1 for kw in keywords if kw in lower)
+                    if score > best_score:
+                        best_score, best_line = score, file_line.strip()
+                snippet = best_line
         except Exception:
             pass
         rel_path = os.path.relpath(f, REPO_ROOT)
