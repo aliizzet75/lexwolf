@@ -6,6 +6,7 @@ eine Antwort des Rechtsassistenten zurück.
 import os
 import json
 import logging
+import asyncio
 import urllib.request as _urlreq
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -166,7 +167,11 @@ async def chat(request: ChatRequest) -> ChatResponse:
             break
 
     # 3. Relevante Chunks suchen
-    chunks_text = _search_chunks(last_user_msg) if last_user_msg else ""
+    # _search_chunks ist blockierend (DB/Embedding-Calls) — in Thread auslagern,
+    # sonst friert der einzige uvicorn-Event-Loop für ALLE Requests ein (siehe
+    # Vorfall 2026-09-01: Backend über Minuten komplett unerreichbar, auch für
+    # /health, weil ein einzelner /chat-Call synchron blockierte).
+    chunks_text = await asyncio.to_thread(_search_chunks, last_user_msg) if last_user_msg else ""
 
     # 4. System-Prompt aufbauen
     system_parts = ["Du bist ein juristischer Rechtsassistent für deutschsprachige Anwälte."]
@@ -201,7 +206,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
         ollama_messages.append({"role": m.role, "content": m.content})
 
     # 6. Ollama aufrufen — bei Denkprotokoll-Leckage einmal mit Verstärkung retryen
-    content = _call_ollama(ollama_messages)
+    # _call_ollama ist blockierend (urllib.urlopen, bis zu 60s Timeout) — ebenfalls
+    # in Thread auslagern, siehe Kommentar oben bei _search_chunks.
+    content = await asyncio.to_thread(_call_ollama, ollama_messages)
     if _looks_like_reasoning_leak(content):
         logger.warning("Reasoning-Leak erkannt (%d Zeichen) — Retry mit verstärkter Anweisung", len(content))
         reinforced = ollama_messages + [{
@@ -209,7 +216,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             "content": "Wichtig: Antworte NUR mit der fertigen Antwort auf Deutsch, "
                        "ohne jegliche Zwischengedanken oder Erklärung deines Vorgehens.",
         }]
-        content = _call_ollama(reinforced)
+        content = await asyncio.to_thread(_call_ollama, reinforced)
         if _looks_like_reasoning_leak(content):
             logger.warning("Reasoning-Leak nach Retry weiterhin vorhanden — gebe Fallback-Antwort")
             content = (

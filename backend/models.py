@@ -65,6 +65,15 @@ class StyleProfile(Base):
     # Use real pgvector Vector column
     vector = mapped_column(Vector(768))  # paraphrase-multilingual-mpnet-base-v2, lokal
     
+    # Gelernte Stil-Metadaten (aus feedback_table, täglich aktualisiert)
+    durchschnittliche_satzlaenge = Column(Float, nullable=True)
+    formulierungs_praeferenzen = Column(Text, nullable=True)  # JSON
+    korrigierte_muster = Column(Text, nullable=True)           # JSON
+    anzahl_eintraege = Column(Integer, nullable=True)
+    
+    # A/B-Test State pro Account (T#90)
+    ab_test_json = Column(Text, nullable=True)  # JSON: laufende Tests + implizite Praeferenzen
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -76,6 +85,22 @@ class SearchResult(Base):
     chunk_id = Column(Integer)
     relevance_score = Column(Float)
     search_type = Column(String)  # 'hyde', 'dense', 'sparse', 'rrf'
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class FeedbackEntry(Base):
+    __tablename__ = 'feedback_table'
+
+    id = Column(Integer, primary_key=True, index=True)
+    original = Column(Text, nullable=True)       # NICHT mehr genutzt / auf NULL gesetzt
+    korrigiert = Column(Text, nullable=True)     # NICHT mehr genutzt / auf NULL gesetzt
+    kategorie = Column(String)    # formulierung | satzstruktur | paragraph | laenge
+
+    # Anonymisierte, aggregierte Stil-Metriken (DSGVO-konform, T#89)
+    satzlaengen_verteilung = Column(Text, nullable=True)      # JSON
+    wortklassen_haeufigkeiten = Column(Text, nullable=True)   # JSON
+    korrektur_kategorien = Column(Text, nullable=True)        # JSON
+
+    zeitstempel = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class SubscriptionStatus(str, enum.Enum):

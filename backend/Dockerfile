@@ -7,6 +7,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    libpango-1.0-0 \
+    libharfbuzz0b \
+    libpangoft2-1.0-0 \
+    libgobject-2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching

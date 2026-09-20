@@ -54,8 +54,108 @@ namespace LexWolf.Database
                     content    TEXT,
                     timestamp  TEXT
                 );
+
+                CREATE TABLE IF NOT EXISTS chat_zusammenfassungen (
+                    id              TEXT PRIMARY KEY,
+                    mandant_id      TEXT,
+                    sitzung_start   TEXT,
+                    sitzung_ende    TEXT,
+                    zusammenfassung TEXT,
+                    erstellt        TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS notizen (
+                    id          TEXT PRIMARY KEY,
+                    mandant_id  TEXT,
+                    titel_kurz  TEXT,
+                    text        TEXT,
+                    erstellt    TEXT,
+                    geaendert   TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS mandant_zusammenfassung (
+                    mandant_id  TEXT PRIMARY KEY,
+                    text        TEXT,
+                    quellen_hash TEXT,
+                    erstellt    TEXT
+                );
             ";
             cmd.ExecuteNonQuery();
+        }
+
+        // --- Notizen ---
+
+        public void InsertNotiz(string id, string mandantId, string titelKurz, string text)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            var jetzt = DateTime.UtcNow.ToString("o");
+            cmd.CommandText = @"
+                INSERT INTO notizen (id, mandant_id, titel_kurz, text, erstellt, geaendert)
+                VALUES ($id, $mandant_id, $titel_kurz, $text, $erstellt, $geaendert);
+            ";
+            cmd.Parameters.AddWithValue("$id", id);
+            cmd.Parameters.AddWithValue("$mandant_id", mandantId);
+            cmd.Parameters.AddWithValue("$titel_kurz", titelKurz);
+            cmd.Parameters.AddWithValue("$text", text);
+            cmd.Parameters.AddWithValue("$erstellt", jetzt);
+            cmd.Parameters.AddWithValue("$geaendert", jetzt);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void UpdateNotiz(string id, string titelKurz, string text)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                UPDATE notizen
+                SET titel_kurz = $titel_kurz,
+                    text = $text,
+                    geaendert = $geaendert
+                WHERE id = $id;
+            ";
+            cmd.Parameters.AddWithValue("$id", id);
+            cmd.Parameters.AddWithValue("$titel_kurz", titelKurz);
+            cmd.Parameters.AddWithValue("$text", text);
+            cmd.Parameters.AddWithValue("$geaendert", DateTime.UtcNow.ToString("o"));
+            cmd.ExecuteNonQuery();
+        }
+
+        public void DeleteNotiz(string id)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM notizen WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$id", id);
+            cmd.ExecuteNonQuery();
+        }
+
+        public System.Collections.Generic.List<(string Id, string MandantId, string TitelKurz,
+            string Text, DateTime Erstellt, DateTime Geaendert)> GetNotizen(string mandantId)
+        {
+            var result = new System.Collections.Generic.List<(string, string, string, string, DateTime, DateTime)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT id, mandant_id, titel_kurz, text, erstellt, geaendert
+                FROM notizen
+                WHERE mandant_id = $mandantId
+                ORDER BY erstellt DESC;
+            ";
+            cmd.Parameters.AddWithValue("$mandantId", mandantId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    DateTime.Parse(reader.GetString(4), null, System.Globalization.DateTimeStyles.RoundtripKind),
+                    DateTime.Parse(reader.GetString(5), null, System.Globalization.DateTimeStyles.RoundtripKind)
+                ));
+            }
+            return result;
         }
 
         // --- Mandanten ---
@@ -173,6 +273,159 @@ namespace LexWolf.Database
             cmd.Parameters.AddWithValue("$content", content);
             cmd.Parameters.AddWithValue("$timestamp", DateTime.UtcNow.ToString("o"));
             cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>Chat-Nachrichten eines Mandanten seit einem Zeitpunkt (exklusiv), oder
+        /// der komplette Verlauf wenn <paramref name="seit"/> null ist. Wird vom
+        /// ChatSummaryService genutzt, um nur den Teil des Verlaufs zu summarisieren,
+        /// der noch nicht in einer früheren Zusammenfassung erfasst wurde.</summary>
+        public System.Collections.Generic.List<(string Role, string Content, DateTime Timestamp)> GetChatHistorySeit(
+            string mandantId, DateTime? seit)
+        {
+            var result = new System.Collections.Generic.List<(string, string, DateTime)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT role, content, timestamp FROM chat_history
+                WHERE mandant_id = $mandantId
+                  AND ($seit IS NULL OR timestamp > $seit)
+                ORDER BY timestamp ASC;
+            ";
+            cmd.Parameters.AddWithValue("$mandantId", mandantId);
+            cmd.Parameters.AddWithValue("$seit", (object?)seit?.ToString("o") ?? DBNull.Value);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind)
+                ));
+            }
+            return result;
+        }
+
+        /// <summary>Ende-Zeitpunkt der jüngsten Zusammenfassung eines Mandanten, oder
+        /// null wenn noch keine existiert.</summary>
+        public DateTime? GetLetzteZusammenfassungEnde(string mandantId)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT MAX(sitzung_ende) FROM chat_zusammenfassungen
+                WHERE mandant_id = $mandantId;
+            ";
+            cmd.Parameters.AddWithValue("$mandantId", mandantId);
+            var result = cmd.ExecuteScalar();
+            if (result is null || result is DBNull) return null;
+            return DateTime.Parse((string)result, null, System.Globalization.DateTimeStyles.RoundtripKind);
+        }
+
+        // --- Chat-Zusammenfassungen ---
+
+        public void InsertChatZusammenfassung(string mandantId, DateTime sitzungStart,
+                                              DateTime sitzungEnde, string zusammenfassung)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO chat_zusammenfassungen
+                    (id, mandant_id, sitzung_start, sitzung_ende, zusammenfassung, erstellt)
+                VALUES
+                    ($id, $mandant_id, $sitzung_start, $sitzung_ende, $zusammenfassung, $erstellt);
+            ";
+            cmd.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
+            cmd.Parameters.AddWithValue("$mandant_id", mandantId);
+            cmd.Parameters.AddWithValue("$sitzung_start", sitzungStart.ToString("o"));
+            cmd.Parameters.AddWithValue("$sitzung_ende", sitzungEnde.ToString("o"));
+            cmd.Parameters.AddWithValue("$zusammenfassung", zusammenfassung);
+            cmd.Parameters.AddWithValue("$erstellt", DateTime.UtcNow.ToString("o"));
+            cmd.ExecuteNonQuery();
+        }
+
+        public System.Collections.Generic.List<(string Id, string MandantId, DateTime SitzungStart,
+            DateTime SitzungEnde, string Zusammenfassung, DateTime Erstellt)> GetChatZusammenfassungen(string mandantId)
+        {
+            var result = new System.Collections.Generic.List<(string, string, DateTime, DateTime, string, DateTime)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT id, mandant_id, sitzung_start, sitzung_ende, zusammenfassung, erstellt
+                FROM chat_zusammenfassungen
+                WHERE mandant_id = $mandantId
+                ORDER BY sitzung_start ASC;
+            ";
+            cmd.Parameters.AddWithValue("$mandantId", mandantId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind),
+                    DateTime.Parse(reader.GetString(3), null, System.Globalization.DateTimeStyles.RoundtripKind),
+                    reader.GetString(4),
+                    DateTime.Parse(reader.GetString(5), null, System.Globalization.DateTimeStyles.RoundtripKind)
+                ));
+            }
+            return result;
+        }
+
+        // --- Mandant-Zusammenfassung (Task #219) ---
+
+        public void UpsertMandantZusammenfassung(string mandantId, string text, string quellenHash)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO mandant_zusammenfassung (mandant_id, text, quellen_hash, erstellt)
+                VALUES ($mandant_id, $text, $quellen_hash, $erstellt)
+                ON CONFLICT(mandant_id) DO UPDATE SET text=$text, quellen_hash=$quellen_hash, erstellt=$erstellt;
+            ";
+            cmd.Parameters.AddWithValue("$mandant_id", mandantId);
+            cmd.Parameters.AddWithValue("$text", text);
+            cmd.Parameters.AddWithValue("$quellen_hash", quellenHash);
+            cmd.Parameters.AddWithValue("$erstellt", DateTime.UtcNow.ToString("o"));
+            cmd.ExecuteNonQuery();
+        }
+
+        public (string? Text, string? QuellenHash, DateTime? Erstellt)? GetMandantZusammenfassung(string mandantId)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT text, quellen_hash, erstellt
+                FROM mandant_zusammenfassung
+                WHERE mandant_id = $mandantId;
+            ";
+            cmd.Parameters.AddWithValue("$mandantId", mandantId);
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read()) return null;
+            var text = reader.IsDBNull(0) ? null : reader.GetString(0);
+            var hash = reader.IsDBNull(1) ? null : reader.GetString(1);
+            var erstellt = reader.IsDBNull(2)
+                ? (DateTime?)null
+                : DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind);
+            return (text, hash, erstellt);
+        }
+
+        public DateTime? GetMaxGeaendert(string mandantId)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT MAX(t) FROM (
+                    SELECT MAX(geaendert) AS t FROM notizen WHERE mandant_id = $mandantId
+                    UNION ALL
+                    SELECT MAX(timestamp)  AS t FROM chat_history WHERE mandant_id = $mandantId
+                    UNION ALL
+                    SELECT MAX(geaendert)  AS t FROM dokumente WHERE mandant_id = $mandantId
+                );
+            ";
+            cmd.Parameters.AddWithValue("$mandantId", mandantId);
+            var result = cmd.ExecuteScalar();
+            if (result is null || result is DBNull) return null;
+            return DateTime.Parse((string)result, null, System.Globalization.DateTimeStyles.RoundtripKind);
         }
     }
 }

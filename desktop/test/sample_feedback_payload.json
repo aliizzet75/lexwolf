@@ -1,0 +1,19 @@
+{
+  "satzlaengen_verteilung": {
+    "6-10": 3,
+    "11-15": 5,
+    "16-25": 2
+  },
+  "wortklassen_haeufigkeiten": {
+    "noun_or_name": 12,
+    "verb_infinitive": 4,
+    "adjective": 3,
+    "other": 6
+  },
+  "korrektur_kategorien": {
+    "formulierung": 4,
+    "satzstruktur": 2,
+    "paragraph": 1,
+    "laenge": 3
+  }
+}

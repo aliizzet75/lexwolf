@@ -51,6 +51,14 @@
             <Setter Property="CaretBrush"        Value="#c9d1d9"/>
         </Style>
 
+        <!-- Slider style -->
+        <Style x:Key="DarkSlider" TargetType="Slider">
+            <Setter Property="Background"        Value="#21262d"/>
+            <Setter Property="Foreground"        Value="#1f6feb"/>
+            <Setter Property="IsSnapToTickEnabled" Value="True"/>
+            <Setter Property="TickFrequency"     Value="1"/>
+        </Style>
+
         <!-- Primary button -->
         <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Background"        Value="#1f6feb"/>
@@ -133,6 +141,7 @@
                     <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
                              SelectionChanged="OnNavChanged" Padding="4,0">
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="allgemein">Allgemein</ListBoxItem>
+                        <ListBoxItem Style="{StaticResource NavItem}" Tag="darstellung">Darstellung</ListBoxItem>
                     </ListBox>
                 </DockPanel>
             </Border>
@@ -190,7 +199,85 @@
                                  AcceptsReturn="True"
                                  MinHeight="80"/>
 
-                        <Separator Background="#21262d" Margin="0,28,0,0"/>
+                        <Separator Background="#21262d" Margin="0,28,0,20"/>
+
+                        <!-- === Feedback & Datenschutz === -->
+                        <TextBlock Text="Feedback &amp; Datenschutz" Foreground="#e6edf3"
+                                   FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,14"
+                                   Foreground="#8b949e" FontSize="12" LineHeight="18">
+                            Hier entscheiden Sie, ob LexWolf Daten zur Verbesserung des Schreibstils mit uns teilen darf. Es werden ausschließlich anonymisierte Stil-Metriken übermittelt – keine Inhalte Ihrer Schriftsätze, keine Mandantendaten, keine §-Referenzen und keine Geldbeträge.
+                        </TextBlock>
+
+                        <CheckBox x:Name="FeedbackOptInBox" Foreground="#c9d1d9" FontSize="13"
+                                  Margin="0,0,0,10" VerticalContentAlignment="Center">
+                            <TextBlock Text="Stil-Verbesserungen senden" Foreground="#c9d1d9" FontSize="13"/>
+                        </CheckBox>
+                        <TextBlock TextWrapping="Wrap" Margin="24,0,0,18"
+                                   Foreground="#8b949e" FontSize="12">
+                            Beispiel: Durchschnittliche Satzlängen, Satzbausteine und Häufigkeiten von Korrekturkategorien.
+                        </TextBlock>
+
+                        <CheckBox x:Name="AbTestOptInBox" Foreground="#c9d1d9" FontSize="13"
+                                  Margin="0,0,0,10" VerticalContentAlignment="Center">
+                            <TextBlock Text="A/B-Tests teilnehmen" Foreground="#c9d1d9" FontSize="13"/>
+                        </CheckBox>
+                        <TextBlock TextWrapping="Wrap" Margin="24,0,0,0"
+                                   Foreground="#8b949e" FontSize="12">
+                            Sie erhalten gelegentlich zwei alternative Formulierungen. Die Wahl wird anonymisiert ausgewertet, um den Schreibstil zu verbessern.
+                        </TextBlock>
+
+                    </StackPanel>
+
+                    <!-- === Darstellung === -->
+                    <StackPanel x:Name="PanelDarstellung" Visibility="Collapsed">
+
+                        <TextBlock Text="Darstellung" Foreground="#e6edf3"
+                                   FontSize="16" FontWeight="SemiBold" Margin="0,0,0,20"/>
+
+                        <TextBlock Text="Chat-Eingabefeld"
+                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="InputFontCombo" Grid.Column="0" Margin="0,0,8,0"
+                                      Style="{StaticResource DarkComboBoxStyle}"/>
+                            <Slider x:Name="InputFontSizeSlider" Grid.Column="1" Width="160"
+                                    Minimum="8" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Style="{StaticResource DarkSlider}"
+                                    ValueChanged="OnInputFontSizeChanged"/>
+                        </Grid>
+                        <TextBlock x:Name="InputFontSizeLabel" Foreground="#8b949e" FontSize="12"
+                                   Margin="0,-8,0,18"/>
+
+                        <TextBlock Text="Chat-Ausgabe (WebView2)"
+                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="OutputFontCombo" Grid.Column="0" Margin="0,0,8,0"
+                                      Style="{StaticResource DarkComboBoxStyle}"/>
+                            <Slider x:Name="OutputFontSizeSlider" Grid.Column="1" Width="160"
+                                    Minimum="8" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Style="{StaticResource DarkSlider}"
+                                    ValueChanged="OnOutputFontSizeChanged"/>
+                        </Grid>
+                        <TextBlock x:Name="OutputFontSizeLabel" Foreground="#8b949e" FontSize="12"
+                                   Margin="0,-8,0,0"/>
+
+                        <Border Background="#161b22" BorderBrush="#30363d" BorderThickness="1"
+                                CornerRadius="6" Padding="12" Margin="0,24,0,0">
+                            <TextBlock x:Name="PreviewText" Text="Vorschau: Dies ist ein Beispieltext."
+                                       Foreground="#c9d1d9" FontSize="13" TextWrapping="Wrap"/>
+                        </Border>
+
                     </StackPanel>
 
                     <!-- Weitere Sektionen kommen hier als StackPanel x:Name="PanelXxx" -->

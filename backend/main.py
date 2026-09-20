@@ -18,6 +18,11 @@ from api.ner import router as ner_router
 from api.client_update import router as client_update_router
 from api.tool_update import router as tool_update_router
 from api.downloads import router as downloads_router
+from api.feedback import router as feedback_router
+from api.feature_feedback import router as feature_feedback_router
+from api.style_progress import router as style_progress_router
+from api.routes.export import router as export_router
+from api.routes.kanzlei import router as kanzlei_router
 
 # Import Neo4j service
 from services.neo4j_service import Neo4jService
@@ -72,6 +77,11 @@ app.include_router(ner_router)
 app.include_router(client_update_router)
 app.include_router(tool_update_router)
 app.include_router(downloads_router)
+app.include_router(feedback_router)
+app.include_router(feature_feedback_router)
+app.include_router(style_progress_router)
+app.include_router(export_router)
+app.include_router(kanzlei_router)
 app.mount(
     "/client/download",
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static", "client-releases")),
@@ -81,6 +91,11 @@ app.mount(
     "/tools/download",
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static", "tool-releases")),
     name="tool-downloads",
+)
+app.mount(
+    "/addin",
+    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static", "addin")),
+    name="addin",
 )
 
 @app.get("/")

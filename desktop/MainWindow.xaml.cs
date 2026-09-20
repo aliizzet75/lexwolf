@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,6 +19,7 @@ using Forms = System.Windows.Forms;
 using LexWolf.Database;
 using LexWolf.Services;
 using LexWolf.Dialogs;
+using Microsoft.Web.WebView2.Core;
 
 namespace LexWolf;
 
@@ -30,16 +33,28 @@ public partial class MainWindow : Window
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(120) };
     private readonly List<ChatMessage> _history = new();
     private readonly LocalDb _db = new();
+    private readonly ChatSummaryService _chatSummaryService;
+    private readonly MandantAnalyseService _mandantAnalyseService;
+    private readonly MandantZusammenfassungService _zusammenfassungService;
     private DokumentScanner? _scanner;
     private string? _activeMandantId = null;
     private string? _activeMandantName = null;
+    private bool _webViewInitialized = false;
     private readonly List<(string Id, string Name)> _mandanten = new();
+    private readonly List<string> _chatHistoryHtml = new();
     private readonly HashSet<string> _prioritizedPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly FeedbackSender _feedbackSender = new("http://localhost:8000");
+    private CancellationTokenSource? _loadHistoryCts;
     private System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode> _fileTreeRoots = new();
 
     public MainWindow()
     {
         InitializeComponent();
+        _chatSummaryService = new ChatSummaryService(_db, _http, BackendUrl);
+        _mandantAnalyseService = new MandantAnalyseService(_db, _http, BackendUrl);
+        _zusammenfassungService = new MandantZusammenfassungService(_db, _http, BackendUrl);
+        _mandantAnalyseService.StatusChanged += (_, status) =>
+            Dispatcher.Invoke(() => OnAnalyseStatusChanged(status));
         MandantBox.AddHandler(
             System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
             new TextChangedEventHandler(OnMandantTextChanged));
@@ -48,7 +63,70 @@ public partial class MainWindow : Window
         _ = LoadMandantenAsync();
         _ = Task.Run(StartDocumentScannerAsync);
         _ = CheckForUpdateAsync();
+        _ = LoadStyleProgressAsync();
+        InputBox.FontFamily = new FontFamily(_settings.ChatInputFont);
+        InputBox.FontSize = _settings.ChatInputFontSize;
+        ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
+        // App-Hintergrund (Fenster verliert Fokus, z.B. Alt-Tab) löst ebenfalls eine
+        // Hintergrund-Zusammenfassung aus, nicht nur der Mandant-Wechsel — sonst
+        // bliebe eine lange Sitzung ohne Wechsel bis zum App-Ende unsummarisiert.
+        Deactivated += (_, _) => _ = _chatSummaryService.SummarizeSessionAsync(_activeMandantId);
+        _ = InitializeChatWebViewAsync();
         AppendSystemMessage("Willkommen bei LexWolf. Wie kann ich Ihnen helfen?");
+    }
+
+    private async Task InitializeChatWebViewAsync()
+    {
+        try
+        {
+            // Standardmäßig legt WebView2 sein Datenverzeichnis (EBWebView) neben der
+            // .exe an — bei Installation nach Program Files ohne Admin-Rechte nicht
+            // schreibbar ("kein Lese-/Schreibzugriff"). Explizit auf ein Verzeichnis
+            // im Nutzerprofil umleiten, analog zu AppSettings.
+            var userDataFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "LexWolf", "WebView2");
+            var webViewEnv = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+            await ChatWebView.EnsureCoreWebView2Async(webViewEnv);
+            _chatHistoryHtml.Clear();
+            AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage("Willkommen bei LexWolf. Wie kann ich Ihnen helfen?"));
+            RefreshChatWebView();
+            ChatWebView.Visibility = Visibility.Visible;
+            _webViewInitialized = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[InitializeChatWebViewAsync] WebView2-Initialisierung fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    private static string GetChatBaseHtml(string messagesHtml)
+    {
+        return $@"<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+{ChatHtmlRenderer.GetChatCss()}
+</head>
+<body>
+<div id='chat-messages'>
+{messagesHtml}
+</div>
+</body>
+</html>";
+    }
+
+    private void AddHtmlMessage(string html)
+    {
+        _chatHistoryHtml.Add(html);
+    }
+
+    private void RefreshChatWebView()
+    {
+        var sb = new StringBuilder();
+        foreach (var msg in _chatHistoryHtml)
+            sb.AppendLine(msg);
+        ChatWebView.NavigateToString(GetChatBaseHtml(sb.ToString()));
     }
 
     private async Task CheckForUpdateAsync()
@@ -135,6 +213,95 @@ public partial class MainWindow : Window
         dlg.ShowDialog();
     }
 
+    private void OnNotizenClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_activeMandantId)) return;
+        var dlg = new NotizenDialog(_db, _activeMandantId, _http, BackendUrl, _activeMandantName) { Owner = this };
+        dlg.ShowDialog();
+    }
+
+    private void OnFeatureWunschClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = new LexWolf.Dialogs.FeatureWunschDialog(_http, BackendUrl) { Owner = this };
+        dlg.ShowDialog();
+    }
+
+    private async void OnZusammenfassungClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_activeMandantId)) return;
+
+        SetProgressBusy(true);
+        SetStatus(null, "Zusammenfassung wird ermittelt...");
+        try
+        {
+            // Quellen-Hash prüfen: bei unveränderten Chat/Notizen/Dokumenten
+            // wird gecachte Zusammenfassung sofort angezeigt, sonst neu generiert.
+            var text = await _zusammenfassungService.HoleOderErzeugeZusammenfassungAsync(_activeMandantId);
+            var dlg = new ZusammenfassungDialog(text, _activeMandantName) { Owner = this };
+            dlg.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this, $"Zusammenfassung konnte nicht erzeugt werden: {ex.Message}", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            SetProgressBusy(false);
+            SetStatus(true, $"Verbunden — {BackendUrl}");
+        }
+    }
+
+    private void OnAnalyseStatusChanged(AnalyseStatus status)
+    {
+        AddReasoning("🔍", $"Analyse-Status: {status}");
+        if (status == AnalyseStatus.Scanning)
+        {
+            ZusammenfassungBtn.IsEnabled = false;
+            ZusammenfassungBtn.Content = CreateWolfLoadingContent("wird analysiert");
+        }
+        else if (status == AnalyseStatus.Ready)
+        {
+            ZusammenfassungBtn.IsEnabled = true;
+            ZusammenfassungBtn.Content = "📊 Zusammenfassung";
+        }
+    }
+
+    /// <summary>
+    /// Baut den Button-Inhalt mit der pulsierenden Wolf-Icon-Ladeanimation
+    /// aus Task #209 (WolfLoadingImage) und dem übergebenen Text.
+    /// </summary>
+    private object CreateWolfLoadingContent(string label)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        var img = new System.Windows.Controls.Image
+        {
+            Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("Assets/lexwolf.ico", UriKind.Relative)),
+            Width = 18,
+            Height = 18,
+            Opacity = 1.0,
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+        var sb = new Storyboard { RepeatBehavior = RepeatBehavior.Forever, AutoReverse = true };
+        var pulse = new DoubleAnimation { From = 0.4, To = 1.0, Duration = TimeSpan.FromSeconds(0.8) };
+        Storyboard.SetTarget(pulse, img);
+        Storyboard.SetTargetProperty(pulse, new PropertyPath(UIElement.OpacityProperty));
+        sb.Children.Add(pulse);
+        sb.Begin();
+        panel.Children.Add(img);
+        panel.Children.Add(new TextBlock
+        {
+            Text = label,
+            Foreground = new SolidColorBrush(Color.FromRgb(201, 209, 217)),
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        return panel;
+    }
+
     private void OnOpenSettings(object sender, RoutedEventArgs e)
     {
         var dlg = new SettingsDialog(_settings) { Owner = this };
@@ -142,11 +309,47 @@ public partial class MainWindow : Window
         {
             var oldPath = _settings.DokumentePfad;
             _settings   = dlg.Settings;
+            InputBox.FontFamily = new FontFamily(_settings.ChatInputFont);
+            InputBox.FontSize = _settings.ChatInputFontSize;
+            ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
+            if (_webViewInitialized)
+                RefreshChatWebView();
             if (_settings.DokumentePfad != oldPath)
             {
                 AddReasoning("🔄", $"Neues Verzeichnis: {_settings.DokumentePfad}");
                 _ = Task.Run(StartDocumentScannerAsync);
             }
+            _ = LoadStyleProgressAsync();
+        }
+    }
+
+    private async Task LoadStyleProgressAsync()
+    {
+        try
+        {
+            var response = await _http.GetAsync($"{BackendUrl}/api/style/progress");
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var progress = root.TryGetProperty("lern_fortschritt", out var p) ? p.GetDouble() : 0.0;
+            var samples = root.TryGetProperty("samples_gesammelt", out var s) ? s.GetInt32() : 0;
+            var aspekte = root.TryGetProperty("bekannte_aspekte", out var a) && a.ValueKind == JsonValueKind.Array
+                ? string.Join(", ", a.EnumerateArray().Select(x => x.GetString()).Where(x => x != null))
+                : "";
+
+            Dispatcher.Invoke(() =>
+            {
+                StyleProgressBar.Value = progress;
+                var prozent = (int)Math.Round(progress * 100);
+                StyleProgressLabel.Text = $"LexWolf kennt Ihren Stil zu {prozent}%";
+                StyleProgressPanel.ToolTip = $"{samples} Stil-Samples gesammelt; bekannte Aspekte: {aspekte}";
+                StyleProgressPanel.Visibility = Visibility.Visible;
+            });
+        }
+        catch (Exception ex)
+        {
+            AddReasoning("📊", $"Lern-Fortschritt konnte nicht geladen werden: {ex.Message}");
         }
     }
 
@@ -274,16 +477,41 @@ public partial class MainWindow : Window
     {
         if (_suppressMandantEvents) return;
         var selected = MandantBox.SelectedItem as string;
+
+        // Zusammenfassung für den bisherigen Mandanten im Hintergrund anstoßen, bevor
+        // Kontext/Verlauf auf den neuen Mandanten umgestellt wird. Fire-and-forget,
+        // ohne auf das Task-Ergebnis zu warten — die UI darf beim Wechsel nicht
+        // einfrieren, und ChatSummaryService fängt alle Fehler selbst ab.
+        if (!string.IsNullOrEmpty(_activeMandantId))
+            _ = _chatSummaryService.SummarizeSessionAsync(_activeMandantId);
+
         _history.Clear();
         ChatPanel.Children.Clear();
         UnterhaltBtn.Visibility = Visibility.Collapsed;
+        NotizenBtn.Visibility = Visibility.Collapsed;
+        ZusammenfassungBtn.Visibility = Visibility.Collapsed;
+        _mandantAnalyseService.Abbrechen();
+
+        _loadHistoryCts?.Cancel();
 
         if (string.IsNullOrEmpty(selected) || selected == KeinMandantLabel)
         {
+            _loadHistoryCts?.Dispose();
+            _loadHistoryCts = null;
             _activeMandantId   = null;
             _activeMandantName = null;
-            AppendSystemMessage("Kein Mandant ausgewählt — allgemeines Gespräch.");
+            var msg = "Kein Mandant ausgewählt — allgemeines Gespräch.";
+            if (_webViewInitialized)
+            {
+                _chatHistoryHtml.Clear();
+                AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage(msg));
+                RefreshChatWebView();
+            }
+            else
+                AppendSystemMessage(msg);
             BuildFileTree(null);
+            NotizenBtn.Visibility = Visibility.Collapsed;
+            ZusammenfassungBtn.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -292,8 +520,135 @@ public partial class MainWindow : Window
 
         _activeMandantId   = match.Id;
         _activeMandantName = match.Name;
-        AppendSystemMessage($"Mandant: {match.Name} — Chat-Kontext aktiv.");
+        NotizenBtn.Visibility = Visibility.Visible;
+        ZusammenfassungBtn.Visibility = Visibility.Visible;
+        _mandantAnalyseService.StarteScan(match.Id);
+        var activeMsg = $"Mandant: {match.Name} — Chat-Kontext aktiv.";
+        if (_webViewInitialized)
+        {
+            _chatHistoryHtml.Clear();
+            AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage(activeMsg));
+            RefreshChatWebView();
+        }
+        else
+            AppendSystemMessage(activeMsg);
+
+        // Vorhandene Chat-Historie im Hintergrund laden (Task #226). Ein laufender
+        // Ladevorgang wird beim erneuten Wechsel abgebrochen, damit keine Historie
+        // des vorherigen/falschen Mandanten angezeigt wird.
+        _loadHistoryCts?.Cancel();
+        _loadHistoryCts?.Dispose();
+        _loadHistoryCts = new CancellationTokenSource();
+        _ = Task.Run(() => LoadChatHistoryAsync(match.Id, _loadHistoryCts.Token));
+
         BuildFileTree(match.Name);
+    }
+
+    /// <summary>Lädt die gespeicherte Chat-Historie eines Mandanten aus der lokalen DB
+    /// im Hintergrund und zeigt sie im Chat-Panel an. Die neueste KI-Zusammenfassung
+    /// wird als kompakter Kontext-Block oben eingeblendet; die darauf folgenden
+    /// Roh-Nachrichten (seit dem Ende der Zusammenfassung) erscheinen als normale
+    /// Chat-Bubbles. Funktioniert sowohl für WebView2 als auch für den Fallback-Pfad.
+    /// </summary>
+    private async Task LoadChatHistoryAsync(string mandantId, CancellationToken token)
+    {
+        try
+        {
+            var zusammenfassungen = await Task.Run(() => _db.GetChatZusammenfassungen(mandantId), token).ConfigureAwait(false);
+            var letzteZusammenfassung = zusammenfassungen
+                .OrderByDescending(z => z.SitzungEnde)
+                .FirstOrDefault();
+
+            var seit = letzteZusammenfassung.SitzungEnde != default(DateTime)
+                ? letzteZusammenfassung.SitzungEnde
+                : (DateTime?)null;
+
+            var nachrichten = await Task.Run(() => _db.GetChatHistorySeit(mandantId, seit), token).ConfigureAwait(false);
+
+            token.ThrowIfCancellationRequested();
+
+            // Nur anwenden, wenn der gewählte Mandant noch aktiv ist (Race-Condition-Schutz).
+            if (_activeMandantId != mandantId) return;
+
+            const int maxRohNachrichten = 50;
+            var anzuzeigendeNachrichten = nachrichten.TakeLast(maxRohNachrichten).ToList();
+
+            if (letzteZusammenfassung.Zusammenfassung is not null &&
+                !string.IsNullOrWhiteSpace(letzteZusammenfassung.Zusammenfassung) &&
+                anzuzeigendeNachrichten.Count == 0)
+            {
+                // Nur Zusammenfassung, keine neuen Nachrichten seitdem -> kompakten Kontext-Block anzeigen.
+                var kontextText = $"Letzte Sitzung ({letzteZusammenfassung.SitzungEnde:dd.MM.yyyy HH:mm}): {letzteZusammenfassung.Zusammenfassung}";
+                Dispatcher.Invoke(() =>
+                {
+                    if (_activeMandantId != mandantId) return;
+                    if (_webViewInitialized)
+                    {
+                        AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage(kontextText));
+                        RefreshChatWebView();
+                    }
+                    else
+                    {
+                        AppendSystemMessage(kontextText);
+                    }
+                });
+            }
+            else if (anzuzeigendeNachrichten.Count > 0)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (_activeMandantId != mandantId) return;
+
+                    if (letzteZusammenfassung.Zusammenfassung is not null &&
+                        !string.IsNullOrWhiteSpace(letzteZusammenfassung.Zusammenfassung))
+                    {
+                        var kontextText = $"Zusammenfassung bisheriger Sitzung ({letzteZusammenfassung.SitzungEnde:dd.MM.yyyy HH:mm}): {letzteZusammenfassung.Zusammenfassung}";
+                        if (_webViewInitialized)
+                            AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage(kontextText));
+                        else
+                            AppendSystemMessage(kontextText);
+                    }
+
+                    foreach (var (role, content, _) in anzuzeigendeNachrichten)
+                    {
+                        _history.Add(new ChatMessage(role, content));
+                        switch (role.ToLowerInvariant())
+                        {
+                            case "user":
+                                if (_webViewInitialized)
+                                    AddHtmlMessage(ChatHtmlRenderer.WrapUserBubble(WebUtility.HtmlEncode(content)));
+                                else
+                                    AppendUserMessage(content);
+                                break;
+                            case "assistant":
+                                if (_webViewInitialized)
+                                    AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(content), "frage"));
+                                else
+                                    AppendAiMessage(content, "frage");
+                                break;
+                            default:
+                                if (_webViewInitialized)
+                                    AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage(content));
+                                else
+                                    AppendSystemMessage(content);
+                                break;
+                        }
+                    }
+
+                    if (_webViewInitialized)
+                        RefreshChatWebView();
+                });
+            }
+            // Keine Historie -> die bereits gesetzte Systemnachricht bleibt allein stehen.
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadChatHistoryAsync] Laden für Mandant {mandantId} abgebrochen.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadChatHistoryAsync] Laden für Mandant {mandantId} fehlgeschlagen: {ex.Message}");
+        }
     }
 
     /// <summary>Baut den Dateibaum (links) aus DokumentePfad neu auf — ein Mandanten-
@@ -428,10 +783,20 @@ public partial class MainWindow : Window
     {
         _history.Clear();
         ChatPanel.Children.Clear();
+        _chatHistoryHtml.Clear();
         UnterhaltBtn.Visibility = Visibility.Collapsed;
-        AppendSystemMessage(_activeMandantName is not null
+        var msg = _activeMandantName is not null
             ? $"Chat gelöscht — Mandant: {_activeMandantName}"
-            : "Chat gelöscht. Wie kann ich Ihnen helfen?");
+            : "Chat gelöscht. Wie kann ich Ihnen helfen?";
+        if (_webViewInitialized)
+        {
+            AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage(msg));
+            RefreshChatWebView();
+        }
+        else
+        {
+            AppendSystemMessage(msg);
+        }
     }
 
     private void OnUnterhaltBtnClick(object sender, RoutedEventArgs e)
@@ -493,29 +858,58 @@ public partial class MainWindow : Window
                 UnterhaltBtn.Visibility = suggestedAction == "berechne_unterhalt"
                     ? Visibility.Visible
                     : Visibility.Collapsed);
-
-            ReasoningPanel.Children.Clear();
-            WolfLoadingPanel.Visibility = Visibility.Collapsed;
-            wolfStoryboard.Stop(WolfLoadingPanel);
-            AddReasoning("✅", "Fertig");
-            SetStatus(true, $"Verbunden — {BackendUrl}");
         }
         catch (Exception ex)
         {
-            SetStatus(false, "Backend nicht erreichbar");
-            ReasoningPanel.Children.Clear();
-            WolfLoadingPanel.Visibility = Visibility.Collapsed;
-            wolfStoryboard.Stop(WolfLoadingPanel);
-            AddReasoning("❌", $"Fehler: {ex.Message}");
-            AppendAiMessage($"Verbindungsfehler: {ex.Message}", "frage");
+            AppendSystemMessage($"Fehler: {ex.Message}");
         }
         finally
         {
+            Dispatcher.Invoke(() => SendBtn.IsEnabled = true);
             WolfLoadingPanel.Visibility = Visibility.Collapsed;
-            wolfStoryboard.Stop(WolfLoadingPanel);
-            SendBtn.IsEnabled = true;
+            var storyboard = (Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"];
+            storyboard.Stop(WolfLoadingPanel);
         }
     }
+
+    private async void OnSendStyleFeedback(object sender, RoutedEventArgs e)
+    {
+        if (!_settings.FeedbackOptIn)
+        {
+            AddReasoning("🔒", "Stil-Feedback ist in den Einstellungen deaktiviert. Es wurden keine Daten gesendet.");
+            return;
+        }
+        await SendStyleFeedbackFromInputAsync();
+    }
+
+    private async Task SendStyleFeedbackFromInputAsync()
+    {
+        try
+        {
+            var text = InputBox.Text;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                AddReasoning("🔒", "Kein Text eingegeben - Stil-Feedback nicht gesendet.");
+                return;
+            }
+
+            var categories = new List<string> { "formulierung" };
+            var success = await _feedbackSender.SendMetricsAsync(
+                new List<string> { text },
+                categories);
+
+            if (success)
+                AddReasoning("🔒", "Anonymisierte Stil-Metriken erfolgreich gesendet.");
+            else
+                AddReasoning("⚠️", "Server hat Stil-Metriken abgelehnt.");
+        }
+        catch (Exception ex)
+        {
+            AddReasoning("⚠️", $"Fehler beim Senden von Stil-Metriken: {ex.Message}");
+        }
+    }
+
+    // ── Chat-Backend ─────────────────────────────────────────────────────────
 
     private async Task<(string content, string suggestedAction)> PostChatAsync()
     {
@@ -637,6 +1031,14 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
+            if (_webViewInitialized)
+            {
+                AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage(text));
+                RefreshChatWebView();
+                ScrollToBottom();
+                return;
+            }
+
             var border = new Border
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -659,6 +1061,14 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
+            if (_webViewInitialized)
+            {
+                AddHtmlMessage(ChatHtmlRenderer.WrapUserBubble(WebUtility.HtmlEncode(text)));
+                RefreshChatWebView();
+                ScrollToBottom();
+                return;
+            }
+
             var bubble = new Border
             {
                 HorizontalAlignment = HorizontalAlignment.Right,
@@ -678,6 +1088,19 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
+            if (_webViewInitialized)
+            {
+                var html = ChatHtmlRenderer.Render(text);
+                if (filePath is not null)
+                {
+                    html += $"\n<p class='chat-paragraph'><a class='chat-link' href='#' data-file='{WebUtility.HtmlEncode(filePath)}'>📁 Vorlage im Explorer öffnen</a></p>";
+                }
+                AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(html, suggestedAction));
+                RefreshChatWebView();
+                ScrollToBottom();
+                return;
+            }
+
             var container = new StackPanel
             {
                 HorizontalAlignment = HorizontalAlignment.Left,

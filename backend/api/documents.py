@@ -1,8 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
 import json
+import logging
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from services.style_learner import StyleLearner
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -16,6 +21,8 @@ class DocumentGenerateRequest(BaseModel):
     template_name: str
     data: Dict[str, Any]
     style_profile_id: Optional[str] = None
+    schriftsatz_typ: Optional[str] = None
+    account_id: Optional[str] = None
 
 class DocumentGenerateResponse(BaseModel):
     document_id: str
@@ -152,16 +159,28 @@ async def get_template_info(template_name: str):
 @router.post("/", response_model=DocumentGenerateResponse)
 async def generate_document(request: DocumentGenerateRequest):
     """
-    Generate a document from a template
+    Generate a document from a template.
+    Verwendet automatisch das typ-spezifische Stil-Profil (Fallback: generisch).
     """
     if request.template_name not in TEMPLATES:
         raise HTTPException(status_code=404, detail=f"Template '{request.template_name}' not found")
-    
+
     template = TEMPLATES[request.template_name]
-    
+
+    # Typ-spezifisches Profil ermitteln (T#91)
+    account_id = request.account_id or "default"
+    typ = request.schriftsatz_typ or _erkenne_schriftsatz_typ_aus_template(request.template_name)
+    try:
+        learner = StyleLearner(account_id=account_id, schriftsatz_typ=typ)
+        profil = learner.verwende_typ_spezifisches_profil(fallback=True)
+        verwendetes_profil_id = profil.profile_id if profil else learner.profile_id
+    except Exception as e:
+        logger.warning("Konnte Stil-Profil nicht laden (DB evtl. nicht erreichbar): %s", e)
+        verwendetes_profil_id = request.style_profile_id or f"sp_{account_id}" + (f"_{typ}" if typ else "")
+
     # Create document structure
     document_id = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
+
     document = {
         "document_id": document_id,
         "title": template["title"],
@@ -169,23 +188,37 @@ async def generate_document(request: DocumentGenerateRequest):
         "sections": [],
         "metadata": {
             "template": request.template_name,
-            "style_profile_id": request.style_profile_id
+            "schriftsatz_typ": typ,
+            "style_profile_id": verwendetes_profil_id,
+            "account_id": account_id,
         }
     }
-    
+
     # Fill template sections with data
     for section in template["sections"]:
         try:
             filled_content = section["content"].format(**request.data)
         except KeyError as e:
             raise HTTPException(status_code=400, detail=f"Missing data field for template: {e}")
-        
+
         document["sections"].append({
             "name": section["name"],
             "content": filled_content
         })
-    
+
     return DocumentGenerateResponse(**document)
+
+
+def _erkenne_schriftsatz_typ_aus_template(template_name: str) -> Optional[str]:
+    """Heuristik, die aus dem Template-Namen einen Schriftsatztyp ableitet."""
+    name_lower = template_name.lower()
+    if "klage" in name_lower:
+        return "klage"
+    if "widerspruch" in name_lower or "berufung" in name_lower:
+        return "widerspruch"
+    if "bescheid" in name_lower or "vertrag" in name_lower or "anschreiben" in name_lower:
+        return "brief"
+    return None
 
 @router.post("/format")
 async def format_document(document: DocumentGenerateResponse, format_type: str = "text"):

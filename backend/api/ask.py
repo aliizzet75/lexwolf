@@ -6,6 +6,7 @@ und gibt Denkprozess + Ergebnis zurück.
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional
+import asyncio
 import time
 import re
 
@@ -461,6 +462,54 @@ def _format_output(intent: str, original_text: str, chunks: list) -> str:
     return "\n".join(lines)
 
 
+def _do_hybrid_search(text: str, intent: str, embed_query: str) -> list:
+    """Blockierende Such-Pipeline (DB-Queries, Embeddings, Neo4j-Traversal).
+    Läuft in einem eigenen Thread (asyncio.to_thread) statt direkt im
+    async-Endpoint — sonst friert der einzige uvicorn-Event-Loop für ALLE
+    Requests ein, solange diese Suche läuft (Vorfall 2026-09-01: Backend
+    über Minuten komplett unerreichbar, auch für /health)."""
+    search = _get_search()
+    dok_info = _get_dokument_info(text) if intent == "erstelle" else None
+
+    if dok_info:
+        embed_q, tags, fts_term = dok_info
+        # Direkte Tag-Suche für die relevanten Gesetze
+        direct = []
+        if tags:
+            db_svc = search.database_service
+            db = db_svc.SessionLocal()
+            try:
+                from sqlalchemy import text as sqltxt
+                for tag in tags:
+                    rows = db.execute(sqltxt(
+                        "SELECT id, title, text, tags FROM legal_chunks "
+                        "WHERE tags = :tag AND text ILIKE :term ORDER BY id LIMIT 3"
+                    ), {"tag": tag, "term": f"%{fts_term}%"}).fetchall()
+                    for r in rows:
+                        direct.append({"id": r.id, "title": r.title, "text": r.text,
+                                       "tags": r.tags, "score": 0.95, "source": r.tags})
+            finally:
+                db.close()
+        # Direkte Tag-Treffer bereits präzise genug — HyDE nur zuschalten wenn nichts gefunden wurde
+        return direct + search.hybrid_search_with_graph(embed_q, limit=max(0, 8-len(direct)), fast_mode=bool(direct))
+
+    enriched = _enrich_query(embed_query)
+    # Expliziter §-Verweis mit Gesetzeskürzel geht vor — höchste Priorität
+    para_hits = _direct_paragraph_search(text, search.database_service, limit=3)
+    # Direkte Tag-Suche für erkannte Rechtsgebiete (verhindert Nischenrecht)
+    tag_hits = _direct_tag_search(enriched, search.database_service, limit=3)
+    para_ids = {c.get("id") for c in para_hits}
+    direct = para_hits + [c for c in tag_hits if c.get("id") not in para_ids]
+    rest_limit = max(0, 8 - len(direct))
+    # Exakter §-Treffer schon da → schnelle Ergänzungssuche reicht.
+    # Sonst: HyDE zuschalten, damit das LLM die Frage inhaltlich versteht
+    # statt sich auf die Keyword-Extraktion verlassen zu müssen.
+    fast_mode = bool(para_hits)
+    fused = search.hybrid_search_with_graph(enriched, limit=rest_limit, fast_mode=fast_mode)
+    direct_ids = {c.get("id") for c in direct}
+    return direct + [r for r in fused if r.get("id") not in direct_ids]
+
+
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("", response_model=AskResponse)
@@ -494,48 +543,11 @@ async def ask(request: AskRequest):
     ))
 
     # 3. Suche: bei bekannten Dokumenttypen direkte Tag-DB-Suche + Vektor-Suche
+    # Blockierende Pipeline läuft in Thread (siehe _do_hybrid_search) statt den
+    # Event-Loop zu blockieren.
     chunks = []
     try:
-        search = _get_search()
-        dok_info = _get_dokument_info(text) if intent == "erstelle" else None
-
-        if dok_info:
-            embed_q, tags, fts_term = dok_info
-            # Direkte Tag-Suche für die relevanten Gesetze
-            direct = []
-            if tags:
-                db_svc = search.database_service
-                db = db_svc.SessionLocal()
-                try:
-                    from sqlalchemy import text as sqltxt
-                    for tag in tags:
-                        rows = db.execute(sqltxt(
-                            "SELECT id, title, text, tags FROM legal_chunks "
-                            "WHERE tags = :tag AND text ILIKE :term ORDER BY id LIMIT 3"
-                        ), {"tag": tag, "term": f"%{fts_term}%"}).fetchall()
-                        for r in rows:
-                            direct.append({"id": r.id, "title": r.title, "text": r.text,
-                                           "tags": r.tags, "score": 0.95, "source": r.tags})
-                finally:
-                    db.close()
-            # Direkte Tag-Treffer bereits präzise genug — HyDE nur zuschalten wenn nichts gefunden wurde
-            raw = direct + search.hybrid_search_with_graph(embed_q, limit=max(0, 8-len(direct)), fast_mode=bool(direct))
-        else:
-            enriched = _enrich_query(embed_query)
-            # Expliziter §-Verweis mit Gesetzeskürzel geht vor — höchste Priorität
-            para_hits = _direct_paragraph_search(text, search.database_service, limit=3)
-            # Direkte Tag-Suche für erkannte Rechtsgebiete (verhindert Nischenrecht)
-            tag_hits = _direct_tag_search(enriched, search.database_service, limit=3)
-            para_ids = {c.get("id") for c in para_hits}
-            direct = para_hits + [c for c in tag_hits if c.get("id") not in para_ids]
-            rest_limit = max(0, 8 - len(direct))
-            # Exakter §-Treffer schon da → schnelle Ergänzungssuche reicht.
-            # Sonst: HyDE zuschalten, damit das LLM die Frage inhaltlich versteht
-            # statt sich auf die Keyword-Extraktion verlassen zu müssen.
-            fast_mode = bool(para_hits)
-            fused = search.hybrid_search_with_graph(enriched, limit=rest_limit, fast_mode=fast_mode)
-            direct_ids = {c.get("id") for c in direct}
-            raw = direct + [r for r in fused if r.get("id") not in direct_ids]
+        raw = await asyncio.to_thread(_do_hybrid_search, text, intent, embed_query)
         # Distanz → Score: bester Treffer = 100%, Rest relativ dazu normalisiert
         distances = [float(r.get("dense_score", r.get("score", 1.0))) for r in raw]
         min_dist = min(distances) if distances else 1.0
