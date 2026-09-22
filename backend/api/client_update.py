@@ -6,9 +6,9 @@ router = APIRouter(prefix="/client", tags=["client-update"])
 # Solange wir nicht produktiv sind: 0.x-Versionierung.
 # Bei jedem Release manuell erhoehen — download_url bleibt stabil (kein
 # Versions-Suffix im Dateinamen), nur die Datei dahinter wird ersetzt.
-LATEST_VERSION = "0.12.0"
+LATEST_VERSION = "0.13.0"
 DOWNLOAD_URL = "http://212.227.180.66:8000/client/download/LexWolf-Setup.exe"
-RELEASE_NOTES = "Im LexWolf-Client soll der Dialog für Feature-Wünsche (Anwalt-Feedback) um einen Button ergänzt werden, mit dem der Anwalt seine bisherigen Feature-Wünsche löschen kann. Bevor die Liste geleert wird, "
+RELEASE_NOTES = "Zwei zusammenhängende Verbesserungen für den LexWolf-Client: (A) Die Mandantenliste (linke Liste und Auswahldropdown im Hauptfenster) soll bei vielen Mandanten performant geladen werden. Dazu ist die "
 
 
 @router.get("/version")
