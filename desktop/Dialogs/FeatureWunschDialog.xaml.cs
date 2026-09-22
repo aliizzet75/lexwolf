@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -10,7 +13,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using LexWolf.Database;
+using LexWolf.Services;
 
 namespace LexWolf.Dialogs;
 
@@ -22,6 +28,11 @@ public partial class FeatureWunschDialog : Window
     private readonly List<(string Role, string Content)> _messages = new();
     private JsonNode? _pendingSummary;
     private bool _busy;
+    private byte[]? _screenshotBytes;
+    private string _screenshotMime = "image/png";
+    private string _screenshotFileName = "screenshot.png";
+
+    private const long MaxScreenshotSize = ScreenshotValidator.DefaultMaxSize;
 
     public FeatureWunschDialog(LocalDb db, HttpClient http, string backendUrl)
     {
@@ -46,6 +57,141 @@ public partial class FeatureWunschDialog : Window
             AddBubble("assistant", "Was möchtest du uns mitteilen? Beschreib es kurz, ich frage bei Bedarf nach.");
         }
         InputBox.Focus();
+    }
+
+    private void OnPasteScreenshot(object sender, RoutedEventArgs e)
+    {
+        AttachFromClipboard();
+    }
+
+    private void OnSelectScreenshotFile(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = "Screenshot auswählen",
+            Filter = "Bilder (*.png;*.jpg;*.jpeg;*.gif;*.webp)|*.png;*.jpg;*.jpeg;*.gif;*.webp|Alle Dateien (*.*)|*.*",
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            AttachFromFile(dlg.FileName);
+        }
+    }
+
+    private void OnRemoveScreenshot(object sender, RoutedEventArgs e)
+    {
+        _screenshotBytes = null;
+        _screenshotMime = "image/png";
+        _screenshotFileName = "screenshot.png";
+        ScreenshotPreview.Source = null;
+        ScreenshotPreviewBorder.Visibility = Visibility.Collapsed;
+    }
+
+    private bool ValidateImage(byte[] bytes, string fileName)
+    {
+        var (ok, mime, error) = ScreenshotValidator.Validate(bytes, fileName, MaxScreenshotSize);
+        if (!ok)
+        {
+            MessageBox.Show(this, error, "Screenshot", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        try
+        {
+            using var ms = new MemoryStream(bytes);
+            var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Die Datei konnte nicht als Bild geladen werden: {ex.Message}", "Screenshot", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        _screenshotMime = mime!;
+        _screenshotFileName = fileName;
+        return true;
+    }
+
+    private void ShowScreenshotPreview(byte[] bytes)
+    {
+        _screenshotBytes = bytes;
+        try
+        {
+            using var ms = new MemoryStream(bytes);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.StreamSource = ms;
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            ScreenshotPreview.Source = bitmap;
+            ScreenshotPreviewBorder.Visibility = Visibility.Visible;
+            ScreenshotInfo.Text = $"{_screenshotFileName} ({(bytes.Length / 1024.0):F1} KB)";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Vorschau fehlgeschlagen: {ex.Message}", "Screenshot", MessageBoxButton.OK, MessageBoxImage.Warning);
+            OnRemoveScreenshot(null!, null!);
+        }
+    }
+
+    private void AttachFromClipboard()
+    {
+        if (!Clipboard.ContainsImage())
+        {
+            MessageBox.Show(this, "In der Zwischenablage befindet sich kein Bild.", "Screenshot", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            var bitmap = Clipboard.GetImage();
+            if (bitmap == null)
+            {
+                MessageBox.Show(this, "Das Bild aus der Zwischenablage konnte nicht gelesen werden.", "Screenshot", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            using var ms = new MemoryStream();
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            encoder.Save(ms);
+            var bytes = ms.ToArray();
+            if (!ValidateImage(bytes, "clipboard.png"))
+                return;
+            ShowScreenshotPreview(bytes);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Fehler beim Einfügen aus der Zwischenablage: {ex.Message}", "Screenshot", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void AttachFromFile(string path)
+    {
+        try
+        {
+            var bytes = File.ReadAllBytes(path);
+            if (!ValidateImage(bytes, path))
+                return;
+            ShowScreenshotPreview(bytes);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Fehler beim Lesen der Datei: {ex.Message}", "Screenshot", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        base.OnPreviewKeyDown(e);
+        if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            if (SelectedFeedbackTyp == "bug" && Clipboard.ContainsImage())
+            {
+                e.Handled = true;
+                AttachFromClipboard();
+            }
+        }
     }
 
     private string GetCurrentClientVersion()
@@ -214,8 +360,9 @@ public partial class FeatureWunschDialog : Window
 
         try
         {
-            var payload = new JsonObject { ["summary"] = _pendingSummary.DeepClone() };
-            payload["typ"] = SelectedFeedbackTyp;
+            var content = new MultipartFormDataContent();
+            content.Add(new StringContent(_pendingSummary.ToJsonString()), "summary");
+            content.Add(new StringContent(SelectedFeedbackTyp), "typ");
 
             if (SelectedFeedbackTyp == "bug")
             {
@@ -225,10 +372,16 @@ public partial class FeatureWunschDialog : Window
                     ["client_version"] = ClientVersionBox.Text.Trim(),
                     ["affected_ui_location"] = (AffectedUiBox.Text ?? "").Trim()
                 };
-                payload["bug"] = bug;
+                content.Add(new StringContent(bug.ToJsonString()), "bug");
+
+                if (_screenshotBytes != null)
+                {
+                    var imageContent = new ByteArrayContent(_screenshotBytes);
+                    imageContent.Headers.ContentType = new MediaTypeHeaderValue(_screenshotMime);
+                    content.Add(imageContent, "screenshot", _screenshotFileName);
+                }
             }
 
-            using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
             var response = await _http.PostAsync($"{_backendUrl}/feature-feedback/confirm", content).ConfigureAwait(true);
             response.EnsureSuccessStatusCode();
 
@@ -263,6 +416,9 @@ public partial class FeatureWunschDialog : Window
         ClientVersionBox.IsEnabled = !busy;
         AffectedUiBox.IsEnabled = !busy;
         ReproStepsBox.IsEnabled = !busy;
+        PasteScreenshotBtn.IsEnabled = !busy;
+        FileScreenshotBtn.IsEnabled = !busy;
+        RemoveScreenshotBtn.IsEnabled = !busy;
     }
 
     private void OnClearFeatureWunschHistory(object sender, RoutedEventArgs e)

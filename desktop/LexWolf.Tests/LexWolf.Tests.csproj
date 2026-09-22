@@ -23,6 +23,7 @@
     <Compile Include="../Database/LocalDb.cs" Link="LocalDb.cs" />
     <Compile Include="../Services/ChatHtmlRenderer.cs" Link="ChatHtmlRenderer.cs" />
     <Compile Include="../Services/FeatureNotificationStore.cs" Link="FeatureNotificationStore.cs" />
+    <Compile Include="../Services/ScreenshotValidator.cs" Link="ScreenshotValidator.cs" />
   </ItemGroup>
 
   <ItemGroup>

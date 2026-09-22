@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+from pathlib import Path
 
 # Import API routers
 from api.legal_db import router as legal_db_router
@@ -96,6 +97,18 @@ app.mount(
     "/addin",
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static", "addin")),
     name="addin",
+)
+
+# Anhänge an Bug-/Feature-Meldungen — statisch auslieferbar, aber nicht ausführbar
+# Pfad muss exakt mit backend/api/feature_feedback.py übereinstimmen, damit
+# gespeicherte Screenshots auch unter /attachments/<id> auffindbar sind.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_attachments_dir = os.environ.get("LEXWOLF_ATTACHMENTS_DIR", str(REPO_ROOT / "attachments"))
+os.makedirs(_attachments_dir, exist_ok=True)
+app.mount(
+    "/attachments",
+    StaticFiles(directory=_attachments_dir),
+    name="attachments",
 )
 
 @app.get("/")

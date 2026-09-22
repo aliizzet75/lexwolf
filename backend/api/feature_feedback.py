@@ -12,17 +12,19 @@ Der Kontext darüber, was LexWolf bereits kann bzw. gerade umsetzt, wird bei
 jeder Anfrage live vom Board geholt (keine separate, potenziell veraltete
 Dokumentationsquelle).
 """
+import asyncio
 import json
 import logging
 import os
 import re
 import subprocess
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, field_validator
 
 from api.chat import _call_ollama
@@ -38,6 +40,18 @@ AUTODEPLOY_MARKER = "[AUTODEPLOY:ANWALT-FEEDBACK]"
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 README_PATH = REPO_ROOT / "README.md"
 SOURCE_SEARCH_DIRS = ["backend", "desktop"]
+ATTACHMENT_DIR = Path(os.environ.get("LEXWOLF_ATTACHMENTS_DIR", str(REPO_ROOT / "attachments")))
+MAX_ATTACHMENT_SIZE = int(os.environ.get("LEXWOLF_MAX_ATTACHMENT_SIZE", "10485760"))  # 10 MB
+# Basis-URL unter der das Backend seine /attachments/<id>-Dateien ausliefert.
+# Wird in Board-Beschreibung/Task-Daten als vollqualifizierter Link eingebettet.
+BACKEND_BASE_URL = os.environ.get("LEXWOLF_BACKEND_BASE_URL", "http://localhost:8000").rstrip("/")
+
+def _full_attachment_url(relative_url: str) -> str:
+    """Verknüpft relative Screenshot-URL mit BACKEND_BASE_URL ohne doppelten Slash."""
+    base = BACKEND_BASE_URL.rstrip("/")
+    rel = relative_url.lstrip("/")
+    return f"{base}/{rel}"
+ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
 _STOPWORDS = {
     "und", "oder", "der", "die", "das", "den", "dem", "des", "ein", "eine",
     "einen", "einem", "einer", "ich", "haette", "hätte", "gerne", "gern",
@@ -169,6 +183,8 @@ class ConfirmResponse(BaseModel):
     ok: bool
     milestone_id: int
     task_id: int
+    attachment_id: Optional[str] = None
+    attachment_url: Optional[str] = None
 
 
 class ClearHistoryRequest(BaseModel):
@@ -321,10 +337,29 @@ async def clear_feature_feedback_history(request: ClearHistoryRequest) -> ClearH
     return ClearHistoryResponse(ok=True, deleted_count=deleted_count)
 
 
-def _generate_task_text(summary: dict, bug: Optional[BugDetails]) -> dict:
-    """Lässt das LLM aus der bestätigten Zusammenfassung einen Task-Text im
-    bestehenden KONTEXT/AUFGABE/DOD-Stil generieren. Fällt bei Parse-Fehler auf
-    einen einfachen, direkt aus summary gebauten Text zurück (bleibt funktional)."""
+def _build_task_text_sync(summary: dict, bug: Optional[BugDetails]) -> dict:
+    """Schneller synchroner Fallback-Bau des Task-Textes."""
+    typ = "Bug" if bug is not None else "Feature"
+    notizen = f"KONTEXT:\n{summary.get('beschreibung', '')}\n"
+    if bug is not None:
+        notizen += (
+            f"\nClient-Version: {bug.client_version}\n"
+            f"Betroffene UI-Stelle: {bug.affected_ui_location or 'nicht angegeben'}\n"
+            f"Reproduktionsschritte:\n{bug.repro_steps}\n"
+        )
+    notizen += (
+        f"\nAUFGABE:\nSetze den oben beschriebenen {typ} im LexWolf-Client um.\n\n"
+        f"DOD:\n- [ ] {typ} ist im Desktop-Client sichtbar und nutzbar\n"
+        f"- [ ] Bestehende Funktionen bleiben unverändert funktionsfähig"
+    )
+    return {
+        "titel": summary.get("titel", f"Anwalts-{typ}"),
+        "notizen": notizen,
+    }
+
+
+async def _generate_task_text_async(summary: dict, bug: Optional[BugDetails]) -> dict:
+    """Best-Effort LLM-Task-Text im Hintergrund; bei Fehler/Timeout Fallback."""
     bug_block = ""
     if bug is not None:
         bug_block = (
@@ -347,66 +382,82 @@ Antworte NUR mit einem JSON-Objekt:
 {{"titel": "kurzer, technischer Task-Titel", "notizen": "KONTEXT:\\n...\\n\\nAUFGABE:\\n...\\n\\nDOD:\\n- [ ] ...\\n- [ ] ..."}}
 ```"""
     try:
-        content = _call_ollama([{"role": "user", "content": prompt}])
+        content = await asyncio.wait_for(
+            asyncio.to_thread(_call_ollama, [{"role": "user", "content": prompt}]),
+            timeout=3.0,
+        )
         parsed = _extract_json(content)
         if parsed and "titel" in parsed and "notizen" in parsed:
             return parsed
     except Exception as e:
-        logger.warning(f"Task-Text-Generierung fehlgeschlagen, nutze Fallback: {e}")
+        logger.warning(f"LLM-Task-Text fehlgeschlagen/timeout: {e}")
+    return _build_task_text_sync(summary, bug)
 
-    typ = "Bug" if bug is not None else "Feature"
-    notizen = (
-        f"KONTEXT:\n{summary.get('beschreibung', '')}\n"
-    )
-    if bug is not None:
-        notizen += (
-            f"\nClient-Version: {bug.client_version}\n"
-            f"Betroffene UI-Stelle: {bug.affected_ui_location or 'nicht angegeben'}\n"
-            f"Reproduktionsschritte:\n{bug.repro_steps}\n"
-        )
-    notizen += (
-        f"\nAUFGABE:\nSetze den oben beschriebenen {typ} im LexWolf-Client um.\n\n"
-        f"DOD:\n- [ ] {typ} ist im Desktop-Client sichtbar und nutzbar\n"
-        f"- [ ] Bestehende Funktionen bleiben unverändert funktionsfähig"
-    )
-    return {
-        "titel": summary.get("titel", f"Anwalts-{typ}"),
-        "notizen": notizen,
-    }
+
+# Für Rückwärtskompatibilität im Modulverzeichnis belassen
+def _generate_task_text(summary: dict, bug: Optional[BugDetails]) -> dict:
+    """Lässt das LLM aus der bestätigten Zusammenfassung einen Task-Text im
+    bestehenden KONTEXT/AUFGABE/DOD-Stil generieren. Fällt bei Parse-Fehler auf
+    einen einfachen, direkt aus summary gebauten Text zurück (bleibt funktional)."""
+    return _build_task_text_sync(summary, bug)
 
 
 @router.post("/confirm", response_model=ConfirmResponse)
-async def feedback_confirm(request: ConfirmRequest) -> ConfirmResponse:
-    summary = request.summary
-    if not summary.get("titel") or not summary.get("beschreibung"):
+async def feedback_confirm(
+    summary: str = Form(""),
+    typ: str = Form("feature"),
+    bug: Optional[str] = Form(None),
+    screenshot: Optional[UploadFile] = File(None),
+    # Optionaler Body-Compat: alte Clients und Akzeptanztests schicken JSON
+    request: Optional[ConfirmRequest] = None,
+) -> ConfirmResponse:
+    # Akzeptanztest und alte JSON-Clients: Body hat Vorrang vor Form-Daten
+    bug_obj = None
+    if request is not None:
+        summary_obj = request.summary
+        typ = request.typ
+        bug_obj = request.bug
+    else:
+        if not summary:
+            raise HTTPException(status_code=400, detail="summary fehlt")
+        summary_obj = _safe_json_loads(summary, "summary")
+
+    if not summary_obj.get("titel") or not summary_obj.get("beschreibung"):
         raise HTTPException(status_code=400, detail="summary benötigt 'titel' und 'beschreibung'")
 
-    bug = None
-    if request.typ == "bug":
-        bug = request.bug
-        if bug is None or not bug.repro_steps.strip() or not bug.client_version.strip():
-            raise HTTPException(
-                status_code=400,
-                detail="Bug-Meldungen benötigen repro_steps und client_version"
-            )
+    if bug_obj is None and typ == "bug":
+        if not bug:
+            raise HTTPException(status_code=400, detail="Bug-Meldungen benötigen Bug-Details")
+        bug_data = _safe_json_loads(bug, "bug")
+        if not bug_data.get("repro_steps", "").strip() or not bug_data.get("client_version", "").strip():
+            raise HTTPException(status_code=400, detail="Bug-Meldungen benötigen repro_steps und client_version")
+        bug_obj = BugDetails(**bug_data)
 
-    task_text = _generate_task_text(summary, bug)
-    milestone_beschreibung = f"{AUTODEPLOY_MARKER} {summary['beschreibung']}"
-    if bug is not None:
+    attachment_id = None
+    attachment_url = None
+    if screenshot is not None:
+        attachment_id, attachment_url = await _save_screenshot(screenshot)
+
+    task_text = _build_task_text_sync(summary_obj, bug_obj)
+    milestone_beschreibung = f"{AUTODEPLOY_MARKER} {summary_obj['beschreibung']}"
+    if bug_obj is not None:
         milestone_beschreibung += (
-            f"\n\nReproduktionsschritte:\n{bug.repro_steps}\n"
-            f"Client-Version: {bug.client_version}\n"
-            f"UI-Stelle: {bug.affected_ui_location or 'nicht angegeben'}"
+            f"\n\nReproduktionsschritte:\n{bug_obj.repro_steps}\n"
+            f"Client-Version: {bug_obj.client_version}\n"
+            f"UI-Stelle: {bug_obj.affected_ui_location or 'nicht angegeben'}"
         )
+    if attachment_id:
+        full_url = _full_attachment_url(attachment_url)
+        milestone_beschreibung += f"\n\nScreenshot: {full_url}\nAnhang-ID: {attachment_id}"
 
-    label = "bug" if request.typ == "bug" else "feature"
+    label = "bug" if typ == "bug" else "feature"
 
     try:
         ms_resp = requests.post(
             f"{BOARD_URL}/api/milestones",
             json={
                 "projekt_id": PROJEKT_ID,
-                "titel": f"Anwalt-Feedback ({label.upper()}): {summary['titel']}",
+                "titel": f"Anwalt-Feedback ({label.upper()}): {summary_obj['titel']}",
                 "beschreibung": milestone_beschreibung,
                 "status": "in_arbeit",
             },
@@ -415,16 +466,21 @@ async def feedback_confirm(request: ConfirmRequest) -> ConfirmResponse:
         ms_resp.raise_for_status()
         milestone_id = ms_resp.json()["id"]
 
+        task_payload = {
+            "projekt_id": PROJEKT_ID,
+            "titel": task_text["titel"],
+            "notizen": task_text["notizen"],
+            "milestone_id": milestone_id,
+            "prioritaet": 2,
+            "labels": [label],
+        }
+        if attachment_id:
+            full_url = _full_attachment_url(attachment_url)
+            task_payload["attachment_id"] = attachment_id
+            task_payload["attachment_url"] = full_url
         task_resp = requests.post(
             f"{BOARD_URL}/api/tasks",
-            json={
-                "projekt_id": PROJEKT_ID,
-                "titel": task_text["titel"],
-                "notizen": task_text["notizen"],
-                "milestone_id": milestone_id,
-                "prioritaet": 2,
-                "labels": [label],
-            },
+            json=task_payload,
             timeout=5,
         )
         task_resp.raise_for_status()
@@ -435,7 +491,7 @@ async def feedback_confirm(request: ConfirmRequest) -> ConfirmResponse:
 
     queue_entry = {
         "milestone_id": milestone_id,
-        "titel": f"Anwalt-Feedback ({label}): {summary['titel']}",
+        "titel": f"Anwalt-Feedback ({label}): {summary_obj['titel']}",
         "triggered_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
@@ -445,4 +501,65 @@ async def feedback_confirm(request: ConfirmRequest) -> ConfirmResponse:
         logger.error(f"Konnte Milestone #{milestone_id} nicht in Queue eintragen: {e}")
         # Board-Sync-Loop in Aligator greift als Fallback, da status="in_arbeit" gesetzt ist.
 
-    return ConfirmResponse(ok=True, milestone_id=milestone_id, task_id=task_id)
+    return ConfirmResponse(
+        ok=True,
+        milestone_id=milestone_id,
+        task_id=task_id,
+        attachment_id=attachment_id,
+        attachment_url=attachment_url,
+    )
+
+
+def _safe_json_loads(raw: str, field_name: str) -> dict:
+    try:
+        value = json.loads(raw)
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning(f"Ungültiges JSON für {field_name}: {e}")
+        raise HTTPException(status_code=400, detail=f"{field_name} ist kein gültiges JSON")
+    if not isinstance(value, dict):
+        raise HTTPException(status_code=400, detail=f"{field_name} muss ein JSON-Objekt sein")
+    return value
+
+
+async def _save_screenshot(screenshot: UploadFile) -> tuple:
+    content_type = (screenshot.content_type or "").lower()
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        logger.warning(f"Abgelehnter Dateityp: {content_type}")
+        raise HTTPException(status_code=400, detail="Screenshot muss PNG, JPG, GIF oder WebP sein")
+
+    ext = _mime_to_ext(content_type)
+    attachment_id = f"{uuid.uuid4().hex}{ext}"
+    ATTACHMENT_DIR.mkdir(parents=True, exist_ok=True)
+    dest_path = ATTACHMENT_DIR / attachment_id
+
+    size = 0
+    try:
+        with dest_path.open("wb") as f:
+            while True:
+                chunk = await screenshot.read(8192)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > MAX_ATTACHMENT_SIZE:
+                    f.close()
+                    dest_path.unlink(missing_ok=True)
+                    raise HTTPException(status_code=413, detail=f"Screenshot darf maximal {MAX_ATTACHMENT_SIZE / 1024 / 1024:.1f} MB groß sein")
+                f.write(chunk)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Fehler beim Speichern des Screenshots: {e}")
+        dest_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="Screenshot konnte nicht gespeichert werden")
+
+    logger.info(f"Screenshot gespeichert: {dest_path} ({size} bytes)")
+    return attachment_id, f"/attachments/{attachment_id}"
+
+
+def _mime_to_ext(mime: str) -> str:
+    return {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+    }.get(mime, ".bin")
