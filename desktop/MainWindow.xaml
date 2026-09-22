@@ -94,10 +94,12 @@
                              ToolTip="Dateien/Ordner durchsuchen"/>
                 </Border>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,8">
-                    <!-- Einfacher Klick wählt nur aus. Doppelklick öffnet die Datei im
-                         Standardprogramm (OnFileTreeDoubleClick). Rechtsklick bietet
-                         Priorisieren fürs Chat-Kontext an (OnTogglePrioritize). -->
-                    <TreeView x:Name="FileTree" PreviewMouseDoubleClick="OnFileTreeDoubleClick" Margin="0,0,0,10">
+                    <!-- Virtualisierung eingeschaltet, damit die linke Mandanten-/Dateiliste
+                         bei vielen Einträgen nur die sichtbaren Zeilen rendert. -->
+                    <TreeView x:Name="FileTree" PreviewMouseDoubleClick="OnFileTreeDoubleClick"
+                              Expanded="OnFileTreeNodeExpanded" Margin="0,0,0,10"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling">
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal">

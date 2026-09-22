@@ -656,10 +656,29 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Baut den Dateibaum (links) aus DokumentePfad neu auf — ein Mandanten-
-    /// Ordner pro Wurzelknoten, oder bei aktivem Mandanten nur dessen Ordner
-    /// (gefiltert). FileTree.ItemsSource wurde ursprünglich nirgends gesetzt, der
-    /// Baum war deshalb immer leer, unabhängig vom Scan-Ergebnis.</summary>
+    private void OnFileTreeNodeExpanded(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is not TreeViewItem tvi || tvi.DataContext is not Models.FileTreeNode node || !node.IsFolder)
+            return;
+
+        if (node.Children.Count == 0)
+        {
+            try
+            {
+                AddFileTreeChildren(node, node.Path);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LazyLoad] {node.Path}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>Baut den Dateibaum (links) neu auf — bei fehlendem Filter nur
+    /// einzelne Wurzelknoten je Mandantenordner, OHNE rekursiv alle Unterordner
+    /// eager aufzubauen. Kinder werden lazy beim Aufklappen geladen.
+    /// Falls ein filterMandantName gesetzt ist, werden nur passende Wurzeln
+    /// angelegt und diese vollständig aufgebaut (Detailansicht).</summary>
     private void BuildFileTree(string? filterMandantName = null)
     {
         var basePath = _settings.DokumentePfad;
@@ -667,19 +686,27 @@ public partial class MainWindow : Window
         if (Directory.Exists(basePath))
         {
             var mandantDirs = Directory.EnumerateDirectories(basePath);
-            if (!string.IsNullOrEmpty(filterMandantName))
+            var filterActive = !string.IsNullOrEmpty(filterMandantName);
+            if (filterActive)
                 mandantDirs = mandantDirs.Where(d =>
                     string.Equals(Path.GetFileName(d), filterMandantName, StringComparison.OrdinalIgnoreCase));
 
             foreach (var mandantDir in mandantDirs.OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
             {
                 var node = new Models.FileTreeNode(Path.GetFileName(mandantDir), mandantDir, isFolder: true);
-                AddFileTreeChildren(node, mandantDir);
+                if (filterActive)
+                    AddFileTreeChildren(node, mandantDir);
                 roots.Add(node);
             }
         }
         _fileTreeRoots = roots;
-        Dispatcher.Invoke(() => ApplyFileTreeSearch(FileTreeSearchBox.Text));
+        Dispatcher.Invoke(() =>
+        {
+            FileTree.ItemsSource = null;
+            FileTree.ItemsSource = _fileTreeRoots;
+            if (string.IsNullOrEmpty(FileTreeSearchBox.Text))
+                ApplyFileTreeSearch(FileTreeSearchBox.Text);
+        });
     }
 
     private void AddFileTreeChildren(Models.FileTreeNode parent, string dirPath)
@@ -713,6 +740,7 @@ public partial class MainWindow : Window
         var text = (searchText ?? "").Trim();
         if (string.IsNullOrEmpty(text))
         {
+            FileTree.ItemsSource = null;
             FileTree.ItemsSource = _fileTreeRoots;
             return;
         }
@@ -722,6 +750,7 @@ public partial class MainWindow : Window
             var match = FilterFileTreeNode(root, text);
             if (match is not null) filtered.Add(match);
         }
+        FileTree.ItemsSource = null;
         FileTree.ItemsSource = filtered;
     }
 
@@ -743,7 +772,22 @@ public partial class MainWindow : Window
 
     private void OnFileTreeSearchChanged(object sender, TextChangedEventArgs e)
     {
-        ApplyFileTreeSearch(FileTreeSearchBox.Text);
+        var text = FileTreeSearchBox.Text;
+        // Für die Suche müssen alle Kinder verfügbar sein; lazy geladene Knoten
+        // werden bei Bedarf expandiert und aufgebaut.
+        EnsureFileTreeChildrenLoaded(_fileTreeRoots);
+        ApplyFileTreeSearch(text);
+    }
+
+    private void EnsureFileTreeChildrenLoaded(IEnumerable<Models.FileTreeNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.IsFolder && node.Children.Count == 0)
+                AddFileTreeChildren(node, node.Path);
+            if (node.IsFolder)
+                EnsureFileTreeChildrenLoaded(node.Children);
+        }
     }
 
     /// <summary>Doppelklick öffnet die Datei im Standardprogramm. Einfacher Klick

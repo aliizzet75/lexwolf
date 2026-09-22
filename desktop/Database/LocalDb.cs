@@ -195,6 +195,35 @@ namespace LexWolf.Database
             return result;
         }
 
+        /// <summary>Holt Mandanten projiziert für Liste/Dropdown, optional gefiltert.
+        /// Nur id + name werden geladen; keine weiteren Mandantendetails, damit
+        /// Dropdown und linke Liste bei >=200 Mandanten schlank bleiben.</summary>
+        public System.Collections.Generic.List<(string Id, string Name)> SearchMandanten(string? q)
+        {
+            var result = new System.Collections.Generic.List<(string, string)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            var filter = (q ?? "").Trim();
+            if (!string.IsNullOrEmpty(filter))
+            {
+                cmd.CommandText = "SELECT id, name FROM mandanten WHERE name LIKE $q ESCAPE '\\' ORDER BY name COLLATE NOCASE;";
+                cmd.Parameters.AddWithValue("$q", "%" + EscapeLike(filter) + "%");
+            }
+            else
+            {
+                cmd.CommandText = "SELECT id, name FROM mandanten ORDER BY name COLLATE NOCASE;";
+            }
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                result.Add((reader.GetString(0), reader.GetString(1)));
+            return result;
+        }
+
+        private static string EscapeLike(string s)
+        {
+            return s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+        }
+
         // --- Dokumente ---
 
         public void UpsertDokumentChunk(string id, string mandantId, string pfad,
