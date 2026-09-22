@@ -171,6 +171,35 @@ public partial class FeatureWunschDialog : Window
         _busy = busy;
         InputBox.IsEnabled = !busy;
         SendBtn.IsEnabled = !busy;
+        ClearHistoryBtnInline.IsEnabled = !busy;
+    }
+
+    private void OnClearFeatureWunschHistory(object sender, RoutedEventArgs e)
+    {
+        var result = MessageBox.Show(
+            "Möchten Sie alle bisherigen Feature-Wünsche wirklich löschen?",
+            "Feature-Wunsch-Verlauf leeren",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.OK)
+            return;
+
+        try
+        {
+            _db.ClearFeatureWunschHistory();
+            _messages.Clear();
+            ChatPanel.Children.Clear();
+            AddBubble("assistant", "Der Feature-Wunsch-Verlauf wurde geleert. Was wünschst du dir als Nächstes?");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Der Verlauf konnte nicht geleert werden: {ex.Message}",
+                "Fehler",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private void AddBubble(string role, string text)

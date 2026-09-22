@@ -463,6 +463,17 @@ namespace LexWolf.Database
             return result;
         }
 
+        /// <summary>Löscht den gesamten lokalen Feature-Wunsch-Verlauf des aktuellen
+        /// Anwalts. Affectiert ausschließlich die eigene Datenbank — keine Daten
+        /// anderer Nutzer.</summary>
+        public void ClearFeatureWunschHistory()
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM feature_wunsch_history;";
+            cmd.ExecuteNonQuery();
+        }
+
         public DateTime? GetMaxGeaendert(string mandantId)
         {
             using var conn = GetConnection();

@@ -46,6 +46,10 @@ _STOPWORDS = {
     "also", "aber", "dieser", "diese", "dieses", "einfach", "immer", "schon",
 }
 
+# Serverseitiger Speicher für Feature-Wünsche pro Session/Anwalt.
+# Der Key ist eine anonyme Session-ID (keine personenbezogenen Daten).
+_feature_wunsch_storage: dict[str, list[dict]] = {}
+
 
 def _extract_keywords(text: str, max_keywords: int = 6) -> list:
     """Simple Heuristik statt LLM-Aufruf: nimmt längere, nicht-triviale Wörter
@@ -148,6 +152,15 @@ class ConfirmResponse(BaseModel):
     ok: bool
     milestone_id: int
     task_id: int
+
+
+class ClearHistoryRequest(BaseModel):
+    session_id: str
+
+
+class ClearHistoryResponse(BaseModel):
+    ok: bool
+    deleted_count: int
 
 
 def _fetch_board_context() -> str:
@@ -263,6 +276,27 @@ async def feedback_chat(request: FeedbackChatRequest) -> FeedbackChatResponse:
 
     status = parsed.get("status") if parsed.get("status") in ("clarifying", "ready") else "clarifying"
     return FeedbackChatResponse(status=status, reply=parsed["reply"], summary=parsed.get("summary"))
+
+
+@router.post("/clear-history", response_model=ClearHistoryResponse)
+async def clear_feature_feedback_history(request: ClearHistoryRequest) -> ClearHistoryResponse:
+    """Löscht die serverseitig zwischengespeicherten Feature-Wunsch-Nachrichten
+    für die angegebene Session-ID. Betrifft ausschließlich die eigene Session —
+    keine Daten anderer Nutzer.
+
+    Anmerkung: Der LexWolf-Client persistiert den Verlauf primär in der lokalen
+    SQLite-Datenbank. Diese Route dient als zusätzliche, serverseitige
+    Löschoperation für den Fall, dass zukünftig serverseitige Speicherung genutzt
+    wird.
+    """
+    if not request.session_id or not request.session_id.strip():
+        raise HTTPException(status_code=400, detail="session_id ist erforderlich")
+
+    key = request.session_id.strip()
+    deleted = _feature_wunsch_storage.pop(key, None)
+    deleted_count = len(deleted) if isinstance(deleted, list) else 0
+    logger.info(f"Feature-Wunsch-Verlauf für Session {key[:8]}... gelöscht ({deleted_count} Einträge)")
+    return ClearHistoryResponse(ok=True, deleted_count=deleted_count)
 
 
 def _generate_task_text(summary: dict) -> dict:

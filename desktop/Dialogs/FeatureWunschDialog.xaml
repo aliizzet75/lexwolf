@@ -120,14 +120,20 @@
             </StackPanel>
         </Border>
 
+
+
         <Grid Grid.Row="3" Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="InputBox" Grid.Column="0" Style="{StaticResource ChatInput}"
+            <Button x:Name="ClearHistoryBtnInline" Grid.Column="0" Content="Verlauf leeren"
+                    Style="{StaticResource GhostBtn}" Click="OnClearFeatureWunschHistory"
+                    Margin="0,0,8,0"/>
+            <TextBox x:Name="InputBox" Grid.Column="1" Style="{StaticResource ChatInput}"
                      KeyDown="OnInputKeyDown" Margin="0,0,8,0"/>
-            <Button x:Name="SendBtn" Grid.Column="1" Content="Senden"
+            <Button x:Name="SendBtn" Grid.Column="2" Content="Senden"
                     Style="{StaticResource PrimaryBtn}" Click="OnSend"/>
         </Grid>
     </Grid>
