@@ -29,6 +29,11 @@
                         DockPanel.Dock="Right"
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
                         FontSize="15" FontWeight="Bold" Cursor="Hand" Padding="8,0" ToolTip="Info"/>
+                <Button x:Name="TestbereichBtn" Content="🧪 Testbereich" Click="OnTestbereichClick"
+                        DockPanel.Dock="Right"
+                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
+                        FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
+                        ToolTip="Manueller Verifikations-Bereich (Task #243)"/>
                 <Button x:Name="FeatureWunschBtn" Content="💡 Feature-Wunsch" Click="OnFeatureWunschClick"
                         DockPanel.Dock="Right"
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"

@@ -1697,4 +1697,20 @@ public partial class MainWindow : Window
         return text.Replace("Hans Müller", "[MANDANT_1]")
                    .Replace("Müller", "[PERSON_1]");
     }
+
+    // ── Testbereich (Task #243) ─────────────────────────────────────────────
+
+    /// <summary>Öffnet den manuellen Verifikations-Dialog für Task #243.
+    /// Der Testbereich ist im Desktop-Client als Top-Bar-Button sichtbar und
+    /// nutzbar; er zeigt eine kurze Versions-Information an.
+    /// </summary>
+    private void OnTestbereichClick(object sender, RoutedEventArgs e)
+    {
+        MessageBox.Show(
+            "Testbereich (Task #243) - Client-Version 9.9.9\n" +
+            "Manuelle Verifikation: UI-Stelle 'Testbereich' ist sichtbar und nutzbar.",
+            "Testbereich",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
 }
