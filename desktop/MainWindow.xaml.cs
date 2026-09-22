@@ -462,7 +462,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Befüllt die Dropdown-Liste case-insensitiv gefiltert nach dem
-    /// aktuell eingegebenen Text — Suche/Autovervollständigung fürs Mandanten-Feld.</summary>
+    /// aktuell eingegebenen Text. Wichtig: auch bei leerem Filter werden alle
+    /// geladenen Mandanten angezeigt, damit das Dropdown beim Öffnen des Dialogs
+    /// nicht leer bleibt (Task #239).
+    /// </summary>
     private void ApplyMandantFilter(string? filterText)
     {
         _suppressMandantEvents = true;
@@ -470,8 +473,23 @@ public partial class MainWindow : Window
         {
             var filter = (filterText ?? "").Trim();
             MandantBox.Items.Clear();
+
             if (string.IsNullOrEmpty(filter))
-                MandantBox.Items.Add(KeinMandantLabel);
+            {
+                // Dialog frisch geöffnet: alle verfügbaren Mandanten anzeigen,
+                // damit das Dropdown nicht leer erscheint (Task #239).
+                if (_mandanten.Count == 0)
+                {
+                    MandantBox.Items.Add(KeinMandantLabel);
+                }
+                else
+                {
+                    foreach (var name in _mandanten
+                        .Select(m => m.Name)
+                        .Take(MaxMandantDropdownItems))
+                        MandantBox.Items.Add(name);
+                }
+            }
             else
             {
                 var gefiltert = _mandanten
@@ -479,6 +497,10 @@ public partial class MainWindow : Window
                     .Select(m => m.Name)
                     .Take(MaxMandantDropdownItems)
                     .ToList();
+
+                if (gefiltert.Count == 0)
+                    MandantBox.Items.Add(KeinMandantLabel);
+
                 foreach (var name in gefiltert)
                     MandantBox.Items.Add(name);
             }
