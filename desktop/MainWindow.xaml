@@ -34,6 +34,11 @@
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
                         FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
                         ToolTip="Feature-Wunsch an LexWolf senden"/>
+                <Button x:Name="FeatureUebersichtBtn" Content="🗳️ Features" Click="OnFeatureUebersichtClick"
+                        DockPanel.Dock="Right"
+                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
+                        FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
+                        ToolTip="Eigene Feature-Wünsche und laufende Entwicklungen anzeigen"/>
                 
                 <!-- FolderPicker-Button für Verzeichnis-Scanning -->
                 <Button x:Name="ScanFolderBtn" Content="📂 Ordner scannen" Click="OnScanFolderClicked"
@@ -64,6 +69,7 @@
                           IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True"
                           SelectionChanged="OnMandantChanged"
                           PreviewKeyDown="OnMandantBoxKeyDown"
+                          TextBoxBase.TextChanged="OnMandantTextChanged"
                           ToolTip="Mandant suchen oder auswählen"/>
                 <TextBlock Text="Mandant:" Foreground="#8b949e" FontSize="12"
                            DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -97,7 +103,7 @@
                     <!-- Virtualisierung eingeschaltet, damit die linke Mandanten-/Dateiliste
                          bei vielen Einträgen nur die sichtbaren Zeilen rendert. -->
                     <TreeView x:Name="FileTree" PreviewMouseDoubleClick="OnFileTreeDoubleClick"
-                              Expanded="OnFileTreeNodeExpanded" Margin="0,0,0,10"
+                              TreeViewItem.Expanded="OnFileTreeNodeExpanded" Margin="0,0,0,10"
                               VirtualizingPanel.IsVirtualizing="True"
                               VirtualizingPanel.VirtualizationMode="Recycling">
                         <TreeView.ItemTemplate>

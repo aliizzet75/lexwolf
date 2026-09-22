@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private readonly List<string> _chatHistoryHtml = new();
     private readonly HashSet<string> _prioritizedPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly FeedbackSender _feedbackSender = new("http://localhost:8000");
+    private readonly FeatureStatusChecker _featureStatusChecker;
     private CancellationTokenSource? _loadHistoryCts;
     private System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode> _fileTreeRoots = new();
 
@@ -58,8 +59,21 @@ public partial class MainWindow : Window
         MandantBox.AddHandler(
             System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
             new TextChangedEventHandler(OnMandantTextChanged));
+        _featureStatusChecker = new FeatureStatusChecker(
+            _http,
+            "http://localhost:8082",
+            _db,
+            () => this,
+            TimeSpan.FromMinutes(30),
+            msg => System.Diagnostics.Debug.WriteLine(msg));
         _ = CheckConnectionAsync(showConnecting: true);
         _ = PeriodicHealthCheckAsync();
+        // Start() führt beim Hochfahren der Schleife bereits einen sofortigen
+        // Check aus (siehe FeatureStatusChecker.LoopAsync) — ein zusätzlicher
+        // expliziter CheckOnceAsync()-Aufruf hier würde denselben Fertigstellungs-
+        // Toast doppelt anzeigen, da beide Aufrufe nebenläufig gegen denselben
+        // Server-Call liefen, bevor MarkAsSeen() greifen konnte.
+        _featureStatusChecker.Start();
         _ = LoadMandantenAsync();
         _ = Task.Run(StartDocumentScannerAsync);
         _ = CheckForUpdateAsync();
@@ -228,6 +242,13 @@ public partial class MainWindow : Window
     private void OnFeatureWunschClick(object sender, RoutedEventArgs e)
     {
         var dlg = new LexWolf.Dialogs.FeatureWunschDialog(_db, _http, BackendUrl) { Owner = this };
+        dlg.ShowDialog();
+    }
+
+    private void OnFeatureUebersichtClick(object sender, RoutedEventArgs e)
+    {
+        var sessionId = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name ?? "lexwolf";
+        var dlg = new LexWolf.Dialogs.FeatureUebersichtDialog(_http, "http://localhost:8082", sessionId) { Owner = this };
         dlg.ShowDialog();
     }
 
@@ -412,18 +433,31 @@ public partial class MainWindow : Window
     // ── Mandanten ─────────────────────────────────────────────────────────────
 
     private const string KeinMandantLabel = "— kein Mandant —";
+    private const int MaxMandantDropdownItems = 100;
     private bool _suppressMandantEvents = false;
 
     private Task LoadMandantenAsync()
     {
-        // Mandanten kommen aus der lokalen Scanner-DB (Ordnername je Mandant unter
-        // DokumentePfad), nicht vom Server — die Server-Tabelle "mandanten" ist leer
-        // und hat keinen Endpoint zum Befüllen; Mandantendaten sollen laut
-        // Datenschutz-Konzept ohnehin nie den Anwalts-PC verlassen.
         var mandanten = _db.GetMandanten();
         _mandanten.Clear();
         _mandanten.AddRange(mandanten);
         Dispatcher.Invoke(() => ApplyMandantFilter(MandantBox.Text));
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Lädt die Mandantenliste projiziert (id, name) aus der lokalen DB.
+    /// Kann optional gefiltert werden (SQL-seitige LIKE-Suche), falls die Suche
+    /// an die DB delegiert wird.
+    /// </summary>
+    private Task LoadMandantenAsync(string? filter)
+    {
+        var mandanten = string.IsNullOrWhiteSpace(filter)
+            ? _db.GetMandanten()
+            : _db.SearchMandanten(filter);
+        _mandanten.Clear();
+        _mandanten.AddRange(mandanten);
+        Dispatcher.Invoke(() => ApplyMandantFilter(filter));
         return Task.CompletedTask;
     }
 
@@ -438,9 +472,14 @@ public partial class MainWindow : Window
             MandantBox.Items.Clear();
             if (string.IsNullOrEmpty(filter))
                 MandantBox.Items.Add(KeinMandantLabel);
-            foreach (var (_, name) in _mandanten)
+            else
             {
-                if (string.IsNullOrEmpty(filter) || name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                var gefiltert = _mandanten
+                    .Where(m => m.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    .Select(m => m.Name)
+                    .Take(MaxMandantDropdownItems)
+                    .ToList();
+                foreach (var name in gefiltert)
                     MandantBox.Items.Add(name);
             }
         }
@@ -453,8 +492,17 @@ public partial class MainWindow : Window
     private void OnMandantTextChanged(object sender, TextChangedEventArgs e)
     {
         if (_suppressMandantEvents) return;
-        ApplyMandantFilter(MandantBox.Text);
-        MandantBox.IsDropDownOpen = MandantBox.Items.Count > 0 && !string.IsNullOrEmpty(MandantBox.Text);
+        var filter = MandantBox.Text ?? "";
+
+        // Bei vielen Mandanten verzögern wir die komplette SQL-Filterung,
+        // damit das Dropdown flüssig bleibt. Solange der Text kurz ist,
+        // filtern wir lokal im bereits geladenen _mandanten-Bestand.
+        if (filter.Length >= 3 && _mandanten.Count > 200)
+            _ = LoadMandantenAsync(filter);
+        else
+            ApplyMandantFilter(filter);
+
+        MandantBox.IsDropDownOpen = MandantBox.Items.Count > 0 && !string.IsNullOrEmpty(filter);
     }
 
     private void OnMandantBoxKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
