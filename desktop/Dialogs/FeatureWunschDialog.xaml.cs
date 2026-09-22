@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -29,6 +30,8 @@ public partial class FeatureWunschDialog : Window
         _http = http;
         _backendUrl = backendUrl;
 
+        ClientVersionBox.Text = GetCurrentClientVersion();
+
         var verlauf = _db.GetFeatureWunschHistory();
         if (verlauf.Count > 0)
         {
@@ -40,9 +43,39 @@ public partial class FeatureWunschDialog : Window
         }
         else
         {
-            AddBubble("assistant", "Was wünschst du dir für LexWolf? Beschreib es kurz, ich frage bei Bedarf nach.");
+            AddBubble("assistant", "Was möchtest du uns mitteilen? Beschreib es kurz, ich frage bei Bedarf nach.");
         }
         InputBox.Focus();
+    }
+
+    private string GetCurrentClientVersion()
+    {
+        try
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var info = assembly.GetName().Version;
+            var fileVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location).FileVersion;
+            return info?.ToString() ?? fileVersion ?? "1.0.0";
+        }
+        catch
+        {
+            return "1.0.0";
+        }
+    }
+
+    private string SelectedFeedbackTyp
+    {
+        get
+        {
+            var selected = FeedbackTypBox.SelectedItem as ComboBoxItem;
+            return selected?.Tag?.ToString() ?? "feature";
+        }
+    }
+
+    private void OnFeedbackTypChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var isBug = SelectedFeedbackTyp == "bug";
+        BugFieldsPanel.Visibility = isBug ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnInputKeyDown(object sender, KeyEventArgs e)
@@ -56,16 +89,54 @@ public partial class FeatureWunschDialog : Window
 
     private void OnSend(object sender, RoutedEventArgs e) => _ = SendAsync();
 
+    private bool ValidateBugFields()
+    {
+        if (SelectedFeedbackTyp != "bug")
+            return true;
+
+        var repro = ReproStepsBox.Text.Trim();
+        var version = ClientVersionBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(repro))
+        {
+            MessageBox.Show(
+                this,
+                "Bitte beschreibe die Reproduktionsschritte, damit wir den Fehler nachvollziehen können.",
+                "Fehler melden",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            ReproStepsBox.Focus();
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            MessageBox.Show(
+                this,
+                "Bitte gib die verwendete Client-Version an.",
+                "Fehler melden",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            ClientVersionBox.Focus();
+            return false;
+        }
+        return true;
+    }
+
     private async Task SendAsync()
     {
         if (_busy) return;
+        if (!ValidateBugFields()) return;
+
         var text = InputBox.Text.Trim();
         if (text.Length == 0) return;
 
+        var isBug = SelectedFeedbackTyp == "bug";
+        var prefix = isBug ? "[BUG] " : "";
+        var taggedText = prefix + text;
+
         InputBox.Text = string.Empty;
-        AddBubble("user", text);
-        _messages.Add(("user", text));
-        _db.AddFeatureWunschMessage("user", text);
+        AddBubble("user", taggedText);
+        _messages.Add(("user", taggedText));
+        _db.AddFeatureWunschMessage("user", taggedText);
         SetBusy(true);
 
         try
@@ -134,6 +205,7 @@ public partial class FeatureWunschDialog : Window
     private async void OnConfirmSummary(object sender, RoutedEventArgs e)
     {
         if (_pendingSummary is null || _busy) return;
+        if (!ValidateBugFields()) return;
 
         // Doppel-Submit-Schutz: sofort deaktivieren, bevor der Request raus geht.
         ConfirmSummaryBtn.IsEnabled = false;
@@ -143,12 +215,27 @@ public partial class FeatureWunschDialog : Window
         try
         {
             var payload = new JsonObject { ["summary"] = _pendingSummary.DeepClone() };
+            payload["typ"] = SelectedFeedbackTyp;
+
+            if (SelectedFeedbackTyp == "bug")
+            {
+                var bug = new JsonObject
+                {
+                    ["repro_steps"] = ReproStepsBox.Text.Trim(),
+                    ["client_version"] = ClientVersionBox.Text.Trim(),
+                    ["affected_ui_location"] = (AffectedUiBox.Text ?? "").Trim()
+                };
+                payload["bug"] = bug;
+            }
+
             using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
             var response = await _http.PostAsync($"{_backendUrl}/feature-feedback/confirm", content).ConfigureAwait(true);
             response.EnsureSuccessStatusCode();
 
             HideSummary();
-            const string erfolgsText = "✅ Danke! Wird jetzt umgesetzt — du bekommst das Feature automatisch beim nächsten Neustart von LexWolf.";
+            var erfolgsText = SelectedFeedbackTyp == "bug"
+                ? "✅ Danke! Die Fehlermeldung wurde übermittelt — das Team kümmert sich darum."
+                : "✅ Danke! Wird jetzt umgesetzt — du bekommst das Feature automatisch beim nächsten Neustart von LexWolf.";
             AddBubble("assistant", erfolgsText);
             _db.AddFeatureWunschMessage("assistant", erfolgsText);
             InputBox.IsEnabled = false;
@@ -172,13 +259,17 @@ public partial class FeatureWunschDialog : Window
         InputBox.IsEnabled = !busy;
         SendBtn.IsEnabled = !busy;
         ClearHistoryBtnInline.IsEnabled = !busy;
+        FeedbackTypBox.IsEnabled = !busy;
+        ClientVersionBox.IsEnabled = !busy;
+        AffectedUiBox.IsEnabled = !busy;
+        ReproStepsBox.IsEnabled = !busy;
     }
 
     private void OnClearFeatureWunschHistory(object sender, RoutedEventArgs e)
     {
         var result = MessageBox.Show(
-            "Möchten Sie alle bisherigen Feature-Wünsche wirklich löschen?",
-            "Feature-Wunsch-Verlauf leeren",
+            "Möchten Sie alle bisherigen Einträge wirklich löschen?",
+            "Feedback-Verlauf leeren",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Question);
 
@@ -190,7 +281,7 @@ public partial class FeatureWunschDialog : Window
             _db.ClearFeatureWunschHistory();
             _messages.Clear();
             ChatPanel.Children.Clear();
-            AddBubble("assistant", "Der Feature-Wunsch-Verlauf wurde geleert. Was wünschst du dir als Nächstes?");
+            AddBubble("assistant", "Der Verlauf wurde geleert. Was möchtest du als Nächstes mitteilen?");
         }
         catch (Exception ex)
         {

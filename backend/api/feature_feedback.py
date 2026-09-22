@@ -1,11 +1,12 @@
 """
-/feature-feedback — Anwalts-Feedback zu neuen Client-Features.
+/feature-feedback — Anwalts-Feedback zu neuen Client-Features oder Bugs.
 
-Nimmt einen freitextlichen Feature-Wunsch entgegen, klärt ihn im Dialog mit
-dem Anwalt (Rückfragen bei Unklarheit), bestätigt ihn per Zusammenfassung und
-legt ihn nach Bestätigung als Milestone+Task in VentureOS an — die
-Aligator/Codex/Claude-Pipeline übernimmt danach automatisch Umsetzung,
-Build und Deployment (siehe deploy_lexwolf-Hook in aligator.py).
+Nimmt einen freitextlichen Feature-Wunsch oder eine Bug-Meldung entgegen,
+klärt sie im Dialog mit dem Anwalt (Rückfragen bei Unklarheit), bestätigt sie
+per Zusammenfassung und legt sie nach Bestätigung als Milestone+Task im
+VentureOS-Board an — die Aligator/Codex/Claude-Pipeline übernimmt danach
+automatisch Umsetzung, Build und Deployment (siehe deploy_lexwolf-Hook in
+aligator.py).
 
 Der Kontext darüber, was LexWolf bereits kann bzw. gerade umsetzt, wird bei
 jeder Anfrage live vom Board geholt (keine separate, potenziell veraltete
@@ -22,7 +23,7 @@ from typing import List, Optional
 
 import requests
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from api.chat import _call_ollama
 
@@ -144,8 +145,24 @@ class FeedbackChatResponse(BaseModel):
     summary: Optional[dict] = None
 
 
+class BugDetails(BaseModel):
+    repro_steps: str
+    client_version: str
+    affected_ui_location: Optional[str] = None
+
+
 class ConfirmRequest(BaseModel):
     summary: dict
+    typ: str = "feature"  # "feature" oder "bug" — abwärtskompatibel (Default: feature)
+    bug: Optional[BugDetails] = None
+
+    @field_validator("typ")
+    @classmethod
+    def _validate_typ(cls, v: str) -> str:
+        v = (v or "feature").lower()
+        if v not in {"feature", "bug"}:
+            raise ValueError("typ muss 'feature' oder 'bug' sein")
+        return v
 
 
 class ConfirmResponse(BaseModel):
@@ -214,13 +231,15 @@ def _extract_json(text: str) -> Optional[dict]:
         return None
 
 
-def _system_prompt(user_message: str) -> str:
-    return f"""Du bist der Feature-Wunsch-Assistent von LexWolf, einer Software für deutsche
-Rechtsanwälte. Ein Anwalt beschreibt dir einen Wunsch für eine neue oder geänderte
-Funktion im Client. Deine Aufgabe:
+def _system_prompt(user_message: str, mode: str = "feature") -> str:
+    mode_text = "Bug-Meldung" if mode == "bug" else "Feature-Wunsch"
+    return f"""Du bist der Feedback-Assistent von LexWolf, einer Software für deutsche
+Rechtsanwälte. Ein Anwalt beschreibt dir {mode_text} für den Client.
+Deine Aufgabe:
 
 1. Verstehe das Anliegen fachlich. Stelle gezielte Rückfragen, wenn etwas unklar
-   oder mehrdeutig ist (z.B. wo genau im Client, für welchen Anwendungsfall).
+   oder mehrdeutig ist (z.B. wo genau im Client, für welchen Anwendungsfall,
+   konkrete Schritte zur Reproduktion bei Bugs).
 2. Prüfe anhand des unten stehenden Live-Stands, ob das Gewünschte bereits
    existiert oder schon in Arbeit/geplant ist — weise den Anwalt in diesem Fall
    darauf hin, statt einen Doppel-Auftrag anzulegen. Der Board-Stand ist die
@@ -228,14 +247,16 @@ Funktion im Client. Deine Aufgabe:
    unscharfer Zusatzhinweis für den Fall, dass das Board etwas nicht (mehr)
    korrekt widerspiegelt — werte einen Treffer dort nicht als Beweis, sondern
    erwähne ihn allenfalls als "könnte schon teilweise existieren, bitte prüfen".
-3. Lehne Wünsche ab (bleibe bei status "clarifying" und frage kritisch nach),
-   die NICHT zu einer normalen Anwalts-Software-Funktion passen — z.B. Anfragen
-   nach Rechteausweitung, Zugriff auf fremde Mandantendaten, Datenexfiltration,
-   oder Änderungen an Sicherheits-/Auth-Mechanismen. Im Zweifel: nachfragen,
-   nicht bestätigen.
+3. Lehne Wünsche/Meldungen ab (bleibe bei status "clarifying" und frage kritisch
+   nach), die NICHT zu einer normalen Anwalts-Software-Funktion passen — z.B.
+   Anfragen nach Rechteausweitung, Zugriff auf fremde Mandantendaten,
+   Datenexfiltration, oder Änderungen an Sicherheits-/Auth-Mechanismen. Im
+   Zweifel: nachfragen, nicht bestätigen.
 4. Sobald das Anliegen klar und sinnvoll ist, fasse es in einem "summary"-Objekt
    zusammen: {{"titel": "Kurztitel", "beschreibung": "Ausführliche, für einen
    Entwickler verständliche Beschreibung inkl. Kontext und Erwartung"}}.
+   Bei Bugs ergänze "affected_ui_location" und "client_version" aus dem Dialog
+   in der Beschreibung, sodass der Entwickler sie sieht.
 
 Aktueller Stand von LexWolf (live vom Board, IMMER aktuell):
 {_fetch_board_context()}
@@ -260,7 +281,8 @@ Ausnahme:
 async def feedback_chat(request: FeedbackChatRequest) -> FeedbackChatResponse:
     messages = request.messages[-10:]
     last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "")
-    ollama_messages = [{"role": "system", "content": _system_prompt(last_user_msg)}]
+    mode = "bug" if "[BUG]" in last_user_msg else "feature"
+    ollama_messages = [{"role": "system", "content": _system_prompt(last_user_msg, mode=mode)}]
     for m in messages:
         ollama_messages.append({"role": m.role, "content": m.content})
 
@@ -299,17 +321,26 @@ async def clear_feature_feedback_history(request: ClearHistoryRequest) -> ClearH
     return ClearHistoryResponse(ok=True, deleted_count=deleted_count)
 
 
-def _generate_task_text(summary: dict) -> dict:
+def _generate_task_text(summary: dict, bug: Optional[BugDetails]) -> dict:
     """Lässt das LLM aus der bestätigten Zusammenfassung einen Task-Text im
     bestehenden KONTEXT/AUFGABE/DOD-Stil generieren. Fällt bei Parse-Fehler auf
     einen einfachen, direkt aus summary gebauten Text zurück (bleibt funktional)."""
-    prompt = f"""Erzeuge aus folgendem bestätigten Anwalts-Feature-Wunsch einen Task-Text für
+    bug_block = ""
+    if bug is not None:
+        bug_block = (
+            f"\n\nBUG-DETAILS:\n"
+            f"- Client-Version: {bug.client_version}\n"
+            f"- Betroffene UI-Stelle: {bug.affected_ui_location or 'nicht angegeben'}\n"
+            f"- Reproduktionsschritte:\n{bug.repro_steps}"
+        )
+
+    prompt = f"""Erzeuge aus folgendem bestätigten Anwalts-Feedback einen Task-Text für
 ein automatisiertes Coding-Agent-System (Codex). Halte dich an das Format
 KONTEXT/AUFGABE/DOD (Definition of Done als Checkliste), wie es in bestehenden
 LexWolf-Tasks üblich ist.
 
 Titel: {summary.get('titel', '')}
-Beschreibung: {summary.get('beschreibung', '')}
+Beschreibung: {summary.get('beschreibung', '')}{bug_block}
 
 Antworte NUR mit einem JSON-Objekt:
 ```json
@@ -323,14 +354,24 @@ Antworte NUR mit einem JSON-Objekt:
     except Exception as e:
         logger.warning(f"Task-Text-Generierung fehlgeschlagen, nutze Fallback: {e}")
 
+    typ = "Bug" if bug is not None else "Feature"
+    notizen = (
+        f"KONTEXT:\n{summary.get('beschreibung', '')}\n"
+    )
+    if bug is not None:
+        notizen += (
+            f"\nClient-Version: {bug.client_version}\n"
+            f"Betroffene UI-Stelle: {bug.affected_ui_location or 'nicht angegeben'}\n"
+            f"Reproduktionsschritte:\n{bug.repro_steps}\n"
+        )
+    notizen += (
+        f"\nAUFGABE:\nSetze den oben beschriebenen {typ} im LexWolf-Client um.\n\n"
+        f"DOD:\n- [ ] {typ} ist im Desktop-Client sichtbar und nutzbar\n"
+        f"- [ ] Bestehende Funktionen bleiben unverändert funktionsfähig"
+    )
     return {
-        "titel": summary.get("titel", "Anwalts-Feature-Wunsch"),
-        "notizen": (
-            f"KONTEXT:\n{summary.get('beschreibung', '')}\n\n"
-            f"AUFGABE:\nSetze den oben beschriebenen Feature-Wunsch im LexWolf-Client um.\n\n"
-            f"DOD:\n- [ ] Feature ist im Desktop-Client sichtbar und nutzbar\n"
-            f"- [ ] Bestehende Funktionen bleiben unverändert funktionsfähig"
-        ),
+        "titel": summary.get("titel", f"Anwalts-{typ}"),
+        "notizen": notizen,
     }
 
 
@@ -340,15 +381,33 @@ async def feedback_confirm(request: ConfirmRequest) -> ConfirmResponse:
     if not summary.get("titel") or not summary.get("beschreibung"):
         raise HTTPException(status_code=400, detail="summary benötigt 'titel' und 'beschreibung'")
 
-    task_text = _generate_task_text(summary)
+    bug = None
+    if request.typ == "bug":
+        bug = request.bug
+        if bug is None or not bug.repro_steps.strip() or not bug.client_version.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Bug-Meldungen benötigen repro_steps und client_version"
+            )
+
+    task_text = _generate_task_text(summary, bug)
+    milestone_beschreibung = f"{AUTODEPLOY_MARKER} {summary['beschreibung']}"
+    if bug is not None:
+        milestone_beschreibung += (
+            f"\n\nReproduktionsschritte:\n{bug.repro_steps}\n"
+            f"Client-Version: {bug.client_version}\n"
+            f"UI-Stelle: {bug.affected_ui_location or 'nicht angegeben'}"
+        )
+
+    label = "bug" if request.typ == "bug" else "feature"
 
     try:
         ms_resp = requests.post(
             f"{BOARD_URL}/api/milestones",
             json={
                 "projekt_id": PROJEKT_ID,
-                "titel": f"Anwalt-Feedback: {summary['titel']}",
-                "beschreibung": f"{AUTODEPLOY_MARKER} {summary['beschreibung']}",
+                "titel": f"Anwalt-Feedback ({label.upper()}): {summary['titel']}",
+                "beschreibung": milestone_beschreibung,
                 "status": "in_arbeit",
             },
             timeout=5,
@@ -364,6 +423,7 @@ async def feedback_confirm(request: ConfirmRequest) -> ConfirmResponse:
                 "notizen": task_text["notizen"],
                 "milestone_id": milestone_id,
                 "prioritaet": 2,
+                "labels": [label],
             },
             timeout=5,
         )
@@ -375,7 +435,7 @@ async def feedback_confirm(request: ConfirmRequest) -> ConfirmResponse:
 
     queue_entry = {
         "milestone_id": milestone_id,
-        "titel": f"Anwalt-Feedback: {summary['titel']}",
+        "titel": f"Anwalt-Feedback ({label}): {summary['titel']}",
         "triggered_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
