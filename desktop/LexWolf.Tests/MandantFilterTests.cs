@@ -3,55 +3,21 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using LexWolf.Database;
+using LexWolf.Services;
 using Xunit;
 
 namespace LexWolf.Tests
 {
     /// <summary>
-    /// Task #239: Logik-Regressionstest für das Mandanten-Dropdown. Der Bug war,
-    /// dass ApplyMandantFilter bei leerem Filtertext nur einen Platzhalter
-    /// eintrug und die geladenen Mandanten aus _mandanten ignorierte. Dieser Test
-    /// prüft die reine Filter-/Projektionslogik isoliert ohne WPF-UI und ist so
-    /// aufgebaut, dass er der if/else-Struktur im Code folgt.
+    /// Task #268: Regressionstests für das Mandanten-Dropdown. Diese Tests prüfen
+    /// den ECHTEN Produktionscode-Pfad über LexWolf.Services.MandantFilter.ApplyFilter,
+    /// nicht eine duplizierte Kopie der Logik.
     /// </summary>
     public class MandantFilterTests
     {
-        private const string KeinMandantLabel = "— kein Mandant —";
-        private const int MaxMandantDropdownItems = 100;
-
         private static List<string> ApplyFilter(List<(string Id, string Name)> mandanten, string? filterText)
         {
-            var filter = (filterText ?? "").Trim();
-            var items = new List<string>();
-
-            if (string.IsNullOrEmpty(filter))
-            {
-                if (mandanten.Count == 0)
-                {
-                    items.Add(KeinMandantLabel);
-                }
-                else
-                {
-                    items.AddRange(mandanten
-                        .Select(m => m.Name)
-                        .Take(MaxMandantDropdownItems));
-                }
-            }
-            else
-            {
-                var gefiltert = mandanten
-                    .Where(m => m.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
-                    .Select(m => m.Name)
-                    .Take(MaxMandantDropdownItems)
-                    .ToList();
-
-                if (gefiltert.Count == 0)
-                    items.Add(KeinMandantLabel);
-
-                items.AddRange(gefiltert);
-            }
-
-            return items;
+            return MandantFilter.ApplyFilter(mandanten, filterText);
         }
 
         [Fact]
@@ -70,7 +36,7 @@ namespace LexWolf.Tests
             Assert.Contains("Müller, Hans", items);
             Assert.Contains("Schmidt, Anna", items);
             Assert.Contains("Weber, Klaus", items);
-            Assert.DoesNotContain(KeinMandantLabel, items);
+            Assert.DoesNotContain(MandantFilter.KeinMandantLabel, items);
         }
 
         [Fact]
@@ -78,7 +44,7 @@ namespace LexWolf.Tests
         {
             var items = ApplyFilter(new List<(string, string)>(), "");
             Assert.Single(items);
-            Assert.Equal(KeinMandantLabel, items[0]);
+            Assert.Equal(MandantFilter.KeinMandantLabel, items[0]);
         }
 
         [Fact]
@@ -91,7 +57,7 @@ namespace LexWolf.Tests
 
             var items = ApplyFilter(mandanten, "xyz");
             Assert.Single(items);
-            Assert.Equal(KeinMandantLabel, items[0]);
+            Assert.Equal(MandantFilter.KeinMandantLabel, items[0]);
         }
 
         [Fact]
@@ -130,7 +96,7 @@ namespace LexWolf.Tests
                 mandanten.Add(("m" + i, "Mandant " + i));
 
             var items = ApplyFilter(mandanten, "");
-            Assert.Equal(MaxMandantDropdownItems, items.Count);
+            Assert.Equal(MandantFilter.MaxMandantDropdownItems, items.Count);
         }
 
         [Fact]
@@ -207,8 +173,8 @@ namespace LexWolf.Tests
                 mandanten = SimuliereTextChanged(mandanten, "");
 
                 var items = ApplyFilter(mandanten, "");
-                Assert.Equal(MaxMandantDropdownItems, items.Count);
-                Assert.DoesNotContain(KeinMandantLabel, items);
+                Assert.Equal(MandantFilter.MaxMandantDropdownItems, items.Count);
+                Assert.DoesNotContain(MandantFilter.KeinMandantLabel, items);
             }
         }
     }

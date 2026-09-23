@@ -24,6 +24,7 @@
     <Compile Include="../Services/ChatHtmlRenderer.cs" Link="ChatHtmlRenderer.cs" />
     <Compile Include="../Services/FeatureNotificationStore.cs" Link="FeatureNotificationStore.cs" />
     <Compile Include="../Services/ScreenshotValidator.cs" Link="ScreenshotValidator.cs" />
+    <Compile Include="../Services/MandantFilter.cs" Link="MandantFilter.cs" />
   </ItemGroup>
 
   <ItemGroup>

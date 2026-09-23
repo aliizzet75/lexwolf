@@ -460,8 +460,8 @@ public partial class MainWindow : Window
 
     // ── Mandanten ─────────────────────────────────────────────────────────────
 
-    private const string KeinMandantLabel = "— kein Mandant —";
-    private const int MaxMandantDropdownItems = 100;
+    private const string KeinMandantLabel = MandantFilter.KeinMandantLabel;
+    private const int MaxMandantDropdownItems = MandantFilter.MaxMandantDropdownItems;
     private bool _suppressMandantEvents = false;
 
     private Task LoadMandantenAsync()
@@ -492,40 +492,19 @@ public partial class MainWindow : Window
     /// <summary>Befüllt die Dropdown-Liste case-insensitiv gefiltert nach dem
     /// aktuell eingegebenen Text. Wichtig: auch bei leerem Filter werden alle
     /// geladenen Mandanten angezeigt, damit das Dropdown beim Öffnen des Dialogs
-    /// nicht leer bleibt (Task #239).
+    /// nicht leer bleibt (Task #268). Delegiert die Filterlogik an den testbaren
+    /// MandantFilter-Service, sodass der Akzeptanztest den echten Produktionspfad
+    /// prüft.
     /// </summary>
     private void ApplyMandantFilter(string? filterText)
     {
         _suppressMandantEvents = true;
         try
         {
-            var filter = (filterText ?? "").Trim();
             MandantBox.Items.Clear();
-
-            if (string.IsNullOrEmpty(filter))
-            {
-                // Dialog frisch geöffnet: alle verfügbaren Mandanten anzeigen,
-                // damit das Dropdown nicht leer erscheint (Task #239).
-                var names = _mandanten.Count == 0
-                    ? new List<string> { KeinMandantLabel }
-                    : _mandanten.Select(m => m.Name).Take(MaxMandantDropdownItems).ToList();
-                foreach (var name in names)
-                    MandantBox.Items.Add(name);
-            }
-            else
-            {
-                var gefiltert = _mandanten
-                    .Where(m => m.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
-                    .Select(m => m.Name)
-                    .Take(MaxMandantDropdownItems)
-                    .ToList();
-
-                if (gefiltert.Count == 0)
-                    MandantBox.Items.Add(KeinMandantLabel);
-
-                foreach (var name in gefiltert)
-                    MandantBox.Items.Add(name);
-            }
+            var names = MandantFilter.ApplyFilter(_mandanten, filterText);
+            foreach (var name in names)
+                MandantBox.Items.Add(name);
         }
         finally
         {
