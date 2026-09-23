@@ -40,6 +40,9 @@ public partial class MainWindow : Window
     private string? _activeMandantId = null;
     private string? _activeMandantName = null;
     private bool _webViewInitialized = false;
+    private string _kopierenOriginalLabel = "📋 Kopieren";
+    private string _kopierenFeedbackLabel = "✅ Kopiert";
+    private System.Windows.Threading.DispatcherTimer? _kopierenFeedbackTimer;
     private readonly List<(string Id, string Name)> _mandanten = new();
     private readonly List<string> _chatHistoryHtml = new();
     private readonly HashSet<string> _prioritizedPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -239,6 +242,29 @@ public partial class MainWindow : Window
         dlg.ShowDialog();
     }
 
+    private void OnKopierenClick(object sender, RoutedEventArgs e)
+    {
+        var lastAssistant = _history.LastOrDefault(m => string.Equals(m.Role, "assistant", StringComparison.OrdinalIgnoreCase));
+        if (lastAssistant == default(ChatMessage) || string.IsNullOrWhiteSpace(lastAssistant.Content)) return;
+
+        System.Windows.Clipboard.SetText(lastAssistant.Content);
+
+        KopierenBtn.Content = _kopierenFeedbackLabel;
+        if (_kopierenFeedbackTimer is null)
+        {
+            _kopierenFeedbackTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1.5),
+            };
+            _kopierenFeedbackTimer.Tick += (_, _) =>
+            {
+                _kopierenFeedbackTimer.Stop();
+                KopierenBtn.Content = _kopierenOriginalLabel;
+            };
+        }
+        _kopierenFeedbackTimer.Start();
+    }
+
     private void OnFeatureWunschClick(object sender, RoutedEventArgs e)
     {
         var dlg = new LexWolf.Dialogs.FeatureWunschDialog(_db, _http, BackendUrl) { Owner = this };
@@ -286,11 +312,13 @@ public partial class MainWindow : Window
         {
             ZusammenfassungBtn.IsEnabled = false;
             ZusammenfassungBtn.Content = CreateWolfLoadingContent("wird analysiert");
+            KopierenBtn.IsEnabled = false;
         }
         else if (status == AnalyseStatus.Ready)
         {
             ZusammenfassungBtn.IsEnabled = true;
             ZusammenfassungBtn.Content = "📊 Zusammenfassung";
+            KopierenBtn.IsEnabled = true;
         }
     }
 
@@ -575,6 +603,7 @@ public partial class MainWindow : Window
         UnterhaltBtn.Visibility = Visibility.Collapsed;
         NotizenBtn.Visibility = Visibility.Collapsed;
         ZusammenfassungBtn.Visibility = Visibility.Collapsed;
+        KopierenBtn.Visibility = Visibility.Collapsed;
         _mandantAnalyseService.Abbrechen();
 
         _loadHistoryCts?.Cancel();
@@ -597,6 +626,7 @@ public partial class MainWindow : Window
             BuildFileTree(null);
             NotizenBtn.Visibility = Visibility.Collapsed;
             ZusammenfassungBtn.Visibility = Visibility.Collapsed;
+            KopierenBtn.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -605,10 +635,11 @@ public partial class MainWindow : Window
 
         _activeMandantId   = match.Id;
         _activeMandantName = match.Name;
+        var activeMsg = $"Mandant: {match.Name} — Chat-Kontext aktiv.";
         NotizenBtn.Visibility = Visibility.Visible;
         ZusammenfassungBtn.Visibility = Visibility.Visible;
+        KopierenBtn.Visibility = Visibility.Collapsed;
         _mandantAnalyseService.StarteScan(match.Id);
-        var activeMsg = $"Mandant: {match.Name} — Chat-Kontext aktiv.";
         if (_webViewInitialized)
         {
             _chatHistoryHtml.Clear();
@@ -914,6 +945,7 @@ public partial class MainWindow : Window
         ChatPanel.Children.Clear();
         _chatHistoryHtml.Clear();
         UnterhaltBtn.Visibility = Visibility.Collapsed;
+        KopierenBtn.Visibility = Visibility.Collapsed;
         var msg = _activeMandantName is not null
             ? $"Chat gelöscht — Mandant: {_activeMandantName}"
             : "Chat gelöscht. Wie kann ich Ihnen helfen?";
@@ -984,9 +1016,12 @@ public partial class MainWindow : Window
             AppendAiMessage(content, suggestedAction);
 
             Dispatcher.Invoke(() =>
+            {
                 UnterhaltBtn.Visibility = suggestedAction == "berechne_unterhalt"
                     ? Visibility.Visible
-                    : Visibility.Collapsed);
+                    : Visibility.Collapsed;
+                KopierenBtn.Visibility = Visibility.Visible;
+            });
         }
         catch (Exception ex)
         {
