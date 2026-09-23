@@ -527,7 +527,14 @@ public partial class MainWindow : Window
             ApplyMandantFilter(filter);
         }
 
-        MandantBox.IsDropDownOpen = MandantBox.Items.Count > 0 && !string.IsNullOrEmpty(filter);
+        // Nur beim Tippen (nicht-leerer Filter) das Dropdown aktiv auf-/zuklappen.
+        // Bei leerem Filter (Suchfeld geleert) NICHT zwangsweise schliessen: die
+        // Liste wurde gerade per LoadMandantenAsync() mit dem vollen Bestand neu
+        // befuellt (siehe oben) -- ein hartes IsDropDownOpen=false hier wuerde das
+        // frisch befuellte Dropdown sofort wieder zuklappen und beim naechsten Klick
+        // faelschlich als "leer" erscheinen lassen, bevor der Nutzer es erneut oeffnet.
+        if (!string.IsNullOrEmpty(filter))
+            MandantBox.IsDropDownOpen = MandantBox.Items.Count > 0;
     }
 
     private void OnMandantBoxKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
