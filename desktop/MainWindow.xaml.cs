@@ -478,17 +478,11 @@ public partial class MainWindow : Window
             {
                 // Dialog frisch geöffnet: alle verfügbaren Mandanten anzeigen,
                 // damit das Dropdown nicht leer erscheint (Task #239).
-                if (_mandanten.Count == 0)
-                {
-                    MandantBox.Items.Add(KeinMandantLabel);
-                }
-                else
-                {
-                    foreach (var name in _mandanten
-                        .Select(m => m.Name)
-                        .Take(MaxMandantDropdownItems))
-                        MandantBox.Items.Add(name);
-                }
+                var names = _mandanten.Count == 0
+                    ? new List<string> { KeinMandantLabel }
+                    : _mandanten.Select(m => m.Name).Take(MaxMandantDropdownItems).ToList();
+                foreach (var name in names)
+                    MandantBox.Items.Add(name);
             }
             else
             {
@@ -516,13 +510,22 @@ public partial class MainWindow : Window
         if (_suppressMandantEvents) return;
         var filter = MandantBox.Text ?? "";
 
-        // Bei vielen Mandanten verzögern wir die komplette SQL-Filterung,
-        // damit das Dropdown flüssig bleibt. Solange der Text kurz ist,
-        // filtern wir lokal im bereits geladenen _mandanten-Bestand.
-        if (filter.Length >= 3 && _mandanten.Count > 200)
+        // Beim vollständigen Leeren des Suchfelds laden wir den kompletten
+        // Mandantenbestand neu, falls zuvor serverseitig (SQL) gefiltert wurde.
+        // Sonst würde ApplyMandantFilter nur über die bereits eingeschränkte
+        // _mandanten-Liste laufen und die volle Liste bliebe unsichtbar.
+        if (string.IsNullOrEmpty(filter))
+        {
+            _ = LoadMandantenAsync();
+        }
+        else if (filter.Length >= 3 && _mandanten.Count > 200)
+        {
             _ = LoadMandantenAsync(filter);
+        }
         else
+        {
             ApplyMandantFilter(filter);
+        }
 
         MandantBox.IsDropDownOpen = MandantBox.Items.Count > 0 && !string.IsNullOrEmpty(filter);
     }
