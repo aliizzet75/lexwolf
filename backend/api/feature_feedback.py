@@ -433,6 +433,13 @@ async def feedback_confirm(
             raise HTTPException(status_code=400, detail="Bug-Meldungen benötigen repro_steps und client_version")
         bug_obj = BugDetails(**bug_data)
 
+    # T#265: Bug-Beschreibungen müssen Screenshot oder erwartet-vs-tatsaechlich-Text enthalten
+    if typ == "bug" and not _bug_has_sufficient_description(summary_obj, screenshot):
+        raise HTTPException(
+            status_code=400,
+            detail="Bug-Meldung unvollständig: Bitte Screenshot anhängen oder eine Fehlerbeschreibung mit 'erwartet' vs. 'tatsächlich' ergänzen.",
+        )
+
     attachment_id = None
     attachment_url = None
     if screenshot is not None:
@@ -563,3 +570,19 @@ def _mime_to_ext(mime: str) -> str:
         "image/gif": ".gif",
         "image/webp": ".webp",
     }.get(mime, ".bin")
+
+
+def _bug_has_sufficient_description(summary: dict, screenshot: Optional[UploadFile]) -> bool:
+    """Prüft, ob eine Bug-Meldung ausreichend beschrieben ist.
+
+    Eine verwertbare Bug-Beschreibung benötigt entweder einen Screenshot/Anhang
+    oder einen textuellen Soll/Ist-Vergleich mit den Begriffen "erwartet" und
+    "tatsächlich" (bzw. "tatsaechlich"). Ohne eine dieser Angaben kann kein
+    konkreter Fehlverhalten im LexWolf-Client identifiziert werden.
+    """
+    if screenshot is not None:
+        return True
+    beschreibung = (summary.get("beschreibung") or "").lower()
+    if "erwartet" not in beschreibung:
+        return False
+    return "tatsächlich" in beschreibung or "tatsaechlich" in beschreibung
