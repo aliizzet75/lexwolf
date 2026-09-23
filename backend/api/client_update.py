@@ -6,9 +6,9 @@ router = APIRouter(prefix="/client", tags=["client-update"])
 # Solange wir nicht produktiv sind: 0.x-Versionierung.
 # Bei jedem Release manuell erhoehen — download_url bleibt stabil (kein
 # Versions-Suffix im Dateinamen), nur die Datei dahinter wird ersetzt.
-LATEST_VERSION = "0.44.0"
+LATEST_VERSION = "0.45.0"
 DOWNLOAD_URL = "http://212.227.180.66:8000/client/download/LexWolf-Setup.exe"
-RELEASE_NOTES = "Task #270 Fix: Mandanten-Dropdown Bugfix — weiteres Duplikat. Produktionscode-Pfad ApplyMandantFilter delegiert an testbaren MandantFilter-Service; xUnit-Regressionstests in LexWolf.Tests/MandantFilterTests.cs greifen direkt auf den echten Produktionscode. Dialog oeffnen + Dropdown klicken zeigt jetzt alle geladenen Mandanten. Client-Version: 1.2.3 UI-Stelle: Mandanten-Liste."
+RELEASE_NOTES = "Mandanten-Dropdown zeigt keine Eintraege  Reproduktionsschritte: 1. Dialog oeffnen 2. Dropdown klicken Client-Version: 1.2.3 UI-Stelle: Mandanten-Liste  Screenshot: http://localhost:8000/attachments/d"
 
 
 @router.get("/version")
