@@ -97,7 +97,7 @@
                                         MaxHeight="240"
                                         Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                        <VirtualizingStackPanel IsItemsHost="True"/>
+                                        <ItemsPresenter/>
                                     </ScrollViewer>
                                 </Border>
                             </Popup>
