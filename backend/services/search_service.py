@@ -5,7 +5,6 @@ from services.database_service import DatabaseService
 from services.neo4j_service import Neo4jService
 from services.query_router import route_query
 from sqlalchemy import text
-import os
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -20,49 +19,20 @@ class HybridSearchService:
         self.embedding_service = EmbeddingService()
         self.database_service = DatabaseService()
 
-    def _call_ollama(self, prompt: str, max_tokens: int = 200) -> str:
-        """Call Ollama LLM für HyDE — nutzt kimi-k2.7-code:cloud (~2s).
-        deepseek-v3.2:cloud wurde am 2026-07-15 retired, HyDE fiel seitdem lautlos
-        auf reines Query-Embedding zurück. Fallback auf HYDE_MODEL env var falls gesetzt."""
-        import urllib.request as _urlreq
-        import json as _json
-        model = os.environ.get('HYDE_MODEL', 'kimi-k2.7-code:cloud')
-        # Try configured URL first, then localhost fallback
-        urls_to_try = []
-        configured = os.environ.get('OLLAMA_URL', '')
-        if configured:
-            urls_to_try.append(configured)
-        if 'localhost' not in configured:
-            urls_to_try.append('http://localhost:11434')
-        payload = _json.dumps({
-            'model': model,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'stream': False,
-            'max_tokens': max_tokens,
-            'temperature': 0.1,
-        }).encode()
-        for url_base in urls_to_try:
-            try:
-                req = _urlreq.Request(
-                    f'{url_base}/v1/chat/completions',
-                    data=payload,
-                    headers={'Content-Type': 'application/json'},
-                )
-                with _urlreq.urlopen(req, timeout=90) as resp:
-                    data = _json.loads(resp.read())
-                msg = data.get('choices', [{}])[0].get('message', {})
-                content = msg.get('content', '')
-                # kimi thinking models may have empty content but answer in reasoning
-                if not content:
-                    content = msg.get('reasoning', '')
-                if content:
-                    return content
-            except Exception as e:
-                logger.debug(f"Ollama call failed at {url_base}: {e}")
-        return ''
+    def _call_llm(self, prompt: str, max_tokens: int = 200) -> str:
+        """Für HyDE, Query-Rewrite und Kimi-Direct-Lookup — läuft über die
+        zentrale KI-Schnittstelle (services.llm_client). Gibt bei Fehlern ''
+        zurück, damit die Aufrufer wie bisher auf direktes Query-Embedding
+        bzw. Keyword-Fallback zurückfallen können."""
+        from services.llm_client import ask_llm
+        try:
+            return ask_llm(prompt, max_tokens=max_tokens)
+        except Exception as e:
+            logger.debug(f"KI-Aufruf fehlgeschlagen: {e}")
+            return ''
 
     def hyde_embed(self, query: str) -> list:
-        """HyDE: Kimi via Ollama generiert hypothetische juristische Antwort → besseres Embedding.
+        """HyDE: KI generiert hypothetische juristische Antwort → besseres Embedding.
         Fallback auf direkte Query-Embedding bei Fehler."""
         try:
             hyde_prompt = (
@@ -70,7 +40,7 @@ class HybridSearchService:
                 f"juristischen Fachtext (ca. 80 Wörter). Nenne konkrete Paragraphen und Gesetze.\n\n"
                 f"Frage: {query}\n\nJuristische Antwort:"
             )
-            hypo_text = self._call_ollama(hyde_prompt, max_tokens=600)
+            hypo_text = self._call_llm(hyde_prompt, max_tokens=600)
             if hypo_text and len(hypo_text) > 20:
                 logger.info(f"HyDE generated {len(hypo_text)} chars, embedding hypothetical answer")
                 return self.embedding_service.generate_embedding(hypo_text)
@@ -81,14 +51,14 @@ class HybridSearchService:
         return self.embedding_service.generate_embedding(query)
 
     def _rewrite_query_for_legal_search(self, query: str) -> str:
-        """Rewrite colloquial client query to precise legal terminology via Kimi."""
+        """Rewrite colloquial client query to precise legal terminology via KI."""
         try:
             rewrite_prompt = (
                 f"Übersetze diese Mandantenfrage in präzise juristische Suchbegriffe "
                 f"(max 15 Wörter, nur Substantive und Rechtsgebiete):\n\n"
                 f"Frage: {query}\n\nJuristische Suchbegriffe:"
             )
-            rewritten = self._call_ollama(rewrite_prompt, max_tokens=200).strip()
+            rewritten = self._call_llm(rewrite_prompt, max_tokens=200).strip()
             if rewritten and len(rewritten) > 5:
                 logger.info(f"Query rewritten to: {rewritten[:100]}")
                 return rewritten
@@ -202,7 +172,7 @@ class HybridSearchService:
                 "'§Nummer GESETZ' (z.B. §823 BGB, §7 StVG, §1 KSchG).\n\n"
                 f"Frage: {query}\n\nAntwort:"
             )
-            kimi_response = self._call_ollama(prompt, max_tokens=2000)
+            kimi_response = self._call_llm(prompt, max_tokens=2000)
             if not kimi_response:
                 return []
 
@@ -920,24 +890,17 @@ class HybridSearchService:
         return await loop.run_in_executor(None, self.search, query)
 
     def rerank_results(self, query: str, chunks: list[dict], top_k: int = 5) -> list[dict]:
-        """Rerank chunks using Claude — only for Tief-Modus. Filters out score < 7."""
-        import anthropic
+        """Rerank chunks via zentrale KI-Schnittstelle — nur für Tief-Modus. Filtert score < 7 raus."""
+        from services.llm_client import ask_llm
         import re
-        api_key = os.environ.get('CLAUDE_API_KEY') or os.environ.get('ANTHROPIC_API_KEY')
-        client = anthropic.Anthropic(api_key=api_key)
         scored = []
         for chunk in chunks:
             text = chunk.get('text', '')
             try:
-                message = client.messages.create(
-                    model='claude-3-haiku-20240307',
+                response_text = ask_llm(
+                    f"Bewertet diesen Gesetzestext auf Relevanz für: '{query}'. Antwort: RELEVANZ: [1-10]\n\n{text}",
                     max_tokens=50,
-                    messages=[{
-                        'role': 'user',
-                        'content': f"Bewertet diesen Gesetzestext auf Relevanz für: '{query}'. Antwort: RELEVANZ: [1-10]\n\n{text}"
-                    }]
                 )
-                response_text = message.content[0].text
                 match = re.search(r'RELEVANZ:\s*(\d+)', response_text)
                 score = int(match.group(1)) if match else 0
             except Exception as e:

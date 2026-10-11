@@ -220,6 +220,10 @@ public partial class FeatureWunschDialog : Window
 
     private void OnFeedbackTypChanged(object sender, SelectionChangedEventArgs e)
     {
+        // IsSelected="True" auf dem ersten ComboBoxItem (XAML) loest dieses Event
+        // bereits waehrend InitializeComponent aus, bevor BugFieldsPanel verbunden ist.
+        if (BugFieldsPanel == null) return;
+
         var isBug = SelectedFeedbackTyp == "bug";
         BugFieldsPanel.Visibility = isBug ? Visibility.Visible : Visibility.Collapsed;
     }

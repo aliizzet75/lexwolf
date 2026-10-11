@@ -3,16 +3,14 @@
 Nimmt eine Liste von Messages entgegen (max. 10) und gibt
 eine Antwort des Rechtsassistenten zurück.
 """
-import os
-import json
 import logging
 import asyncio
-import urllib.request as _urlreq
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional
 
 from services.search_service import HybridSearchService
+from services.llm_client import ask_llm
 from api.ask import _direct_paragraph_search
 
 logger = logging.getLogger(__name__)
@@ -91,52 +89,6 @@ def _search_chunks(query: str) -> str:
         return ""
 
 
-def _call_ollama(messages: list, max_tokens: int = 6000) -> str:
-    """Ruft Ollama Chat Completions API auf und gibt den Antworttext zurück.
-    deepseek-v3.2:cloud wurde am 2026-07-15 retired (lieferte nur noch API-Fehler,
-    /chat war dadurch komplett down). Ersetzt durch kimi-k2.7-code:cloud (~2s,
-    mit DB-Grounding im System-Prompt getestet: liefert korrekte, saubere Antworten).
-    max_tokens war 2000 — bei verschachtelten Tabellen (z.B. Zahlbeträge-Aufstellung
-    in einer Unterhaltsberechnung) verbraucht das "denkende" Modell das komplette
-    Budget fürs Durchrechnen im reasoning-Feld und "content" bleibt leer, was der
-    Reasoning-Leak-Schutz dann als Fallback-Antwort auffängt statt der eigentlich
-    fast fertig durchgerechneten Lösung."""
-    model = os.environ.get("CHAT_MODEL", "kimi-k2.7-code:cloud")
-    ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-
-    payload = json.dumps({
-        "model": model,
-        "messages": messages,
-        "stream": False,
-        "max_tokens": max_tokens,
-        "temperature": 0.3,
-    }).encode()
-
-    urls_to_try = [ollama_url]
-    if "localhost" not in ollama_url:
-        urls_to_try.append("http://localhost:11434")
-
-    last_error = None
-    for base_url in urls_to_try:
-        try:
-            req = _urlreq.Request(
-                f"{base_url}/v1/chat/completions",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            with _urlreq.urlopen(req, timeout=60) as resp:
-                data = json.loads(resp.read().decode())
-                msg = data["choices"][0]["message"]
-                # DeepSeek reasoning models put chain-of-thought in "reasoning";
-                # fall back to it when "content" is empty (token budget exceeded reasoning phase)
-                return msg.get("content") or msg.get("reasoning", "")
-        except Exception as e:
-            last_error = e
-            continue
-
-    raise RuntimeError(f"Ollama nicht erreichbar: {last_error}")
-
-
 _REASONING_LEAK_MARKERS = (
     "the user ask", "i need to", "let me", "i should", "let's parse",
     "we need answer", "the instruction says", "final answer:",
@@ -205,10 +157,10 @@ async def chat(request: ChatRequest) -> ChatResponse:
     for m in messages:
         ollama_messages.append({"role": m.role, "content": m.content})
 
-    # 6. Ollama aufrufen — bei Denkprotokoll-Leckage einmal mit Verstärkung retryen
-    # _call_ollama ist blockierend (urllib.urlopen, bis zu 60s Timeout) — ebenfalls
-    # in Thread auslagern, siehe Kommentar oben bei _search_chunks.
-    content = await asyncio.to_thread(_call_ollama, ollama_messages)
+    # 6. KI aufrufen — bei Denkprotokoll-Leckage einmal mit Verstärkung retryen
+    # ask_llm ist blockierend (Anthropic-SDK-Call) — ebenfalls in Thread
+    # auslagern, siehe Kommentar oben bei _search_chunks.
+    content = await asyncio.to_thread(ask_llm, ollama_messages, max_tokens=6000)
     if _looks_like_reasoning_leak(content):
         logger.warning("Reasoning-Leak erkannt (%d Zeichen) — Retry mit verstärkter Anweisung", len(content))
         reinforced = ollama_messages + [{
@@ -216,7 +168,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             "content": "Wichtig: Antworte NUR mit der fertigen Antwort auf Deutsch, "
                        "ohne jegliche Zwischengedanken oder Erklärung deines Vorgehens.",
         }]
-        content = await asyncio.to_thread(_call_ollama, reinforced)
+        content = await asyncio.to_thread(ask_llm, reinforced, max_tokens=6000)
         if _looks_like_reasoning_leak(content):
             logger.warning("Reasoning-Leak nach Retry weiterhin vorhanden — gebe Fallback-Antwort")
             content = (
@@ -227,6 +179,10 @@ async def chat(request: ChatRequest) -> ChatResponse:
     # 7. Intent erkennen und Aktion ableiten
     intent = _detect_intent(last_user_msg)
     suggested_action = _intent_to_action(intent)
+
+    from services.llm_client import using_temporary_test_backend, TEST_MODE_DISCLAIMER
+    if using_temporary_test_backend():
+        content += TEST_MODE_DISCLAIMER
 
     return ChatResponse(
         content=content,

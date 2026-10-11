@@ -26,7 +26,8 @@ public class UpdateChecker
     {
         try
         {
-            var json = await _http.GetStringAsync($"{_backendUrl}/client/version");
+            var currentVersionParam = Uri.EscapeDataString(CurrentVersion.ToString());
+            var json = await _http.GetStringAsync($"{_backendUrl}/client/version?current_version={currentVersionParam}");
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
             var versionString = root.GetProperty("version").GetString() ?? "0.0.0";

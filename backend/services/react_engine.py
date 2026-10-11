@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import sys
 from typing import Dict, List
 
@@ -148,26 +147,8 @@ class ReActEngine:
 
 
 def call_llm(prompt: str) -> str:
-    import urllib.request
-    import json as _json
-    model = os.environ.get('OLLAMA_MODEL', 'kimi-k2.5:cloud')
-    ollama_url = os.environ.get('OLLAMA_URL', 'http://localhost:11434')
-    # OpenAI-kompatibler Endpoint — funktioniert für lokale und Cloud-Modelle
-    payload = _json.dumps({
-        'model': model,
-        'messages': [{'role': 'user', 'content': prompt}],
-        'stream': False,
-        'max_tokens': 2048,
-        'temperature': 0.1,
-    }).encode()
-    req = urllib.request.Request(
-        f'{ollama_url}/v1/chat/completions',
-        data=payload,
-        headers={'Content-Type': 'application/json'},
-    )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        data = _json.loads(resp.read())
-    return data.get('choices', [{}])[0].get('message', {}).get('content', '')
+    from services.llm_client import ask_llm
+    return ask_llm(prompt, max_tokens=2048)
 
 
 def generate_structured_response(query: str, chunks: List[Dict]) -> Dict:

@@ -113,11 +113,7 @@ debug_*.py
 
 # Ausnahme: Projekt-Acceptance-Tests unter tests/acceptance/
 !tests/acceptance/test_*.py
-backend/api/routes/
-backend/crawlers/ris_crawler.py
-backend/llm_judge.py
-backend/scripts/
-backend/services/content_detector.py
-backend/services/create_fts_index.py
-backend/services/search_service_keywords.py
-backend/services/test_fts.py
+
+# Laufzeitdaten: von Anwälten hochgeladene Bug-Report-Screenshots (potenziell
+# Mandanten-PII) — gehören nicht ins Repo, nur auf dem Server.
+attachments/

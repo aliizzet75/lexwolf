@@ -1,13 +1,8 @@
-; Build (Linux-Server ohne Windows/Wine, daher via Docker + NSIS-Linux-Port):
-;   dotnet publish -c Release -r win-x64 --self-contained true \
-;     -p:EnableWindowsTargeting=true -p:PublishSingleFile=true \
-;     -p:IncludeNativeLibrariesForSelfExtract=true -o <publish-dir>
-;   docker run --rm -v <publish-dir>:/build/lexwolf-desktop:ro \
-;     -v <dieser-ordner>:/nsis:ro -v <out-dir>:/out debian:bookworm-slim \
-;     bash -c "apt-get update -qq && apt-get install -y -qq nsis && \
-;              makensis -DVERSION=<x.y.z> /nsis/lexwolf-setup.nsi"
-; Ergebnis: LexWolf-Setup.exe -> backend/static/client-releases/,
-; danach LATEST_VERSION in backend/api/client_update.py erhöhen.
+; Build: ./release.sh <version z.B. 0.47.0> "<notes>"
+; Das Skript haelt LexWolf.csproj <Version>, backend/api/client_update.py
+; VERSION_HISTORY und diesen Installer synchron (nicht mehr einzeln von Hand
+; pflegen — das lief vorher auseinander und loeste eine Update-Dialog-
+; Endlosschleife beim Client aus).
 
 !include "MUI2.nsh"
 

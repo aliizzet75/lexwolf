@@ -27,7 +27,7 @@ import requests
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, field_validator
 
-from api.chat import _call_ollama
+from services.llm_client import ask_llm
 
 logger = logging.getLogger(__name__)
 
@@ -303,17 +303,20 @@ async def feedback_chat(request: FeedbackChatRequest) -> FeedbackChatResponse:
         ollama_messages.append({"role": m.role, "content": m.content})
 
     try:
-        content = _call_ollama(ollama_messages)
+        content = ask_llm(ollama_messages)
     except Exception as e:
         logger.error(f"Fehler bei Feature-Feedback-Chat: {e}")
         raise HTTPException(status_code=500, detail="KI aktuell nicht erreichbar")
 
+    from services.llm_client import using_temporary_test_backend, TEST_MODE_DISCLAIMER
+    disclaimer = TEST_MODE_DISCLAIMER if using_temporary_test_backend() else ""
+
     parsed = _extract_json(content)
     if not parsed or "reply" not in parsed:
-        return FeedbackChatResponse(status="clarifying", reply=content.strip()[:2000], summary=None)
+        return FeedbackChatResponse(status="clarifying", reply=content.strip()[:2000] + disclaimer, summary=None)
 
     status = parsed.get("status") if parsed.get("status") in ("clarifying", "ready") else "clarifying"
-    return FeedbackChatResponse(status=status, reply=parsed["reply"], summary=parsed.get("summary"))
+    return FeedbackChatResponse(status=status, reply=parsed["reply"] + disclaimer, summary=parsed.get("summary"))
 
 
 @router.post("/clear-history", response_model=ClearHistoryResponse)
@@ -383,7 +386,7 @@ Antworte NUR mit einem JSON-Objekt:
 ```"""
     try:
         content = await asyncio.wait_for(
-            asyncio.to_thread(_call_ollama, [{"role": "user", "content": prompt}]),
+            asyncio.to_thread(ask_llm, prompt),
             timeout=3.0,
         )
         parsed = _extract_json(content)
