@@ -142,6 +142,7 @@
                              SelectionChanged="OnNavChanged" Padding="4,0">
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="allgemein">Allgemein</ListBoxItem>
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="darstellung">Darstellung</ListBoxItem>
+                        <ListBoxItem Style="{StaticResource NavItem}" Tag="sprache">Spracheingabe</ListBoxItem>
                     </ListBox>
                 </DockPanel>
             </Border>
@@ -277,6 +278,25 @@
                             <TextBlock x:Name="PreviewText" Text="Vorschau: Dies ist ein Beispieltext."
                                        Foreground="#c9d1d9" FontSize="13" TextWrapping="Wrap"/>
                         </Border>
+
+                    </StackPanel>
+
+                    <!-- === Spracheingabe === -->
+                    <StackPanel x:Name="PanelSprache" Visibility="Collapsed">
+
+                        <TextBlock Text="Spracheingabe" Foreground="#e6edf3"
+                                   FontSize="16" FontWeight="SemiBold" Margin="0,0,0,20"/>
+
+                        <CheckBox x:Name="VoskGrossBox" Foreground="#c9d1d9" FontSize="13"
+                                  Margin="0,0,0,10" VerticalContentAlignment="Center">
+                            <TextBlock Text="Großes Sprachmodell beim Start laden" Foreground="#c9d1d9" FontSize="13"/>
+                        </CheckBox>
+                        <TextBlock TextWrapping="Wrap" Margin="24,0,0,8"
+                                   Foreground="#8b949e" FontSize="12" LineHeight="18">
+                            Das große Modell erkennt Diktate deutlich genauer, braucht aber rund 3 GB Arbeitsspeicher und lädt einige Minuten im Hintergrund. Ohne diese Option diktiert LexWolf mit dem kleinen Modell. Ausschalten wirkt ab dem nächsten Start.
+                        </TextBlock>
+                        <TextBlock x:Name="VoskGrossStatus" TextWrapping="Wrap" Margin="24,0,0,0"
+                                   Foreground="#6e7681" FontSize="11"/>
 
                     </StackPanel>
 

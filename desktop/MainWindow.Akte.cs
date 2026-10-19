@@ -1,0 +1,415 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+using LexWolf.Controls;
+using LexWolf.Dialogs;
+using LexWolf.Services;
+
+namespace LexWolf;
+
+// Akten-Funktionen: Fristen, Posteingang, Aktenstamm, Schriftsatz, Rechner,
+// Sachstand, Fragebogen. Eigene Datei, damit MainWindow.xaml.cs nicht weiter wächst.
+public partial class MainWindow
+{
+    private AkteService? _akte;
+    private PostfachService? _postfach;
+
+    private void InitAkte()
+    {
+        _akte = new AkteService(_db, _http, BackendUrl, () => _settings);
+        _akte.Geaendert += () => Dispatcher.BeginInvoke(AktualisiereAktenAnsichten);
+        _akte.WarteschlangeGeaendert += n => Dispatcher.BeginInvoke(() => EingangPanel.SetAuswertung(n));
+
+        FristenPanel.Init(_db, () => _settings);
+        FristenPanel.MandantGewaehlt += WaehleMandant;
+        FristenPanel.DringendGeaendert += n => FristenTabHeader.Text = n > 0 ? $"⏰ Fristen ({n})" : "⏰ Fristen";
+
+        _postfach = new PostfachService(_db, () => _settings);
+        EingangPanel.Init(_db, _postfach, () => _settings);
+        _postfach.Abgerufen += (zugeordnet, offen, fehler) => Dispatcher.BeginInvoke(() =>
+        {
+            if (fehler is not null) AddReasoning("⚠️", $"E-Mail-Postfach: {fehler}");
+            else if (zugeordnet + offen > 0)
+                AddReasoning("✉", $"{zugeordnet + offen} neue E-Mail(s): {zugeordnet} in die Akten gelegt" +
+                                  (offen > 0 ? $", {offen} ohne Mandant — bitte im Eingang zuordnen" : ""));
+        });
+        _postfach.Starten();
+        EingangPanel.OffeneGeaendert += n => EingangTabHeader.Text = n > 0 ? $"📥 Eingang ({n})" : "📥 Eingang";
+        EingangPanel.AntwortAngefordert += OnEingangAntwort;
+
+        // Fristen hängen am Datum — einmal pro Stunde neu gruppieren ("morgen" wird "heute").
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromHours(1) };
+        timer.Tick += (_, _) => AktualisiereAktenAnsichten();
+        timer.Start();
+
+        ZeigeTagesueberblick();
+        StarteGrossesSprachmodell();
+    }
+
+    private bool _grossesModellGestartet;
+
+    /// <summary>Großes Vosk-Modell im Hintergrund laden, mit Fortschritt über dem Eingabefeld —
+    /// nur wenn in den Einstellungen eingeschaltet (braucht viel Arbeitsspeicher). Bis es
+    /// fertig ist bzw. ohne die Option diktiert das kleine Modell.</summary>
+    private void StarteGrossesSprachmodell()
+    {
+        if (_grossesModellGestartet || !_settings.VoskGrossBeimStart || !DiktatService.VoskGrossExists(_settings)) return;
+        _grossesModellGestartet = true;
+
+        ModellLadePanel.Visibility = Visibility.Visible;
+        ModellLadeBalken.Value = 0;
+        _diktat.GrossLadeFortschritt += (p, rest) => Dispatcher.BeginInvoke(() =>
+        {
+            if (_diktat.GrossBereit) return;
+            ModellLadeBalken.Value = p;
+            ModellLadeText.Text = $"🎤 Großes Sprachmodell wird geladen … {p:P0} — bis dahin diktiert das kleine Modell";
+            ModellLadeRest.Text = rest is { } r
+                ? $"noch ca. {(r.TotalMinutes >= 1 ? $"{(int)r.TotalMinutes}:{r.Seconds:00} min" : $"{r.Seconds} s")}"
+                : "dauert länger als sonst …";
+        });
+        _diktat.GrossGeladen += (fehler, dauer) => Dispatcher.BeginInvoke(() =>
+        {
+            if (fehler is not null)
+            {
+                ModellLadeText.Text = $"⚠ Großes Sprachmodell konnte nicht geladen werden: {fehler} — es bleibt beim kleinen.";
+                ModellLadeRest.Text = "";
+                return;
+            }
+            ModellLadeBalken.Value = 1;
+            ModellLadeText.Text = "✓ Großes Sprachmodell bereit — Diktate werden jetzt genauer erkannt";
+            ModellLadeRest.Text = $"geladen in {(int)dauer.TotalMinutes}:{dauer.Seconds:00} min";
+            DiktatBtn.ToolTip = "Diktieren (großes Sprachmodell) — Klick startet, zweiter Klick beendet die Aufnahme. Die Erkennung läuft lokal.";
+            _settings.VoskGrossLadezeitSek = dauer.TotalSeconds;
+            try { _settings.Save(); } catch { }
+            var aus = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(12) };
+            aus.Tick += (_, _) => { aus.Stop(); ModellLadePanel.Visibility = Visibility.Collapsed; };
+            aus.Start();
+        });
+        _ = _diktat.GrossVorladenAsync(_settings);
+    }
+
+    private void AktualisiereAktenAnsichten()
+    {
+        FristenPanel.Aktualisieren();
+        EingangPanel.Aktualisieren();
+        AktualisiereKollisionHinweis();
+    }
+
+    /// <summary>Beim Start: was ist heute wichtig? Erscheint oben im Chat-Bereich.</summary>
+    private void ZeigeTagesueberblick()
+    {
+        var heute = DateTime.Today;
+        var fristen = _db.GetFristen();
+        var dringend = fristen.Count(f => f.Status == "offen" && f.Ende <= heute.AddDays(1));
+        var woche = fristen.Count(f => f.Status == "offen" && f.Ende > heute.AddDays(1) && f.Ende <= heute.AddDays(7));
+        var vorschlaege = fristen.Count(f => f.Status == "vorschlag");
+        var eingaenge = _db.GetEingaenge(nurUngelesen: true).Count;
+        if (dringend + woche + vorschlaege + eingaenge == 0) return;
+
+        var teile = new System.Collections.Generic.List<string>();
+        if (dringend > 0) teile.Add($"⚠ {dringend} Frist(en) heute/morgen");
+        if (woche > 0) teile.Add($"{woche} Frist(en) diese Woche");
+        if (vorschlaege > 0) teile.Add($"{vorschlaege} neue Fristvorschläge");
+        if (eingaenge > 0) teile.Add($"{eingaenge} offene Eingänge");
+        AddReasoning("☀", "Tagesüberblick: " + string.Join(" · ", teile));
+        if (dringend > 0 || vorschlaege > 0) LinksTabs.SelectedIndex = 1;
+    }
+
+    /// <summary>Mandant per Id auswählen (z. B. Klick auf eine Frist oder einen Eingang).</summary>
+    private void WaehleMandant(string mandantId)
+    {
+        if (_activeMandantId == mandantId) return;
+        var alle = _db.GetMandanten();
+        var name = alle.FirstOrDefault(m => m.Id == mandantId).Name;
+        if (name is null) return;
+        _mandanten.Clear();
+        _mandanten.AddRange(alle);
+        ApplyMandantFilter("");
+        if (!MandantBox.Items.Contains(name)) MandantBox.Items.Add(name);
+        MandantBox.SelectedItem = name;
+    }
+
+    /// <summary>Aus OnMandantChanged aufgerufen.</summary>
+    private void AktenMandantGewechselt()
+    {
+        AktenLeiste.Visibility = _activeMandantId is null ? Visibility.Collapsed : Visibility.Visible;
+        FristenPanel.SetAktiverMandant(_activeMandantId);
+        EingangPanel.SetAktiverMandant(_activeMandantId);
+        AktualisiereKollisionHinweis();
+    }
+
+    private void AktualisiereKollisionHinweis()
+    {
+        if (_akte is null || _activeMandantId is null)
+        {
+            KollisionHinweis.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var k = _akte.Kollisionen(_activeMandantId);
+        KollisionHinweis.Visibility = k.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        KollisionHinweis.ToolTip = string.Join("\n", k.Select(x => $"{x.Beschreibung} (Akte: {x.AndereAkte})"));
+    }
+
+    private void OnKollisionHinweisClick(object sender, MouseButtonEventArgs e) => OnAktenstammClick(sender, e);
+
+    private void OnEingangAntwort(string mandantId, EingangZeile z)
+    {
+        var dlg = new AntwortDialog(_db, BackendUrl, z, _settings.DokumentePfad) { Owner = this };
+        dlg.ShowDialog();
+        if (dlg.InChatUebernehmen is not { } text) return;
+        // Weiterarbeiten im Chat: dort hat die KI den ganzen Mandanten-Kontext
+        WaehleMandant(mandantId);
+        InputBox.Text = text;
+        InputBox.CaretIndex = InputBox.Text.Length;
+        InputBox.Focus();
+    }
+
+    private bool MandantNoetig()
+    {
+        if (_activeMandantId is not null) return true;
+        MessageBox.Show(this, "Bitte zuerst oben einen Mandanten auswählen.", "LexWolf",
+            MessageBoxButton.OK, MessageBoxImage.Information);
+        return false;
+    }
+
+    private void OnNeuesMandatClick(object sender, RoutedEventArgs e) => _ = NeuesMandatAsync(null);
+
+    private async Task NeuesMandatAsync(IEnumerable<string>? unterlagen)
+    {
+        if (_akte is null) return;
+        var dlg = new NeuesMandatDialog(_db, _akte, _settings, unterlagen) { Owner = this };
+        if (dlg.ShowDialog() != true || dlg.Ergebnis is not { } ergebnis) return;
+
+        WaehleMandant(ergebnis.MandantId);
+        // Erst ablegen und einlesen — dann kennt die KI die Unterlagen schon bei der Ersteinschätzung.
+        if (ergebnis.Unterlagen is { } u)
+            await InAkteUebernehmenAsync(ergebnis.MandantId, ergebnis.Name, u);
+        AktualisiereAktenAnsichten();
+        if (ergebnis.KiAuftrag is null) return;
+
+        // Erst die (leere) Historie fertig laden lassen — sonst landet der Auftrag doppelt im Verlauf.
+        if (_historieLaden is { } laden)
+            try { await laden; } catch { }
+        if (_activeMandantId != ergebnis.MandantId) return;
+        await SendeAsync(ergebnis.KiAuftrag);
+    }
+
+    // ------------------------------------------------------------ Dokumente in die Akte
+
+    private void OnDokumenteClick(object sender, RoutedEventArgs e) => _ = DokumenteHinzufuegenAsync(null);
+
+    private async Task DokumenteHinzufuegenAsync(IEnumerable<string>? vorbelegt)
+    {
+        if (!MandantNoetig()) return;
+        var mandantId = _activeMandantId!;
+        var name = _activeMandantName ?? "";
+        var dlg = new DokumenteDialog(_db, name, vorbelegt) { Owner = this };
+        if (dlg.ShowDialog() != true)
+        {
+            dlg.Dokumente.ZwischenordnerAufraeumen();
+            return;
+        }
+        await InAkteUebernehmenAsync(mandantId, name, dlg.Dokumente);
+    }
+
+    /// <summary>Dateien kopieren, E-Mails samt Anhängen ablegen, Postfach-Mails zuordnen; danach
+    /// sofort einlesen (für Chat und Schriftsatz) und auswerten lassen (Fristen, Beteiligte).</summary>
+    private async Task InAkteUebernehmenAsync(string mandantId, string mandantName, DokumentAuswahl auswahl)
+    {
+        var ordner = Path.Combine(_settings.DokumentePfad, mandantName);
+        var dateien = auswahl.Dateien.ToList();
+        var postfach = auswahl.PostfachMails.ToList();
+        var postfachDienst = _postfach;
+        var scanner = _scanner;
+        ZeigeWolfLoading("Dokumente werden in die Akte gelegt und gelesen …");
+        try
+        {
+            var (neu, fehler) = await Task.Run(() =>
+            {
+                var neu = new List<string>();
+                var fehler = new List<string>();
+                foreach (var quelle in dateien)
+                {
+                    try { neu.AddRange(AktenAblage.Ablegen(quelle, ordner, MsgKonverter.Laden)); }
+                    catch (Exception ex) { fehler.Add($"{Path.GetFileName(quelle)}: {ex.Message}"); }
+                }
+                foreach (var (pfad, absender) in postfach)
+                {
+                    try
+                    {
+                        var basis = Path.GetFileNameWithoutExtension(pfad);
+                        postfachDienst?.Zuordnen(pfad, mandantId, mandantName, absender);
+                        var mails = Path.Combine(ordner, AktenAblage.EmailOrdner);
+                        if (Directory.Exists(mails)) neu.AddRange(Directory.EnumerateFiles(mails, basis + "*"));
+                    }
+                    catch (Exception ex) { fehler.Add($"{Path.GetFileName(pfad)}: {ex.Message}"); }
+                }
+                foreach (var p in neu) scanner?.DateiEinlesen(mandantId, p);
+                return (neu, fehler);
+            });
+
+            var inAuswertung = neu.Count(p => _akte?.Auswerten(mandantId, p) == true);
+            if (_activeMandantId == mandantId) BuildFileTree(mandantName);
+            AktualisiereAktenAnsichten();
+            if (neu.Count > 0)
+                AddReasoning("📎", $"{neu.Count} Datei(en) in die Akte „{mandantName}“ gelegt" +
+                                  (inAuswertung > 0 ? $" — {inAuswertung} werden ausgewertet, erkannte Fristen erscheinen als Vorschlag." : "."));
+            if (fehler.Count > 0)
+                MessageBox.Show(this, "Nicht übernommen:\n\n" + string.Join("\n", fehler), "Dokumente",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            VerbergeWolfLoading();
+            auswahl.ZwischenordnerAufraeumen();
+        }
+    }
+
+    // Dateien oder Outlook-Mails aufs Fenster ziehen: in die offene Akte bzw. in ein neues Mandat.
+    private void OnFensterDragOver(object sender, DragEventArgs e)
+    {
+        if (!DragDropDateien.EnthaeltDateien(e.Data)) return;
+        e.Effects = DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private void OnFensterDrop(object sender, DragEventArgs e)
+    {
+        if (!DragDropDateien.EnthaeltDateien(e.Data)) return;
+        e.Handled = true;
+        List<string> dateien;
+        var zwischen = Path.Combine(Path.GetTempPath(), "LexWolf-Ablage", Guid.NewGuid().ToString("N"));
+        try
+        {
+            // Outlook gibt die Inhalte nur während des Drop-Ereignisses heraus.
+            dateien = DragDropDateien.Holen(e.Data, zwischen);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Die Dateien konnten nicht übernommen werden: {ex.Message}", "Dokumente",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (dateien.Count == 0) return;
+
+        // Dialog erst nach dem Drop öffnen — sonst hängt die Quellanwendung (Outlook, Explorer).
+        Dispatcher.BeginInvoke(async () =>
+        {
+            try
+            {
+                if (_activeMandantId is not null)
+                {
+                    await DokumenteHinzufuegenAsync(dateien);
+                }
+                else if (MessageBox.Show(this, "Es ist kein Mandant ausgewählt. Neues Mandat mit diesen Dokumenten anlegen?",
+                             "Dokumente", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    await NeuesMandatAsync(dateien);
+                }
+            }
+            finally
+            {
+                try { if (Directory.Exists(zwischen)) Directory.Delete(zwischen, recursive: true); } catch { }
+            }
+        });
+    }
+
+    private void OnAktenstammClick(object sender, RoutedEventArgs e)
+    {
+        if (!MandantNoetig() || _akte is null) return;
+        var dlg = new AkteDialog(_db, _akte, _activeMandantId!, _activeMandantName ?? "") { Owner = this };
+        dlg.ShowDialog();
+        AktualisiereAktenAnsichten();
+        if (dlg.LoeschenAngefordert) MandantLoeschen(_activeMandantId!, _activeMandantName ?? "");
+    }
+
+    // ------------------------------------------------------------ Mandant löschen
+
+    private void OnMandantLoeschenAusBaum(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        var ordner = MandantOrdnerVon(node.Path, _settings.DokumentePfad);
+        if (ordner is null) return;
+        MandantLoeschen(DokumentScanner.MandantIdFuer(ordner), ordner);
+    }
+
+    /// <summary>Nach Sicherheitsabfrage: Aktenordner in den Papierkorb, danach alle Daten in LexWolf löschen.
+    /// Scheitert der Ordner (Datei noch geöffnet), wird gar nichts gelöscht.</summary>
+    private void MandantLoeschen(string mandantId, string mandantName)
+    {
+        var ordner = Path.Combine(_settings.DokumentePfad, mandantName);
+        var dlg = new MandantLoeschenDialog(_db, mandantId, mandantName, ordner) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+
+        var ordnerDa = Directory.Exists(ordner);
+        var papierkorb = MandantLoeschenDialog.HatPapierkorb(ordner);
+        try
+        {
+            if (ordnerDa)
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(ordner,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    papierkorb
+                        ? Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin
+                        : Microsoft.VisualBasic.FileIO.RecycleOption.DeletePermanently);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Der Aktenordner konnte nicht gelöscht werden — ist noch eine Datei daraus geöffnet?\n\n{ex.Message}\n\n" +
+                                  "Es wurde nichts gelöscht.", "Mandant löschen", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (_activeMandantId == mandantId)
+        {
+            // Erst abmelden, damit beim Abwählen nichts mehr für den gelöschten Mandanten gespeichert wird
+            _activeMandantId = null;
+            _activeMandantName = null;
+            _history.Clear();
+            MandantBox.SelectedItem = null;
+            MandantBox.Text = "";
+        }
+        _db.DeleteMandantKomplett(mandantId);
+        _ = LoadMandantenAsync();
+        BuildFileTree(_activeMandantName);
+        AktualisiereAktenAnsichten();
+        AktenMandantGewechselt();
+        AddReasoning("🗑", $"Mandant „{mandantName}“ gelöscht" +
+                          (!ordnerDa ? "." : papierkorb ? " — der Aktenordner liegt im Papierkorb." : " — der Aktenordner wurde endgültig gelöscht."));
+    }
+
+    private void OnSchriftsatzClick(object sender, RoutedEventArgs e)
+    {
+        if (!MandantNoetig()) return;
+        new SchriftsatzDialog(_db, BackendUrl, _activeMandantId!, _activeMandantName ?? "", _settings) { Owner = this }.ShowDialog();
+    }
+
+    private void OnRechnerClick(object sender, RoutedEventArgs e)
+    {
+        var fragebogen = _activeMandantId is null ? new Fragebogen() : Fragebogen.FromJson(_db.GetFragebogen(_activeMandantId));
+        var dlg = new RechnerDialog(fragebogen, _activeMandantName, db: _db, mandantId: _activeMandantId, backendUrl: BackendUrl) { Owner = this };
+        dlg.ShowDialog();
+        if (dlg.InChatUebernehmen is { } text)
+        {
+            var vorher = InputBox.Text.TrimEnd();
+            InputBox.Text = vorher.Length > 0 ? $"{vorher}\n{text}" : text;
+            InputBox.CaretIndex = InputBox.Text.Length;
+            InputBox.Focus();
+        }
+    }
+
+    private void OnSachstandClick(object sender, RoutedEventArgs e)
+    {
+        if (!MandantNoetig()) return;
+        new SachstandDialog(_db, BackendUrl, _activeMandantId!, _activeMandantName ?? "", _settings.DokumentePfad) { Owner = this }.ShowDialog();
+    }
+
+    private void OnFragebogenClick(object sender, RoutedEventArgs e)
+    {
+        if (!MandantNoetig()) return;
+        new FragebogenDialog(_db, BackendUrl, _activeMandantId!, _activeMandantName ?? "", _settings.DokumentePfad) { Owner = this }.ShowDialog();
+    }
+}

@@ -32,6 +32,11 @@ Section "Install"
 
   SetOutPath "$INSTDIR"
   File "\build\lexwolf-desktop\LexWolf.exe"
+  ; Native Whisper-DLLs (Spracheingabe) — liegen bewusst neben der .exe,
+  ; siehe Target WhisperNativeNichtBuendeln in LexWolf.csproj.
+  SetOutPath "$INSTDIR\runtimes\win-x64"
+  File "\build\lexwolf-desktop\runtimes\win-x64\*.dll"
+  SetOutPath "$INSTDIR"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\LexWolf"
   CreateShortcut "$SMPROGRAMS\LexWolf\LexWolf.lnk" "$INSTDIR\LexWolf.exe"
@@ -49,6 +54,7 @@ SectionEnd
 Section "Uninstall"
   Delete "$INSTDIR\LexWolf.exe"
   Delete "$INSTDIR\Uninstall.exe"
+  RMDir /r "$INSTDIR\runtimes"
   RMDir "$INSTDIR"
   Delete "$SMPROGRAMS\LexWolf\LexWolf.lnk"
   Delete "$SMPROGRAMS\LexWolf\Uninstall.lnk"

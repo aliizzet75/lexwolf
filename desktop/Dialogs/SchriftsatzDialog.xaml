@@ -1,0 +1,205 @@
+<Window x:Class="LexWolf.Dialogs.SchriftsatzDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LexWolf — Schriftsatz"
+        Icon="/Assets/lexwolf.ico"
+        Width="1280" Height="820" MinWidth="980" MinHeight="580"
+        Background="#0d1117"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+    <Window.Resources>
+        <!-- Kachel mit Zahl für die Belegprüfung -->
+        <Style x:Key="Kachel" TargetType="Border">
+            <Setter Property="Background" Value="#0d1117"/>
+            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+        <Style x:Key="KachelZahl" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="{DynamicResource LwSchriftTitel}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="KachelText" TargetType="TextBlock" BasedOn="{StaticResource LwZaehlerText}">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Kopf -->
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock Text="Schriftsatz entwerfen" Style="{StaticResource LwDialogTitel}"/>
+                <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Fuß -->
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource LwFussleiste}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="KopierenBtn" Content="📋 Kopieren" Style="{StaticResource LwButton}" Click="OnKopieren" IsEnabled="False"/>
+                    <Button x:Name="WordBtn" Content="💾 In die Akte" Style="{StaticResource LwButton}" Margin="8,0,0,0"
+                            Click="OnWord" IsEnabled="False" ToolTip="Als Word-Datei im Mandantenordner speichern und öffnen"/>
+                    <Button Content="Schließen" Style="{StaticResource LwButton}" Margin="8,0,0,0" IsCancel="True" Click="OnSchliessen"/>
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Style="{StaticResource LwStatus}"/>
+            </DockPanel>
+        </Border>
+
+        <Grid Margin="24,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" MinWidth="320"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="4*" MinWidth="380"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="2*" MinWidth="250"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Links: Auftrag -->
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource LwSchritt}"><TextBlock Text="1" Style="{StaticResource LwSchrittText}"/></Border>
+                        <TextBlock Text="Was soll entstehen?" Style="{StaticResource LwAbschnitt}"/>
+                    </StackPanel>
+                    <ComboBox x:Name="ArtBox" Style="{StaticResource DarkComboBoxStyle}" Margin="0,10,0,0"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                        <Border Style="{StaticResource LwSchritt}"><TextBlock Text="2" Style="{StaticResource LwSchrittText}"/></Border>
+                        <TextBlock Text="Ihre Vorgaben" Style="{StaticResource LwAbschnitt}"/>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource LwHinweis}" Margin="34,2,0,6" Text="Ziel, Argumente, Besonderheiten."/>
+                    <TextBox x:Name="AnweisungBox" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True"
+                             MinHeight="110" MaxHeight="220" VerticalScrollBarVisibility="Auto"
+                             ToolTip="z. B. „Antrag auf Abweisung; Einkommen der Antragstellerin ist höher als behauptet, siehe Gehaltsabrechnungen“"/>
+
+                    <DockPanel Margin="0,20,0,8">
+                        <Button DockPanel.Dock="Right" Content="alle / keine" Style="{StaticResource LwLinkButton}"
+                                VerticalAlignment="Center" Click="OnAlleUmschalten"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="3" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Dokumente" Style="{StaticResource LwAbschnitt}"/>
+                            <Border Style="{StaticResource LwZaehler}"><TextBlock x:Name="DokumenteZahl" Style="{StaticResource LwZaehlerText}"/></Border>
+                        </StackPanel>
+                    </DockPanel>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Bottom">
+                    <Border Style="{StaticResource LwEintrag}" Margin="0,10,0,0">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource LwSmallButton}" Click="OnStilEntfernen"
+                                    Margin="6,0,0,0" ToolTip="Keine Stilvorlage verwenden"/>
+                            <Button DockPanel.Dock="Right" Content="Wählen …" Style="{StaticResource LwSmallButton}" Click="OnStilWaehlen"
+                                    ToolTip="Eigenen guten Schriftsatz wählen — LexWolf übernimmt Aufbau, Ton und Formulierungen, keine Inhalte"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Stilvorlage" Style="{StaticResource LwZaehlerText}"/>
+                                <TextBlock x:Name="StilText" Style="{StaticResource LwFliesstext}" TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <Button x:Name="ErstellenBtn" Content="✨ Entwurf erstellen" Style="{StaticResource LwPrimaryButton}"
+                            Padding="14,10" Margin="0,12,0,0" Click="OnErstellen"/>
+                </StackPanel>
+
+                <Border Style="{StaticResource LwKarte}" Padding="10,8">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <ItemsControl x:Name="DokumenteListe">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding Ausgewaehlt}" Style="{StaticResource LwCheckBox}"
+                                                  VerticalContentAlignment="Top" Click="OnDokumentGeaendert" Margin="0,3">
+                                            <TextBlock Text="{Binding Titel}" Style="{StaticResource LwFliesstext}" Margin="4,0,0,0"/>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Name="DokumenteLeer" Style="{StaticResource LwHinweis}" Visibility="Collapsed"
+                                       Text="Keine lesbaren Dokumente in der Akte. Der Entwurf stützt sich dann nur auf Ihre Vorgaben."/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </DockPanel>
+
+            <!-- Mitte: Entwurf -->
+            <DockPanel Grid.Column="2">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <Button DockPanel.Dock="Right" Content="🧮 Berechnung einfügen" Style="{StaticResource LwSmallButton}"
+                            Click="OnBerechnung" ToolTip="Unterhalt, Zugewinn, Verfahrenswert oder Kosten berechnen und mit Rechenweg einfügen"/>
+                    <TextBlock Text="Entwurf" Style="{StaticResource LwAbschnitt}"/>
+                </DockPanel>
+                <Grid>
+                    <TextBox x:Name="EntwurfBox" Style="{StaticResource LwEditor}" FontFamily="Segoe UI" TextChanged="OnEntwurfGeaendert"/>
+                    <StackPanel x:Name="LeerHinweis" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                                MaxWidth="380">
+                        <TextBlock Text="📝" FontSize="{DynamicResource LwSchriftTitel}" Foreground="#30363d" HorizontalAlignment="Center"/>
+                        <TextBlock Style="{StaticResource LwHinweis}" TextAlignment="Center" Margin="0,8,0,0"
+                                   Text="Links Art, Vorgaben und Dokumente wählen, dann „Entwurf erstellen“. Jede Tatsache bekommt eine Fundstelle wie [D2]."/>
+                    </StackPanel>
+                </Grid>
+            </DockPanel>
+
+            <!-- Rechts: Belegprüfung -->
+            <Border Grid.Column="4" Style="{StaticResource LwKarte}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="🔎 Belegprüfung" Style="{StaticResource LwHeading}"/>
+                        <TextBlock Style="{StaticResource LwHinweis}" Margin="0,2,0,10" Text="Rechtsprechung immer selbst prüfen."/>
+                        <Grid x:Name="BelegeKacheln" Margin="0,0,0,12" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource Kachel}">
+                                <StackPanel>
+                                    <TextBlock x:Name="GeprueftZahl" Style="{StaticResource KachelZahl}" Foreground="#3fb950"/>
+                                    <TextBlock Text="geprüft" Style="{StaticResource KachelText}"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource Kachel}">
+                                <StackPanel>
+                                    <TextBlock x:Name="PruefenZahl" Style="{StaticResource KachelZahl}" Foreground="#d29922"/>
+                                    <TextBlock Text="prüfen" Style="{StaticResource KachelText}"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="4" Style="{StaticResource Kachel}">
+                                <StackPanel>
+                                    <TextBlock x:Name="FalschZahl" Style="{StaticResource KachelZahl}" Foreground="#f85149"/>
+                                    <TextBlock Text="fehlerhaft" Style="{StaticResource KachelText}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <ItemsControl x:Name="BelegeListe">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource LwEintrag}">
+                                            <StackPanel>
+                                                <TextBlock Style="{StaticResource LwFliesstext}" Foreground="#e6edf3">
+                                                    <Run Text="{Binding Symbol, Mode=OneWay}" Foreground="{Binding Farbe, Mode=OneWay}" FontWeight="Bold"/>
+                                                    <Run Text="{Binding Zitat, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding StatusText}" Style="{StaticResource LwHinweis}"
+                                                           Foreground="{Binding Farbe}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Name="BelegeLeer" Style="{StaticResource LwHinweis}" Text="Erscheint mit dem Entwurf."/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

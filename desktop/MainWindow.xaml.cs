@@ -27,7 +27,12 @@ record ChatMessage(string Role, string Content);
 
 public partial class MainWindow : Window
 {
-    private const string BackendUrl = "http://212.227.180.66:8000";
+    // LEXWOLF_BACKEND_URL / LEXWOLF_BOARD_URL überschreiben die Server nur für
+    // Tests auf dem Entwicklungsrechner.
+    private static readonly string BackendUrl =
+        Environment.GetEnvironmentVariable("LEXWOLF_BACKEND_URL") ?? "http://212.227.180.66:8000";
+    private static readonly string BoardUrl =
+        Environment.GetEnvironmentVariable("LEXWOLF_BOARD_URL") ?? "http://212.227.180.66:8082";
 
     private AppSettings _settings = AppSettings.Load();
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(120) };
@@ -44,10 +49,44 @@ public partial class MainWindow : Window
     private string _kopierenFeedbackLabel = "✅ Kopiert";
     private System.Windows.Threading.DispatcherTimer? _kopierenFeedbackTimer;
     private readonly List<(string Id, string Name)> _mandanten = new();
+    // Läuft nach jedem Mandantenwechsel; wer direkt danach etwas in den Chat schreibt, wartet darauf.
+    private Task? _historieLaden;
     private readonly List<string> _chatHistoryHtml = new();
+    /// <summary>Datei eines Entwurfs (.docx/.eml): in &lt;Mandant&gt;\Entwürfe, nach der
+    /// Übernahme im Mandantenordner; Lose = ohne Mandant unter Dokumente\LexWolf\Schreiben.</summary>
+    private sealed class Entwurf
+    {
+        public required string Pfad { get; set; }
+        // Zeitstempel unseres letzten Schreibens — weicht er ab, wurde die Datei
+        // zwischendurch (z.B. in Word) bearbeitet und darf nicht überschrieben werden.
+        public DateTime GeschriebenUtc { get; set; }
+        public bool Uebernommen { get; set; }
+        public bool Lose { get; set; }
+        public int Fassung { get; set; } = 1;
+        public bool Unveraendert => File.Exists(Pfad) && File.GetLastWriteTimeUtc(Pfad) == GeschriebenUtc;
+    }
+
+    /// <summary>Eine Entwurfskarte im Chat (ChatHtmlRenderer.WrapEntwurfKarte).</summary>
+    private sealed class EntwurfKarte
+    {
+        public required int Id { get; init; }
+        public required ChatEntwurf Daten { get; set; }
+        public string? Mandant { get; set; } // Ordnername unter DokumentePfad
+        public Entwurf? Datei { get; set; }
+        public bool Ersetzt { get; set; }
+        public bool Historie { get; init; }
+        public string? Hinweis { get; set; }
+        public int HtmlIndex { get; set; } = -1;
+        public string Html { get; set; } = "";
+    }
+    // Karten-ID (data-msg der Buttons) -> Karte. Wird nie geleert, damit IDs auch
+    // nach Mandantenwechsel eindeutig bleiben.
+    private readonly Dictionary<int, EntwurfKarte> _karten = new();
     private readonly HashSet<string> _prioritizedPaths = new(StringComparer.OrdinalIgnoreCase);
-    private readonly FeedbackSender _feedbackSender = new("http://localhost:8000");
-    private readonly FeatureStatusChecker _featureStatusChecker;
+    private readonly DiktatService _diktat = new();
+    private bool _diktatBusy;
+    private string _diktatVorher = "";
+    private string? _diktatErwartet;
     private CancellationTokenSource? _loadHistoryCts;
     private System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode> _fileTreeRoots = new();
 
@@ -62,28 +101,23 @@ public partial class MainWindow : Window
         MandantBox.AddHandler(
             System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
             new TextChangedEventHandler(OnMandantTextChanged));
-        _featureStatusChecker = new FeatureStatusChecker(
-            _http,
-            "http://localhost:8082",
-            _db,
-            () => this,
-            TimeSpan.FromMinutes(30),
-            msg => System.Diagnostics.Debug.WriteLine(msg));
         _ = CheckConnectionAsync(showConnecting: true);
         _ = PeriodicHealthCheckAsync();
-        // Start() führt beim Hochfahren der Schleife bereits einen sofortigen
-        // Check aus (siehe FeatureStatusChecker.LoopAsync) — ein zusätzlicher
-        // expliziter CheckOnceAsync()-Aufruf hier würde denselben Fertigstellungs-
-        // Toast doppelt anzeigen, da beide Aufrufe nebenläufig gegen denselben
-        // Server-Call liefen, bevor MarkAsSeen() greifen konnte.
-        _featureStatusChecker.Start();
         _ = LoadMandantenAsync();
+        // Vor dem Scanner: der meldet beim ersten Einlesen neue Dateien an den AkteService.
+        InitAkte();
         _ = Task.Run(StartDocumentScannerAsync);
+        // Einziger Kanal für "Was ist neu": der Update-Dialog zeigt die gesammelten
+        // Changelog-Notizen aller verpassten Versionen. Ein separates Popup pro
+        // fertigem Milestone (früherer Feature-Status-Hintergrundcheck) erzeugte eine Kette aus
+        // Popup+Neustart, obwohl ein Neustart ohne Update nichts Neues bringt.
         _ = CheckForUpdateAsync();
         _ = LoadStyleProgressAsync();
         InputBox.FontFamily = new FontFamily(_settings.ChatInputFont);
         InputBox.FontSize = _settings.ChatInputFontSize;
         ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
+        App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
+        _diktat.LiveTextChanged += OnDiktatLiveText;
         // App-Hintergrund (Fenster verliert Fokus, z.B. Alt-Tab) löst ebenfalls eine
         // Hintergrund-Zusammenfassung aus, nicht nur der Mandant-Wechsel — sonst
         // bliebe eine lange Sitzung ohne Wechsel bis zum App-Ende unsummarisiert.
@@ -105,6 +139,7 @@ public partial class MainWindow : Window
                 "LexWolf", "WebView2");
             var webViewEnv = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
             await ChatWebView.EnsureCoreWebView2Async(webViewEnv);
+            ChatWebView.CoreWebView2.WebMessageReceived += OnChatWebMessage;
             _chatHistoryHtml.Clear();
             AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage("Willkommen bei LexWolf. Wie kann ich Ihnen helfen?"));
             RefreshChatWebView();
@@ -129,6 +164,26 @@ public partial class MainWindow : Window
 <div id='chat-messages'>
 {messagesHtml}
 </div>
+<script>
+// RefreshChatWebView baut die Seite bei jeder Nachricht per NavigateToString neu
+// auf -> ohne das hier stünde die Ansicht danach immer ganz oben, und die neueste
+// Nachricht wäre erst nach Herunterscrollen sichtbar. 'load' fängt nachträglich
+// geladene Bilder/Schriften ab, die die Höhe noch verändern.
+function lwScrollToEnd() {{ window.scrollTo(0, document.documentElement.scrollHeight); }}
+lwScrollToEnd();
+window.addEventListener('load', lwScrollToEnd);
+// Aktions-Buttons (data-action, data-msg = Antwort-ID) an den Client melden,
+// ausgewertet in OnChatWebMessage. value: data-value bzw. die Auswahl des
+// Dropdowns, auf das data-select zeigt (Mandant der Entwurfskarte).
+document.addEventListener('click', function (e) {{
+  var el = e.target.closest('[data-action]');
+  if (!el || !window.chrome || !window.chrome.webview) return;
+  e.preventDefault();
+  var sel = el.getAttribute('data-select');
+  var value = sel ? (document.getElementById(sel) || {{}}).value : el.getAttribute('data-value');
+  window.chrome.webview.postMessage({{ action: el.getAttribute('data-action'), msg: el.getAttribute('data-msg'), value: value || '' }});
+}});
+</script>
 </body>
 </html>";
     }
@@ -213,6 +268,7 @@ public partial class MainWindow : Window
             _scanner = null;
             Directory.CreateDirectory(path);
             _scanner = new DokumentScanner(path, _db);
+            _scanner.OnDateiIndexiert = (mandantId, pfad) => _akte?.DateiIndexiert(mandantId, pfad);
             _scanner.ScanAll();
             // Dropdown mit den gerade gescannten Mandanten befüllen — vorher lief
             // LoadMandantenAsync() schon beim Start, BEVOR überhaupt gescannt wurde.
@@ -247,7 +303,7 @@ public partial class MainWindow : Window
         var lastAssistant = _history.LastOrDefault(m => string.Equals(m.Role, "assistant", StringComparison.OrdinalIgnoreCase));
         if (lastAssistant == default(ChatMessage) || string.IsNullOrWhiteSpace(lastAssistant.Content)) return;
 
-        System.Windows.Clipboard.SetText(lastAssistant.Content);
+        System.Windows.Clipboard.SetText(ChatEntwurfParser.AlsKlartext(lastAssistant.Content));
 
         KopierenBtn.Content = _kopierenFeedbackLabel;
         if (_kopierenFeedbackTimer is null)
@@ -274,7 +330,7 @@ public partial class MainWindow : Window
     private void OnFeatureUebersichtClick(object sender, RoutedEventArgs e)
     {
         var sessionId = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name ?? "lexwolf";
-        var dlg = new LexWolf.Dialogs.FeatureUebersichtDialog(_http, "http://localhost:8082", sessionId) { Owner = this };
+        var dlg = new LexWolf.Dialogs.FeatureUebersichtDialog(_http, BoardUrl, sessionId) { Owner = this };
         dlg.ShowDialog();
     }
 
@@ -282,27 +338,40 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrEmpty(_activeMandantId)) return;
 
+        // Bis die Zusammenfassung da ist: Wolf-Animation über dem Chat und im Button,
+        // Button gesperrt (kein doppeltes Anstoßen).
+        var buttonInhalt = ZusammenfassungBtn.Content;
+        ZusammenfassungBtn.IsEnabled = false;
+        ZusammenfassungBtn.Content = CreateWolfLoadingContent("wird erstellt…");
+        ZeigeWolfLoading("Zusammenfassung wird erstellt — bitte warten...");
         SetProgressBusy(true);
         SetStatus(null, "Zusammenfassung wird ermittelt...");
+        string text;
         try
         {
             // Quellen-Hash prüfen: bei unveränderten Chat/Notizen/Dokumenten
             // wird gecachte Zusammenfassung sofort angezeigt, sonst neu generiert.
-            var text = await _zusammenfassungService.HoleOderErzeugeZusammenfassungAsync(_activeMandantId);
-            var dlg = new ZusammenfassungDialog(text, _activeMandantName) { Owner = this };
-            dlg.ShowDialog();
+            text = await _zusammenfassungService.HoleOderErzeugeZusammenfassungAsync(_activeMandantId);
         }
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show(
                 this, $"Zusammenfassung konnte nicht erzeugt werden: {ex.Message}", "Fehler",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
         }
         finally
         {
+            VerbergeWolfLoading();
+            ZusammenfassungBtn.Content = buttonInhalt;
+            ZusammenfassungBtn.IsEnabled = true;
             SetProgressBusy(false);
             SetStatus(true, $"Verbunden — {BackendUrl}");
         }
+
+        // Erst nach dem Ausblenden der Animation öffnen — der Dialog ist modal.
+        var dlg = new ZusammenfassungDialog(text, _activeMandantName) { Owner = this };
+        dlg.ShowDialog();
     }
 
     private void OnAnalyseStatusChanged(AnalyseStatus status)
@@ -366,6 +435,7 @@ public partial class MainWindow : Window
             InputBox.FontFamily = new FontFamily(_settings.ChatInputFont);
             InputBox.FontSize = _settings.ChatInputFontSize;
             ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
+            App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
             if (_webViewInitialized)
                 RefreshChatWebView();
             if (_settings.DokumentePfad != oldPath)
@@ -374,6 +444,7 @@ public partial class MainWindow : Window
                 _ = Task.Run(StartDocumentScannerAsync);
             }
             _ = LoadStyleProgressAsync();
+            StarteGrossesSprachmodell(); // gerade eingeschaltet -> sofort laden, nicht erst beim nächsten Start
         }
     }
 
@@ -544,6 +615,27 @@ public partial class MainWindow : Window
             MandantBox.IsDropDownOpen = MandantBox.Items.Count > 0;
     }
 
+    /// <summary>Steht im Feld nur der gewählte Mandant (oder nichts), soll das Aufklappen alle zeigen —
+    /// nicht nur die Treffer für diesen Namen. Gefiltert wird nur, während man tippt.</summary>
+    private void OnMandantDropDownOpened(object? sender, EventArgs e)
+    {
+        var text = (MandantBox.Text ?? "").Trim();
+        if (text.Length > 0 && !string.Equals(text, _activeMandantName, StringComparison.OrdinalIgnoreCase)) return;
+        _mandanten.Clear();
+        _mandanten.AddRange(_db.GetMandanten());
+        _suppressMandantEvents = true;
+        try
+        {
+            ApplyMandantFilter("");
+            if (_activeMandantName is not null && MandantBox.Items.Contains(_activeMandantName))
+                MandantBox.SelectedItem = _activeMandantName;
+        }
+        finally
+        {
+            _suppressMandantEvents = false;
+        }
+    }
+
     private void OnMandantBoxKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key != System.Windows.Input.Key.Return) return;
@@ -578,8 +670,7 @@ public partial class MainWindow : Window
             _ = _chatSummaryService.SummarizeSessionAsync(_activeMandantId);
 
         _history.Clear();
-        ChatPanel.Children.Clear();
-        UnterhaltBtn.Visibility = Visibility.Collapsed;
+        ClearChatPanel();
         NotizenBtn.Visibility = Visibility.Collapsed;
         ZusammenfassungBtn.Visibility = Visibility.Collapsed;
         KopierenBtn.Visibility = Visibility.Collapsed;
@@ -606,6 +697,7 @@ public partial class MainWindow : Window
             NotizenBtn.Visibility = Visibility.Collapsed;
             ZusammenfassungBtn.Visibility = Visibility.Collapsed;
             KopierenBtn.Visibility = Visibility.Collapsed;
+            AktenMandantGewechselt();
             return;
         }
 
@@ -634,9 +726,19 @@ public partial class MainWindow : Window
         _loadHistoryCts?.Cancel();
         _loadHistoryCts?.Dispose();
         _loadHistoryCts = new CancellationTokenSource();
-        _ = Task.Run(() => LoadChatHistoryAsync(match.Id, _loadHistoryCts.Token));
+        var token = _loadHistoryCts.Token;
+        _historieLaden = Task.Run(() => LoadChatHistoryAsync(match.Id, token));
 
-        BuildFileTree(match.Name);
+        if (_mandantAusBaum) MarkiereAktivenMandantImBaum(match.Name);
+        else BuildFileTree(match.Name);
+        AktenMandantGewechselt();
+    }
+
+    /// <summary>Nur die Hervorhebung umsetzen, ohne den Baum neu aufzubauen (Auswahl kam aus dem Baum).</summary>
+    private void MarkiereAktivenMandantImBaum(string? name)
+    {
+        foreach (var n in _fileTreeRoots)
+            n.IsAktiv = string.Equals(n.Name, name, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Lädt die gespeicherte Chat-Historie eines Mandanten aus der lokalen DB
@@ -716,10 +818,17 @@ public partial class MainWindow : Window
                                     AppendUserMessage(content);
                                 break;
                             case "assistant":
-                                if (_webViewInitialized)
-                                    AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(content), "frage"));
+                                var (rest, entwurf) = ChatEntwurfParser.Zerlege(content);
+                                if (!_webViewInitialized)
+                                    AppendAiMessage(ChatEntwurfParser.AlsKlartext(content));
                                 else
-                                    AppendAiMessage(content, "frage");
+                                {
+                                    if (!string.IsNullOrWhiteSpace(rest))
+                                        AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(rest)));
+                                    // Zuordnung zur Datei ist nach Neustart weg -> nur Anzeige + Kopieren.
+                                    if (entwurf is not null)
+                                        EntwurfKarteAnlegen(entwurf, historie: true, mitRefresh: false);
+                                }
                                 break;
                             default:
                                 if (_webViewInitialized)
@@ -764,31 +873,32 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Baut den Dateibaum (links) neu auf — bei fehlendem Filter nur
-    /// einzelne Wurzelknoten je Mandantenordner, OHNE rekursiv alle Unterordner
-    /// eager aufzubauen. Kinder werden lazy beim Aufklappen geladen.
-    /// Falls ein filterMandantName gesetzt ist, werden nur passende Wurzeln
-    /// angelegt und diese vollständig aufgebaut (Detailansicht).</summary>
-    private void BuildFileTree(string? filterMandantName = null)
+    /// <summary>Baut den Dateibaum (links) neu auf: immer alle Mandantenordner als
+    /// Wurzelknoten, Kinder werden lazy beim Aufklappen geladen. Der aktive Mandant
+    /// ist hervorgehoben und aufgeklappt — die übrigen bleiben sichtbar.</summary>
+    private void BuildFileTree(string? aktiverMandantName = null)
     {
         var basePath = _settings.DokumentePfad;
         var roots = new System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode>();
+        Models.FileTreeNode? aktiv = null;
         if (Directory.Exists(basePath))
         {
-            var mandantDirs = Directory.EnumerateDirectories(basePath);
-            var filterActive = !string.IsNullOrEmpty(filterMandantName);
-            if (filterActive)
-                mandantDirs = mandantDirs.Where(d =>
-                    string.Equals(Path.GetFileName(d), filterMandantName, StringComparison.OrdinalIgnoreCase));
-
-            foreach (var mandantDir in mandantDirs.OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            foreach (var mandantDir in Directory.EnumerateDirectories(basePath).OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
             {
-                var node = new Models.FileTreeNode(Path.GetFileName(mandantDir), mandantDir, isFolder: true);
-                if (filterActive)
+                var node = new Models.FileTreeNode(Path.GetFileName(mandantDir), mandantDir, isFolder: true) { IsMandantOrdner = true };
+                if (string.Equals(node.Name, aktiverMandantName, StringComparison.OrdinalIgnoreCase))
+                {
                     AddFileTreeChildren(node, mandantDir);
+                    node.IsAktiv = true;
+                    node.IsExpanded = true;
+                    aktiv = node;
+                }
                 roots.Add(node);
             }
         }
+        if (aktiv is not null)
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+                (FileTree.ItemContainerGenerator.ContainerFromItem(aktiv) as TreeViewItem)?.BringIntoView());
         _fileTreeRoots = roots;
         Dispatcher.Invoke(() =>
         {
@@ -880,8 +990,47 @@ public partial class MainWindow : Window
         }
     }
 
+    // Auswahl im Dateibaum wählt den Mandanten oben mit aus — ohne den Baum neu aufzubauen,
+    // sonst springt er unter dem Mauszeiger weg und ein Doppelklick zum Öffnen ginge ins Leere.
+    private bool _mandantAusBaum;
+
+    private void OnFileTreeAuswahl(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (e.NewValue is not Models.FileTreeNode node || string.IsNullOrEmpty(node.Path)) return;
+        // Ordner laden ihren Inhalt erst bei Bedarf und haben bis dahin keinen Aufklapp-Pfeil.
+        if (node.IsFolder && node.Children.Count == 0)
+        {
+            AddFileTreeChildren(node, node.Path);
+            node.IsExpanded = true;
+        }
+        var ordner = MandantOrdnerVon(node.Path, _settings.DokumentePfad);
+        if (ordner is null) return;
+        var id = DokumentScanner.MandantIdFuer(ordner);
+        if (id == _activeMandantId) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _mandantAusBaum = true;
+            try { WaehleMandant(id); }
+            finally { _mandantAusBaum = false; }
+        });
+    }
+
+    /// <summary>Name des Mandantenordners (erste Ebene unter dem Aktenverzeichnis), sonst null.</summary>
+    internal static string? MandantOrdnerVon(string pfad, string basis)
+    {
+        try
+        {
+            var b = Path.GetFullPath(basis).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var voll = Path.GetFullPath(pfad);
+            if (!voll.StartsWith(b, StringComparison.OrdinalIgnoreCase)) return null;
+            var ordner = voll[b.Length..].Split(Path.DirectorySeparatorChar)[0];
+            return ordner.Length > 0 ? ordner : null;
+        }
+        catch { return null; }
+    }
+
     /// <summary>Doppelklick öffnet die Datei im Standardprogramm. Einfacher Klick
-    /// wählt nur aus (kein Seiteneffekt mehr) — Priorisieren läuft über Rechtsklick.</summary>
+    /// wählt den Mandanten mit aus — Priorisieren läuft über Rechtsklick.</summary>
     private void OnFileTreeDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (FileTree.SelectedItem is not Models.FileTreeNode selectedNode) return;
@@ -918,12 +1067,25 @@ public partial class MainWindow : Window
 
     // ── Chat ──────────────────────────────────────────────────────────────────
 
+    /// <summary>Entfernt alle Chat-Elemente des WPF-Fallbacks (und z.B. das
+    /// Unterhaltsformular) aus ChatPanel — aber NICHT ChatWebView selbst, die ebenfalls
+    /// in ChatPanel liegt. Ein pauschales Children.Clear() hängte die WebView aus dem
+    /// Fenster aus: danach landeten alle Antworten unsichtbar in einer abgehängten
+    /// WebView und der Chatbereich blieb leer.</summary>
+    private void ClearChatPanel()
+    {
+        for (var i = ChatPanel.Children.Count - 1; i >= 0; i--)
+        {
+            if (!ReferenceEquals(ChatPanel.Children[i], ChatWebView))
+                ChatPanel.Children.RemoveAt(i);
+        }
+    }
+
     private void OnClearChat(object sender, RoutedEventArgs e)
     {
         _history.Clear();
-        ChatPanel.Children.Clear();
+        ClearChatPanel();
         _chatHistoryHtml.Clear();
-        UnterhaltBtn.Visibility = Visibility.Collapsed;
         KopierenBtn.Visibility = Visibility.Collapsed;
         var msg = _activeMandantName is not null
             ? $"Chat gelöscht — Mandant: {_activeMandantName}"
@@ -939,34 +1101,203 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnUnterhaltBtnClick(object sender, RoutedEventArgs e)
-    {
-        var container = new StackPanel
-        {
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Margin              = new Thickness(8, 4, 60, 4),
-        };
-        container.Children.Add(new TextBlock
-        {
-            Text        = "Unterhaltsrechner:",
-            Foreground  = new SolidColorBrush(Color.FromRgb(139, 148, 158)),
-            FontSize    = 12,
-            Margin      = new Thickness(0, 0, 0, 6),
-        });
-        container.Children.Add(BuildUnterhaltForm());
-        ChatPanel.Children.Add(container);
-        ScrollToBottom();
-        UnterhaltBtn.Visibility = Visibility.Collapsed;
-    }
-
     private void OnInputKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        // InputBox ist einzeilig (kein AcceptsReturn) — Return schickt direkt ab.
-        if (e.Key == System.Windows.Input.Key.Return)
+        // Läuft als PreviewKeyDown, weil die TextBox (AcceptsReturn) Enter sonst selbst
+        // verarbeitet: Enter schickt ab, Umschalt+Enter fügt eine neue Zeile ein.
+        if (e.Key == System.Windows.Input.Key.Return
+            && System.Windows.Input.Keyboard.Modifiers != System.Windows.Input.ModifierKeys.Shift)
         {
             e.Handled = true;
             OnSend(sender, e);
         }
+        else if (System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.Control)
+        {
+            if (e.Key is System.Windows.Input.Key.OemPlus or System.Windows.Input.Key.Add)
+            {
+                e.Handled = true;
+                ChangeChatFontSize(+1);
+            }
+            else if (e.Key is System.Windows.Input.Key.OemMinus or System.Windows.Input.Key.Subtract)
+            {
+                e.Handled = true;
+                ChangeChatFontSize(-1);
+            }
+        }
+    }
+
+    private async void OnDiktatClick(object sender, RoutedEventArgs e)
+    {
+        if (_diktatBusy) return;
+
+        if (!_diktat.IsRecording)
+        {
+            var whisperFehlt = _settings.DiktatNachkorrektur && !DiktatService.WhisperExists(_settings);
+            if ((!DiktatService.VoskExists(_settings) || whisperFehlt) && !await DownloadDiktatModelAsync())
+                return;
+
+            _diktatBusy = true;
+            DiktatBtn.Content = "⏳";
+            DiktatBtn.ToolTip = "Spracherkennung wird geladen …";
+            try
+            {
+                // Text vor dem Diktat bleibt stehen, der Live-Text wird dahinter angezeigt.
+                _diktatVorher = InputBox.Text.TrimEnd();
+                _diktatErwartet = null;
+                InputBox.IsReadOnly = true;
+                await _diktat.StartRecordingAsync(_settings);
+            }
+            catch (Exception ex)
+            {
+                InputBox.IsReadOnly = false;
+                ResetDiktatButton();
+                MessageBox.Show(this, $"Aufnahme nicht möglich: {ex.Message}", "Diktat",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            finally
+            {
+                _diktatBusy = false;
+            }
+            // Whisper lädt, während gesprochen wird — spart Wartezeit bei der Nachkorrektur.
+            if (_settings.DiktatNachkorrektur)
+                _ = _diktat.PreloadWhisperAsync(_settings);
+            DiktatBtn.Content = "⏹";
+            DiktatBtn.Background = new SolidColorBrush(Color.FromRgb(0xb6, 0x23, 0x24));
+            DiktatBtn.ToolTip = "Aufnahme läuft — klicken zum Beenden";
+            return;
+        }
+
+        _diktatBusy = true;
+        string live;
+        System.IO.MemoryStream? audio;
+        try
+        {
+            (live, audio) = await _diktat.StopRecordingAsync();
+        }
+        finally
+        {
+            _diktatBusy = false;
+            InputBox.IsReadOnly = false;
+            ResetDiktatButton();
+        }
+        InputBox.Text = JoinDiktat(_diktatVorher, live);
+        InputBox.CaretIndex = InputBox.Text.Length;
+        InputBox.ScrollToEnd();
+        InputBox.Focus();
+
+        if (audio is null || !_settings.DiktatNachkorrektur || !DiktatService.WhisperExists(_settings))
+        {
+            audio?.Dispose();
+            return;
+        }
+
+        // Nachkorrektur im Hintergrund: ersetzt den Live-Text nur, wenn das Feld
+        // seitdem unverändert ist (nicht abgeschickt, nicht weitergetippt).
+        var vorher = _diktatVorher;
+        var erwartet = InputBox.Text;
+        _diktatErwartet = erwartet;
+        InputBox.BorderBrush = new SolidColorBrush(Color.FromRgb(0xe8, 0xa8, 0x38));
+        InputBox.ToolTip = "Diktat wird nachkorrigiert …";
+        try
+        {
+            var korrigiert = await _diktat.TranscribeAsync(_settings, audio, _activeMandantName);
+            if (korrigiert.Length > 0 && InputBox.Text == erwartet && !_diktat.IsRecording)
+            {
+                InputBox.Text = JoinDiktat(vorher, korrigiert);
+                InputBox.CaretIndex = InputBox.Text.Length;
+                InputBox.ScrollToEnd();
+            }
+        }
+        catch (Exception ex)
+        {
+            AddReasoning("⚠️", $"Diktat-Nachkorrektur fehlgeschlagen: {ex.Message}");
+        }
+        finally
+        {
+            // Nur zurücksetzen, wenn nicht schon ein neueres Diktat korrigiert wird.
+            if (_diktatErwartet == erwartet)
+            {
+                InputBox.ClearValue(System.Windows.Controls.Control.BorderBrushProperty);
+                InputBox.ClearValue(FrameworkElement.ToolTipProperty);
+                _diktatErwartet = null;
+            }
+        }
+    }
+
+    // Wird vom Audio-Thread aufgerufen.
+    private void OnDiktatLiveText(string live) =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!_diktat.IsRecording) return;
+            InputBox.Text = JoinDiktat(_diktatVorher, live);
+            InputBox.CaretIndex = InputBox.Text.Length;
+            InputBox.ScrollToEnd();
+        });
+
+    private static string JoinDiktat(string vorher, string diktat) =>
+        vorher.Length == 0 ? diktat : diktat.Length == 0 ? vorher : $"{vorher} {diktat}";
+
+    private void ResetDiktatButton()
+    {
+        DiktatBtn.Content = "🎤";
+        DiktatBtn.Background = new SolidColorBrush(Color.FromRgb(0x21, 0x26, 0x2d));
+        DiktatBtn.ToolTip = "Diktieren — Klick startet, zweiter Klick beendet die Aufnahme. Die Erkennung läuft lokal, kein Ton verlässt den Rechner.";
+    }
+
+    private async Task<bool> DownloadDiktatModelAsync()
+    {
+        var whisper = _settings.DiktatNachkorrektur;
+        var antwort = MessageBox.Show(this,
+            "Für die Spracheingabe werden einmalig die Sprachmodelle heruntergeladen " +
+            (whisper ? "(rund 230 MB: Live-Erkennung + Nachkorrektur)" : "(rund 45 MB)") +
+            $" und unter\n{_settings.VoskOrdner}" + (whisper ? $"\n{_settings.WhisperOrdner}" : "") +
+            "\ngespeichert.\n\nDie Erkennung läuft danach komplett auf diesem Rechner. Jetzt herunterladen?",
+            "Diktat einrichten", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (antwort != MessageBoxResult.Yes) return false;
+
+        _diktatBusy = true;
+        var progress = new Progress<double>(p => DiktatBtn.Content = $"{p:P0}");
+        try
+        {
+            await DiktatService.DownloadModelsAsync(_settings, whisper, progress);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Download fehlgeschlagen: {ex.Message}", "Diktat",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        finally
+        {
+            _diktatBusy = false;
+            DiktatBtn.Content = "🎤";
+        }
+    }
+
+    // Ist das Feld auf MaxHeight angewachsen, das Neueste sichtbar halten —
+    // aber nur, wenn am Ende geschrieben wird (nicht beim Korrigieren weiter oben).
+    private void OnInputTextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (InputBox.CaretIndex == InputBox.Text.Length)
+            InputBox.ScrollToEnd();
+    }
+
+    private void OnFontLarger(object sender, RoutedEventArgs e) => ChangeChatFontSize(+1);
+    private void OnFontSmaller(object sender, RoutedEventArgs e) => ChangeChatFontSize(-1);
+
+    // Ändert Eingabe- und Ausgabeschrift gemeinsam; Grenzen wie in AppSettings.SanitizeFonts.
+    private void ChangeChatFontSize(double delta)
+    {
+        _settings.ChatInputFontSize = Math.Clamp(_settings.ChatInputFontSize + delta, 8, 32);
+        _settings.ChatOutputFontSize = Math.Clamp(_settings.ChatOutputFontSize + delta, 8, 32);
+        try { _settings.Save(); } catch { /* Größe gilt trotzdem für diese Sitzung */ }
+        InputBox.FontSize = _settings.ChatInputFontSize;
+        ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
+        App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
+        if (_webViewInitialized)
+            RefreshChatWebView();
     }
 
     private async void OnSend(object sender, RoutedEventArgs e)
@@ -975,6 +1306,12 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(text)) return;
 
         InputBox.Clear();
+        await SendeAsync(text);
+    }
+
+    /// <summary>Nachricht an die KI schicken, Antwort samt Entwurfskarte anzeigen.</summary>
+    private async Task SendeAsync(string text)
+    {
         SendBtn.IsEnabled = false;
 
         _history.Add(new ChatMessage("user", text));
@@ -982,9 +1319,7 @@ public partial class MainWindow : Window
         _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "user", text);
 
         ReasoningPanel.Children.Clear();
-        WolfLoadingPanel.Visibility = Visibility.Visible;
-        var wolfStoryboard = (Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"];
-        wolfStoryboard.Begin(WolfLoadingPanel);
+        ZeigeWolfLoading("Anfrage wird verarbeitet...");
 
         try
         {
@@ -992,15 +1327,14 @@ public partial class MainWindow : Window
 
             _history.Add(new ChatMessage("assistant", content));
             _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", content);
-            AppendAiMessage(content, suggestedAction);
+            // Versandfertiger Text -> Entwurfskarte (bei geöffnetem Mandanten sofort in
+            // <Mandant>\Entwürfe abgelegt); der übrige Text bleibt eine Chat-Bubble.
+            // Geöffnet wird nichts von selbst — das entscheidet der Anwalt in der Karte.
+            var (rest, entwurf) = ChatEntwurfParser.Zerlege(content, suggestedAction);
+            if (!string.IsNullOrWhiteSpace(rest)) AppendAiMessage(rest);
+            if (entwurf is not null) Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf));
 
-            Dispatcher.Invoke(() =>
-            {
-                UnterhaltBtn.Visibility = suggestedAction == "berechne_unterhalt"
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
-                KopierenBtn.Visibility = Visibility.Visible;
-            });
+            Dispatcher.Invoke(() => KopierenBtn.Visibility = Visibility.Visible);
         }
         catch (Exception ex)
         {
@@ -1009,47 +1343,28 @@ public partial class MainWindow : Window
         finally
         {
             Dispatcher.Invoke(() => SendBtn.IsEnabled = true);
-            WolfLoadingPanel.Visibility = Visibility.Collapsed;
-            var storyboard = (Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"];
-            storyboard.Stop(WolfLoadingPanel);
+            VerbergeWolfLoading();
         }
     }
 
-    private async void OnSendStyleFeedback(object sender, RoutedEventArgs e)
+    // Chat-Anfrage und Zusammenfassung können gleichzeitig laufen — die Animation
+    // verschwindet erst, wenn alle fertig sind.
+    private int _wolfLoadingAktiv;
+
+    /// <summary>Pulsierende Wolf-Animation über dem Chat mit "bitte warten"-Text.</summary>
+    private void ZeigeWolfLoading(string text)
     {
-        if (!_settings.FeedbackOptIn)
-        {
-            AddReasoning("🔒", "Stil-Feedback ist in den Einstellungen deaktiviert. Es wurden keine Daten gesendet.");
-            return;
-        }
-        await SendStyleFeedbackFromInputAsync();
+        WolfLoadingText.Text = text;
+        if (_wolfLoadingAktiv++ > 0) return;
+        WolfLoadingPanel.Visibility = Visibility.Visible;
+        ((Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"]).Begin(WolfLoadingPanel, true);
     }
 
-    private async Task SendStyleFeedbackFromInputAsync()
+    private void VerbergeWolfLoading()
     {
-        try
-        {
-            var text = InputBox.Text;
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                AddReasoning("🔒", "Kein Text eingegeben - Stil-Feedback nicht gesendet.");
-                return;
-            }
-
-            var categories = new List<string> { "formulierung" };
-            var success = await _feedbackSender.SendMetricsAsync(
-                new List<string> { text },
-                categories);
-
-            if (success)
-                AddReasoning("🔒", "Anonymisierte Stil-Metriken erfolgreich gesendet.");
-            else
-                AddReasoning("⚠️", "Server hat Stil-Metriken abgelehnt.");
-        }
-        catch (Exception ex)
-        {
-            AddReasoning("⚠️", $"Fehler beim Senden von Stil-Metriken: {ex.Message}");
-        }
+        if (_wolfLoadingAktiv == 0 || --_wolfLoadingAktiv > 0) return;
+        WolfLoadingPanel.Visibility = Visibility.Collapsed;
+        ((Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"]).Stop(WolfLoadingPanel);
     }
 
     // ── Chat-Backend ─────────────────────────────────────────────────────────
@@ -1227,233 +1542,491 @@ public partial class MainWindow : Window
         });
     }
 
-    private void AppendAiMessage(string text, string suggestedAction, string? filePath = null)
+    private void AppendAiMessage(string text)
     {
         Dispatcher.Invoke(() =>
         {
             if (_webViewInitialized)
             {
-                var html = ChatHtmlRenderer.Render(text);
-                if (filePath is not null)
-                {
-                    html += $"\n<p class='chat-paragraph'><a class='chat-link' href='#' data-file='{WebUtility.HtmlEncode(filePath)}'>📁 Vorlage im Explorer öffnen</a></p>";
-                }
-                AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(html, suggestedAction));
+                AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(text)));
                 RefreshChatWebView();
                 ScrollToBottom();
                 return;
             }
 
-            var container = new StackPanel
-            {
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Margin              = new Thickness(8, 4, 60, 4),
-            };
-
             var bubble = new Border
             {
-                Background   = new SolidColorBrush(Color.FromRgb(33, 38, 45)),
-                CornerRadius = new CornerRadius(4, 16, 16, 16),
-                Padding      = new Thickness(14, 10, 14, 10),
-                MaxWidth     = 500,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Background          = new SolidColorBrush(Color.FromRgb(33, 38, 45)),
+                CornerRadius        = new CornerRadius(4, 16, 16, 16),
+                Padding             = new Thickness(14, 10, 14, 10),
+                Margin              = new Thickness(8, 4, 60, 4),
+                MaxWidth            = 500,
             };
             bubble.Child = CreateSelectableTextBox(
                 text,
                 new SolidColorBrush(Color.FromRgb(201, 209, 217)));
-            container.Children.Add(bubble);
-
-            if (filePath is not null)
-            {
-                var link = new TextBlock
-                {
-                    Margin = new Thickness(0, 6, 0, 0),
-                    Foreground = new SolidColorBrush(Color.FromRgb(31, 111, 235)),
-                    FontSize = 12,
-                };
-                var hyperlink = new Hyperlink
-                {
-                    Inlines = { "📁 Vorlage im Explorer öffnen" },
-                };
-                hyperlink.Click += (_, __) => OpenInExplorer(filePath);
-                link.Inlines.Add(hyperlink);
-                container.Children.Add(link);
-            }
-
-            if (suggestedAction == "erstelle_dokument")
-            {
-                var btn = new Button
-                {
-                    Content             = "📄 Vorlage erstellen",
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Background          = new SolidColorBrush(Color.FromRgb(31, 111, 235)),
-                    Foreground          = Brushes.White,
-                    BorderThickness     = new Thickness(0),
-                    Padding             = new Thickness(12, 6, 12, 6),
-                    Margin              = new Thickness(0, 6, 0, 0),
-                    FontSize            = 12,
-                    Cursor              = Cursors.Hand,
-                };
-                btn.Click += async (s, e) => await OnCreateDocument(text);
-                container.Children.Add(btn);
-            }
-            else if (suggestedAction == "berechne_unterhalt")
-            {
-                // War: komplettes Formular wurde direkt in die Antwort eingebettet,
-                // auch wenn die Frage schon inhaltlich aus den Mandanten-Dokumenten
-                // beantwortet war ("wieviel bekommt X" triggert die grobe Keyword-
-                // Erkennung in chat.py). Jetzt wie bei "erstelle_dokument" nur ein
-                // Button — der ohnehin vorhandene UnterhaltBtn wird zusätzlich sichtbar.
-                var btn = new Button
-                {
-                    Content             = "⚖ Unterhalt berechnen",
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Background          = new SolidColorBrush(Color.FromRgb(33, 38, 45)),
-                    Foreground          = new SolidColorBrush(Color.FromRgb(232, 168, 56)),
-                    BorderBrush         = new SolidColorBrush(Color.FromRgb(48, 54, 61)),
-                    BorderThickness     = new Thickness(1),
-                    Padding             = new Thickness(12, 6, 12, 6),
-                    Margin              = new Thickness(0, 6, 0, 0),
-                    FontSize            = 12,
-                    Cursor              = Cursors.Hand,
-                };
-                btn.Click += (s, e) => OnUnterhaltBtnClick(s, e);
-                container.Children.Add(btn);
-            }
-
-            ChatPanel.Children.Add(container);
+            ChatPanel.Children.Add(bubble);
             ScrollToBottom();
         });
     }
 
-    private StackPanel BuildUnterhaltForm()
+    /// <summary>Beschriftung des Öffnen-Buttons mit dem Programm, das Windows gerade
+    /// dafür eingerichtet hat (zur Laufzeit ermittelt).</summary>
+    private static string OeffnenLabel(bool istEmail) => istEmail
+        ? (StandardProgramme.Fuer("mailto") ?? StandardProgramme.Fuer(".eml")) is string programm
+            ? $"✉️ In {programm} öffnen"
+            : "✉️ E-Mail-Text kopieren"
+        : $"📄 In {StandardProgramme.Fuer(".docx") ?? StandardProgramme.Fuer(".txt") ?? "Editor"} öffnen";
+
+    private static Button CreateAktionsButton(string label, Action onClick)
     {
-        var form = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-
-        form.Children.Add(new TextBlock
+        var btn = new Button
         {
-            Text        = "Unterhaltsberechnung:",
-            Foreground  = new SolidColorBrush(Color.FromRgb(139, 148, 158)),
-            FontSize    = 11,
-            Margin      = new Thickness(0, 0, 0, 4),
-        });
-
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
-
-        var einkommenBox = new TextBox
-        {
-            Width           = 120,
-            Padding         = new Thickness(8, 4, 8, 4),
-            Background      = new SolidColorBrush(Color.FromRgb(13, 17, 23)),
-            Foreground      = new SolidColorBrush(Color.FromRgb(201, 209, 217)),
-            BorderBrush     = new SolidColorBrush(Color.FromRgb(48, 54, 61)),
-            BorderThickness = new Thickness(1),
-            FontSize        = 12,
+            Content             = label,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Background          = new SolidColorBrush(Color.FromRgb(31, 111, 235)),
+            Foreground          = Brushes.White,
+            BorderThickness     = new Thickness(0),
+            Padding             = new Thickness(12, 6, 12, 6),
+            Margin              = new Thickness(0, 6, 0, 0),
+            FontSize            = 12,
+            Cursor              = Cursors.Hand,
         };
-
-        var alterBox = new TextBox
-        {
-            Width           = 80,
-            Padding         = new Thickness(8, 4, 8, 4),
-            Background      = new SolidColorBrush(Color.FromRgb(13, 17, 23)),
-            Foreground      = new SolidColorBrush(Color.FromRgb(201, 209, 217)),
-            BorderBrush     = new SolidColorBrush(Color.FromRgb(48, 54, 61)),
-            BorderThickness = new Thickness(1),
-            Margin          = new Thickness(6, 0, 0, 0),
-            FontSize        = 12,
-        };
-
-        var calcBtn = new Button
-        {
-            Content         = "Berechnen",
-            Background      = new SolidColorBrush(Color.FromRgb(31, 111, 235)),
-            Foreground      = Brushes.White,
-            BorderThickness = new Thickness(0),
-            Padding         = new Thickness(10, 4, 10, 4),
-            Margin          = new Thickness(6, 0, 0, 0),
-            FontSize        = 12,
-            Cursor          = Cursors.Hand,
-        };
-
-        var resultText = new TextBlock
-        {
-            Foreground = new SolidColorBrush(Color.FromRgb(63, 185, 80)),
-            FontSize   = 12,
-            Margin     = new Thickness(0, 4, 0, 0),
-        };
-
-        calcBtn.Click += (s, e) =>
-        {
-            if (double.TryParse(einkommenBox.Text, out var einkommen) &&
-                int.TryParse(alterBox.Text, out var alter))
-            {
-                var satz   = alter < 6 ? 0.17 : alter < 12 ? 0.19 : alter < 18 ? 0.21 : 0.25;
-                var betrag = einkommen * satz;
-                resultText.Text = $"Geschätzter Unterhalt: {betrag:C2}/Monat";
-            }
-            else
-            {
-                resultText.Text = "Bitte gültige Zahlen eingeben.";
-            }
-        };
-
-        row.Children.Add(new TextBlock { Text = "Einkommen (€):", Foreground = new SolidColorBrush(Color.FromRgb(139, 148, 158)), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
-        row.Children.Add(einkommenBox);
-        row.Children.Add(new TextBlock { Text = "Alter:", Foreground = new SolidColorBrush(Color.FromRgb(139, 148, 158)), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 4, 0) });
-        row.Children.Add(alterBox);
-        row.Children.Add(calcBtn);
-
-        form.Children.Add(row);
-        form.Children.Add(resultText);
-        return form;
+        btn.Click += (_, _) => onClick();
+        return btn;
     }
 
-    private async Task OnCreateDocument(string context)
+    /// <summary>Klicks auf Buttons in der Chat-WebView (siehe Skript in
+    /// GetChatBaseHtml) — ohne diesen Handler taten die HTML-Buttons nichts.</summary>
+    private void OnChatWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        AddReasoning("📄", "Vorlage wird erstellt...");
         try
         {
-            var templateContext = GetLatestTemplateContext();
-            var attorneyContext = GetAttorneyContext();
-            var prompt = $"Erstelle eine Vorlage basierend auf folgendem Kontext: {context}";
-            if (!string.IsNullOrWhiteSpace(attorneyContext))
-                prompt += $"\n\nKonfigurierte Anwaltsdaten für Briefkopf und Briefende:\n{attorneyContext}";
-            if (!string.IsNullOrWhiteSpace(templateContext))
-                prompt += $"\n\nBestehende bearbeitete Vorlage des Nutzers:\n{templateContext}";
+            using var doc = JsonDocument.Parse(e.WebMessageAsJson);
+            var root = doc.RootElement;
+            var action = root.TryGetProperty("action", out var a) ? a.GetString() : null;
+            var id = root.TryGetProperty("msg", out var m) && int.TryParse(m.GetString(), out var i) ? i : -1;
+            var value = root.TryGetProperty("value", out var v) ? v.GetString() ?? "" : "";
+            if (!_karten.TryGetValue(id, out var karte)) return;
 
-            var payload = JsonSerializer.Serialize(new { text = prompt });
-            var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            var response = await _http.PostAsync($"{BackendUrl}/ask", content);
-            var json = await response.Content.ReadAsStringAsync();
-
-            using var doc = JsonDocument.Parse(json);
-            var root   = doc.RootElement;
-            var output = root.TryGetProperty("output", out var o) ? o.GetString() ?? json : json;
-
-            var templatePath = SaveTemplateFile(output);
-            _history.Add(new ChatMessage("assistant", output));
-            _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", output);
-            AppendAiMessage($"📄 Vorlage:\n\n{output}", "frage", templatePath);
-            ReasoningPanel.Children.Clear();
-            AddReasoning("✅", "Vorlage erstellt");
+            switch (action)
+            {
+                case "oeffnen": KarteOeffnen(karte); break;
+                case "uebernehmen": KarteInAkteAblegen(karte); break;
+                case "kopieren": KarteKopieren(karte); break;
+                case "art": KarteArtWechseln(karte, value); break;
+                case "zuordnen": KarteZuordnen(karte, value); break;
+            }
         }
         catch (Exception ex)
         {
-            AppendAiMessage($"Fehler beim Erstellen der Vorlage: {ex.Message}", "frage");
+            AppendSystemMessage($"Aktion fehlgeschlagen: {ex.Message}");
         }
     }
 
-    private string SaveTemplateFile(string content)
-    {
-        var baseDir = Directory.Exists(_settings.DokumentePfad)
-            ? _settings.DokumentePfad
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LexWolf", "Vorlagen");
-        var templateDir = Path.Combine(baseDir, "Vorlagen");
-        Directory.CreateDirectory(templateDir);
+    // ── Entwurfskarten ──────────────────────────────────────────────────────
 
-        var fileName = $"vorlage_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-        var filePath = Path.Combine(templateDir, fileName);
-        File.WriteAllText(filePath, content, Encoding.UTF8);
-        return filePath;
+    /// <summary>Zeigt einen Entwurf als Karte im Chat. Bei geöffnetem Mandanten liegt
+    /// er sofort in &lt;Mandant&gt;\Entwürfe; eine Überarbeitung (ueberarbeitung="ja"
+    /// im Block) ersetzt die vorige Fassung, statt eine weitere Datei anzulegen —
+    /// ein neues, anderes Schreiben überschreibt dagegen nie einen vorhandenen
+    /// Entwurf. Ohne Mandant fragt die Karte, wohin.</summary>
+    private void EntwurfKarteAnlegen(ChatEntwurf daten, bool historie = false, bool mitRefresh = true)
+    {
+        var karte = new EntwurfKarte { Id = _karten.Count, Daten = daten, Mandant = _activeMandantName, Historie = historie };
+        EntwurfKarte? vorgaenger = null;
+        if (!historie && daten.Ueberarbeitung)
+        {
+            vorgaenger = _karten.Values.LastOrDefault(k =>
+                !k.Historie && !k.Ersetzt && k.Datei is not { Uebernommen: true } &&
+                string.Equals(k.Mandant, karte.Mandant, StringComparison.OrdinalIgnoreCase));
+        }
+        _karten[karte.Id] = karte;
+
+        if (!historie && karte.Mandant is not null)
+            KarteSpeichern(karte, vorgaenger?.Datei);
+        if (vorgaenger is not null)
+        {
+            vorgaenger.Ersetzt = true;
+            KarteNeuZeichnen(vorgaenger);
+        }
+        KarteZeigen(karte, mitRefresh);
+    }
+
+    /// <summary>Schreibt den Entwurf nach &lt;Mandant&gt;\Entwürfe. vorige = Datei der
+    /// ersetzten Fassung: wird aktualisiert, außer sie wurde zwischendurch bearbeitet
+    /// (bleibt erhalten) oder ist gerade geöffnet.</summary>
+    private void KarteSpeichern(EntwurfKarte karte, Entwurf? vorige)
+    {
+        var ordner = EntwuerfeOrdner(karte.Mandant);
+        if (ordner is null)
+        {
+            karte.Hinweis = "Kein Mandantenordner gefunden — bitte das Dokumente-Verzeichnis in den Einstellungen prüfen.";
+            return;
+        }
+        try
+        {
+            var d = karte.Daten;
+            var endung = d.IstEmail ? ".eml" : ".docx";
+            karte.Hinweis = null;
+            Entwurf? datei = null;
+            if (vorige is { Uebernommen: false, Lose: false } && File.Exists(vorige.Pfad))
+            {
+                if (!vorige.Unveraendert)
+                    karte.Hinweis = "Neue Datei, weil die vorige Fassung bearbeitet wurde — sie bleibt unverändert.";
+                else if (!vorige.Pfad.EndsWith(endung, StringComparison.OrdinalIgnoreCase))
+                    DateiEntfernen(vorige); // Art gewechselt: alte Fassung im anderen Format weg
+                else
+                {
+                    try
+                    {
+                        SchreibeEntwurf(d, vorige.Pfad);
+                        datei = vorige;
+                        datei.Fassung++;
+                    }
+                    catch (IOException)
+                    {
+                        karte.Hinweis = "Neue Datei, weil die vorige Fassung gerade geöffnet ist.";
+                    }
+                }
+            }
+
+            if (datei is null)
+            {
+                var name = d.IstEmail
+                    ? $"{DokumentExport.EmlEntwurfPraefix}{DateTime.Now:yyyy-MM-dd_HHmmss}.eml"
+                    : DokumentExport.DateinameFuerSchreiben(karte.Mandant, DateTime.Now);
+                datei = new Entwurf { Pfad = DokumentExport.FreierPfad(ordner, name), Fassung = (vorige?.Fassung ?? 0) + 1 };
+                SchreibeEntwurf(d, datei.Pfad);
+            }
+
+            datei.GeschriebenUtc = File.GetLastWriteTimeUtc(datei.Pfad);
+            karte.Datei = datei;
+            BuildFileTree(_activeMandantName);
+        }
+        catch (Exception ex)
+        {
+            karte.Hinweis = $"Entwurf konnte nicht gespeichert werden: {ex.Message}";
+        }
+    }
+
+    private static void SchreibeEntwurf(ChatEntwurf d, string pfad)
+    {
+        if (d.IstEmail) DokumentExport.SchreibeEmlNach(d.AlsEmail(), pfad);
+        else DokumentExport.SchreibeDocx(pfad, d.Text);
+    }
+
+    /// <summary>Löscht eine von LexWolf geschriebene, unbearbeitete Entwurfsdatei.</summary>
+    private void DateiEntfernen(Entwurf e)
+    {
+        if (e.Uebernommen || !e.Unveraendert) return;
+        try
+        {
+            File.Delete(e.Pfad);
+            _db.DeleteDokumentChunks(e.Pfad);
+        }
+        catch (IOException) { /* gerade geöffnet — bleibt liegen */ }
+    }
+
+    private EntwurfKarteAnsicht KarteAnsicht(EntwurfKarte k)
+    {
+        var teile = new List<string>();
+        if (k.Historie)
+            teile.Add("Aus einer früheren Sitzung — die Datei liegt im Ordner „Entwürfe“ bzw. in der Akte des Mandanten.");
+        else if (k.Ersetzt)
+            teile.Add("Durch eine neuere Fassung ersetzt.");
+        else if (k.Datei is { Uebernommen: true } inAkte)
+            teile.Add($"📁 In der Akte: {AktenPfad(inAkte.Pfad)}");
+        else if (k.Datei is { Lose: false } entwurf)
+            teile.Add($"💾 {(entwurf.Fassung > 1 ? $"Fassung {entwurf.Fassung} · " : "")}liegt in {AktenPfad(entwurf.Pfad)}");
+        else if (k.Mandant is null)
+            teile.Add(k.Datei is { Lose: true } lose
+                ? $"Noch keinem Mandanten zugeordnet — geöffnete Fassung: {lose.Pfad}"
+                : "Noch keinem Mandanten zugeordnet.");
+        if (k.Hinweis is not null && !k.Historie && !k.Ersetzt) teile.Add(k.Hinweis);
+
+        var bearbeitbar = !k.Historie && !k.Ersetzt;
+        return new EntwurfKarteAnsicht(
+            k.Id,
+            k.Daten,
+            string.Join(" · ", teile),
+            Aktiv: !k.Ersetzt,
+            ArtUmschaltbar: bearbeitbar && k.Datei is not { Uebernommen: true },
+            AblegenMoeglich: bearbeitbar && k.Datei is { Uebernommen: false, Lose: false },
+            OeffnenLabel: k.Historie ? null : OeffnenLabel(k.Daten.IstEmail),
+            MandantAuswahl: bearbeitbar && k.Mandant is null
+                ? _mandanten.Select(m => m.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList()
+                : null);
+    }
+
+    private void KarteZeigen(EntwurfKarte k, bool mitRefresh)
+    {
+        var ansicht = KarteAnsicht(k);
+        if (!_webViewInitialized)
+        {
+            // Ohne WebView2: Text, Status und Buttons als WPF-Elemente.
+            AppendAiMessage(DokumentExport.OhneMarkdown(k.Daten.Text));
+            if (ansicht.Status != "") AppendSystemMessage(ansicht.Status);
+            if (ansicht.OeffnenLabel is not null)
+                ChatPanel.Children.Add(CreateAktionsButton(ansicht.OeffnenLabel, () => KarteOeffnen(k)));
+            if (ansicht.AblegenMoeglich)
+                ChatPanel.Children.Add(CreateAktionsButton("📁 In Akte ablegen", () => KarteInAkteAblegen(k)));
+            ScrollToBottom();
+            return;
+        }
+
+        k.Html = ChatHtmlRenderer.WrapEntwurfKarte(ansicht);
+        k.HtmlIndex = _chatHistoryHtml.Count;
+        AddHtmlMessage(k.Html);
+        if (mitRefresh)
+        {
+            RefreshChatWebView();
+            ScrollToBottom();
+        }
+    }
+
+    /// <summary>Aktualisiert nur diese Karte in der WebView — ohne die Seite neu zu
+    /// laden, sonst spränge die Ansicht nach jedem Klick ans Chat-Ende.</summary>
+    private void KarteNeuZeichnen(EntwurfKarte k)
+    {
+        if (!_webViewInitialized) return;
+        // Nach einem Mandantenwechsel ist der Chat neu aufgebaut, die Karte steht dort nicht mehr.
+        if (k.HtmlIndex < 0 || k.HtmlIndex >= _chatHistoryHtml.Count ||
+            !ReferenceEquals(_chatHistoryHtml[k.HtmlIndex], k.Html)) return;
+        var html = ChatHtmlRenderer.WrapEntwurfKarte(KarteAnsicht(k));
+        _chatHistoryHtml[k.HtmlIndex] = k.Html = html;
+        _ = ChatWebView.ExecuteScriptAsync(
+            $"(function(){{var e=document.getElementById('ek-{k.Id}');if(e)e.outerHTML={JsonSerializer.Serialize(html)};}})();");
+    }
+
+    private void KarteOeffnen(EntwurfKarte k)
+    {
+        try
+        {
+            var vorhanden = k.Datei is { } d && File.Exists(d.Pfad) ? d.Pfad : null;
+            if (k.Daten.IstEmail)
+            {
+                EmailOeffnen(k.Daten.AlsEmail(), vorhanden?.EndsWith(".eml", StringComparison.OrdinalIgnoreCase) == true ? vorhanden : null);
+                return;
+            }
+
+            var pfad = vorhanden?.EndsWith(".docx", StringComparison.OrdinalIgnoreCase) == true ? vorhanden : null;
+            if (pfad is null)
+            {
+                // Ohne Mandantenordner: unter Dokumente\LexWolf\Schreiben, bis die Karte
+                // zugeordnet wird (dann wandert genau diese Datei in die Entwürfe).
+                // Bewusst KEIN Unterordner direkt in DokumentePfad — den würde der
+                // DokumentScanner als weiteren Mandanten anlegen.
+                var ordner = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LexWolf", "Schreiben");
+                Directory.CreateDirectory(ordner);
+                pfad = DokumentExport.FreierPfad(ordner, DokumentExport.DateinameFuerSchreiben(k.Mandant, DateTime.Now));
+                DokumentExport.SchreibeDocx(pfad, k.Daten.Text);
+                k.Datei = new Entwurf { Pfad = pfad, GeschriebenUtc = File.GetLastWriteTimeUtc(pfad), Lose = true };
+                KarteNeuZeichnen(k);
+            }
+            WordOeffnen(pfad, k.Daten.Text);
+        }
+        catch (Exception ex)
+        {
+            AppendSystemMessage($"Entwurf konnte nicht geöffnet werden: {ex.Message}");
+        }
+    }
+
+    /// <summary>Ordnet eine Karte ohne Mandant zu und legt den Entwurf in dessen
+    /// Entwürfe-Ordner. Wurde er schon geöffnet (evtl. bearbeitet), wandert genau
+    /// diese Datei mit, statt neu geschrieben zu werden.</summary>
+    private void KarteZuordnen(EntwurfKarte k, string mandant)
+    {
+        if (string.IsNullOrWhiteSpace(mandant))
+        {
+            k.Hinweis = "Bitte zuerst einen Mandanten wählen.";
+            KarteNeuZeichnen(k);
+            return;
+        }
+        var ordner = EntwuerfeOrdner(mandant);
+        if (ordner is null)
+        {
+            k.Hinweis = $"Kein Ordner für „{mandant}“ im Dokumente-Verzeichnis gefunden.";
+            KarteNeuZeichnen(k);
+            return;
+        }
+
+        k.Mandant = mandant;
+        k.Hinweis = null;
+        if (k.Datei is { Lose: true } lose && File.Exists(lose.Pfad))
+        {
+            try
+            {
+                // Move behält den Zeitstempel -> eine bearbeitete Datei gilt weiter als bearbeitet.
+                var ziel = DokumentExport.FreierPfad(ordner, Path.GetFileName(lose.Pfad));
+                File.Move(lose.Pfad, ziel);
+                lose.Pfad = ziel;
+                lose.Lose = false;
+                BuildFileTree(_activeMandantName);
+            }
+            catch (IOException)
+            {
+                k.Mandant = null;
+                k.Hinweis = "Die geöffnete Fassung ist noch in Word offen — bitte schließen und erneut ablegen.";
+            }
+        }
+        else
+        {
+            KarteSpeichern(k, null);
+        }
+        KarteNeuZeichnen(k);
+    }
+
+    /// <summary>Brief ↔ E-Mail: schreibt den Entwurf im anderen Format neu; die
+    /// unbearbeitete alte Datei verschwindet, eine bearbeitete bleibt erhalten.</summary>
+    private void KarteArtWechseln(EntwurfKarte k, string art)
+    {
+        var neu = art == "email" ? "email" : "brief";
+        if (k.Daten.Art == neu || k.Historie || k.Ersetzt || k.Datei is { Uebernommen: true }) return;
+        k.Daten = k.Daten with
+        {
+            Art = neu,
+            Betreff = neu == "email" && k.Daten.Betreff == "" ? k.Daten.Titel : k.Daten.Betreff,
+        };
+
+        string? hinweis = null;
+        if (k.Datei is { } alt)
+        {
+            if (alt.Unveraendert) DateiEntfernen(alt);
+            else if (File.Exists(alt.Pfad)) hinweis = $"Die bearbeitete Fassung bleibt erhalten: {AktenPfad(alt.Pfad)}";
+            k.Datei = null;
+        }
+        if (k.Mandant is not null) KarteSpeichern(k, null);
+        if (hinweis is not null) k.Hinweis ??= hinweis;
+        BuildFileTree(_activeMandantName);
+        KarteNeuZeichnen(k);
+    }
+
+    /// <summary>Verschiebt den Entwurf aus &lt;Mandant&gt;\Entwürfe in den
+    /// Mandantenordner (offizielle Akte); ein leerer Entwürfe-Ordner wird entfernt.</summary>
+    private void KarteInAkteAblegen(EntwurfKarte k)
+    {
+        var entwurf = k.Datei;
+        if (entwurf is null || entwurf.Lose || entwurf.Uebernommen) return;
+        try
+        {
+            var entwuerfeOrdner = Path.GetDirectoryName(entwurf.Pfad)!;
+            if (!File.Exists(entwurf.Pfad) || !string.Equals(Path.GetFileName(entwuerfeOrdner), EntwuerfeOrdnerName, StringComparison.OrdinalIgnoreCase))
+            {
+                k.Hinweis = "Der Entwurf liegt nicht mehr im Entwürfe-Ordner der Akte.";
+                KarteNeuZeichnen(k);
+                return;
+            }
+
+            var mandantOrdner = Path.GetDirectoryName(entwuerfeOrdner)!;
+            var ziel = DokumentExport.FreierPfad(mandantOrdner, DokumentExport.NameNachUebernahme(Path.GetFileName(entwurf.Pfad)));
+            var alt = entwurf.Pfad;
+            File.Move(alt, ziel);
+            _db.DeleteDokumentChunks(alt); // der Scanner liest die Datei unter dem neuen Pfad neu ein
+            entwurf.Pfad = ziel;
+            entwurf.Uebernommen = true;
+            k.Hinweis = null;
+            if (!Directory.EnumerateFileSystemEntries(entwuerfeOrdner).Any())
+                Directory.Delete(entwuerfeOrdner);
+            BuildFileTree(_activeMandantName);
+        }
+        catch (IOException)
+        {
+            k.Hinweis = "Der Entwurf ist noch geöffnet — bitte im Programm schließen und dann erneut ablegen.";
+        }
+        catch (Exception ex)
+        {
+            k.Hinweis = $"Entwurf konnte nicht abgelegt werden: {ex.Message}";
+        }
+        KarteNeuZeichnen(k);
+    }
+
+    private void KarteKopieren(EntwurfKarte k)
+    {
+        var text = k.Daten.IstEmail
+            ? DokumentExport.AlsZwischenablageText(k.Daten.AlsEmail())
+            : DokumentExport.OhneMarkdown(k.Daten.Text).Replace("\r\n", "\n").Replace("\n", "\r\n");
+        Clipboard.SetText(text);
+        AddReasoning("📋", "Entwurfstext in die Zwischenablage kopiert.");
+    }
+
+    private string AktenPfad(string pfad) =>
+        Directory.Exists(_settings.DokumentePfad) ? Path.GetRelativePath(_settings.DokumentePfad, pfad) : pfad;
+
+    /// <summary>Öffnet das Schreiben mit dem Programm, das Windows zur Laufzeit für
+    /// Word-Dokumente meldet (Word, LibreOffice, WordPad, …). Ohne Programm für
+    /// .docx wird eine Textfassung im Editor geöffnet.</summary>
+    private void WordOeffnen(string pfad, string text)
+    {
+        var programm = StandardProgramme.Fuer(".docx");
+        if (programm is not null)
+        {
+            DokumentExport.OeffneMitStandardprogramm(pfad);
+            AddReasoning("📄", $"Schreiben in {programm} geöffnet: {pfad}");
+            return;
+        }
+
+        // Kein Programm für Word-Dokumente: das .docx bleibt als Entwurf liegen,
+        // angezeigt wird eine Textfassung.
+        var txtOrdner = Path.Combine(Path.GetTempPath(), "LexWolf");
+        Directory.CreateDirectory(txtOrdner);
+        var txt = Path.Combine(txtOrdner, Path.ChangeExtension(Path.GetFileName(pfad), ".txt"));
+        DokumentExport.SchreibeText(txt, text);
+        DokumentExport.OeffneMitStandardprogramm(txt);
+        AppendSystemMessage($"📄 Kein Programm für Word-Dokumente eingerichtet — Textfassung in " +
+                            $"{StandardProgramme.Fuer(".txt") ?? "Editor"} geöffnet. Word-Datei: {pfad}");
+    }
+
+    /// <summary>&lt;DokumentePfad&gt;\&lt;Mandant&gt;\Entwürfe (wird bei Bedarf angelegt),
+    /// oder null ohne Mandant bzw. Mandantenordner. Als Unterordner des Mandanten
+    /// liest der DokumentScanner ihn mit ein (Entwürfe stehen der KI als Kontext zur
+    /// Verfügung), ohne ihn als eigenen Mandanten anzulegen.</summary>
+    private const string EntwuerfeOrdnerName = "Entwürfe";
+
+    private string? EntwuerfeOrdner(string? mandant)
+    {
+        if (mandant is null || !Directory.Exists(_settings.DokumentePfad)) return null;
+        var mandantOrdner = Path.Combine(_settings.DokumentePfad, mandant);
+        if (!Directory.Exists(mandantOrdner)) return null;
+        var ordner = Path.Combine(mandantOrdner, EntwuerfeOrdnerName);
+        Directory.CreateDirectory(ordner);
+        return ordner;
+    }
+
+    /// <summary>Öffnet den E-Mail-Entwurf in dem Programm, das Windows zur Laufzeit für
+    /// mailto: bzw. .eml meldet. emlPfad = bereits abgelegter .eml-Entwurf.</summary>
+    private void EmailOeffnen(EmailEntwurf entwurf, string? emlPfad)
+    {
+        var mailtoProgramm = StandardProgramme.Fuer("mailto");
+        var emlProgramm = StandardProgramme.Fuer(".eml");
+        var empfaengerHinweis = DokumentExport.EmailAdressen(entwurf.An).Count == 0
+            ? " Bitte die Empfänger-Adresse ergänzen."
+            : "";
+
+        switch (DokumentExport.WaehleEmailWeg(entwurf, mailtoProgramm is not null, emlProgramm is not null))
+        {
+            case EmailWeg.Mailto:
+                DokumentExport.OeffneMitStandardprogramm(DokumentExport.BaueMailtoUri(entwurf));
+                AppendSystemMessage($"✉️ E-Mail-Entwurf in {mailtoProgramm} geöffnet.{empfaengerHinweis}");
+                break;
+            case EmailWeg.MailtoTextInZwischenablage:
+                Clipboard.SetText(entwurf.Text.Replace("\r\n", "\n").Replace("\n", "\r\n"));
+                DokumentExport.OeffneMitStandardprogramm(DokumentExport.BaueMailtoUri(entwurf, mitText: false));
+                AppendSystemMessage($"✉️ E-Mail-Entwurf in {mailtoProgramm} geöffnet. Der Text ist für die direkte Übergabe zu lang " +
+                                    $"und liegt in der Zwischenablage — im Entwurf mit Strg+V einfügen.{empfaengerHinweis}");
+                break;
+            case EmailWeg.Eml:
+                var eml = emlPfad ?? DokumentExport.SchreibeEml(entwurf, Path.Combine(Path.GetTempPath(), "LexWolf"));
+                DokumentExport.OeffneMitStandardprogramm(eml);
+                AppendSystemMessage($"✉️ E-Mail-Entwurf in {emlProgramm} geöffnet.{empfaengerHinweis}");
+                break;
+            default:
+                Clipboard.SetText(DokumentExport.AlsZwischenablageText(entwurf));
+                AppendSystemMessage("✉️ Auf diesem Rechner ist kein E-Mail-Programm eingerichtet. Betreff und Text " +
+                                    "liegen in der Zwischenablage, z.B. zum Einfügen im Webmail.");
+                break;
+        }
     }
 
     private string? GetAttorneyContext()
@@ -1485,18 +2058,6 @@ public partial class MainWindow : Window
         return string.IsNullOrWhiteSpace(content) ? null : $"Aktuelle Vorlage auf dem Rechner:\n{content}";
     }
 
-    private void OpenInExplorer(string filePath)
-    {
-        if (!File.Exists(filePath)) return;
-
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "explorer.exe",
-            Arguments = $"/select, \"{filePath}\"",
-            UseShellExecute = true,
-        };
-        Process.Start(startInfo);
-    }
 
     private void ScrollToBottom() => ChatScrollViewer.ScrollToBottom();
 
@@ -1720,21 +2281,5 @@ public partial class MainWindow : Window
         // Für Demo: Platzhalter einfügen
         return text.Replace("Hans Müller", "[MANDANT_1]")
                    .Replace("Müller", "[PERSON_1]");
-    }
-
-    // ── Testbereich (Task #243) ─────────────────────────────────────────────
-
-    /// <summary>Öffnet den manuellen Verifikations-Dialog für Task #243.
-    /// Der Testbereich ist im Desktop-Client als Top-Bar-Button sichtbar und
-    /// nutzbar; er zeigt eine kurze Versions-Information an.
-    /// </summary>
-    private void OnTestbereichClick(object sender, RoutedEventArgs e)
-    {
-        MessageBox.Show(
-            "Testbereich (Task #243) - Client-Version 9.9.9\n" +
-            "Manuelle Verifikation: UI-Stelle 'Testbereich' ist sichtbar und nutzbar.",
-            "Testbereich",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
     }
 }

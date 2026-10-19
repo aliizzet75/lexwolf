@@ -25,6 +25,26 @@ namespace LexWolf.Models
         }
 
         public string Icon => IsPrioritized ? "⭐" : (IsFolder ? "📁" : "📄");
+
+        /// <summary>Oberster Ordner = Mandant (Kontextmenü „Mandant löschen“).</summary>
+        public bool IsMandantOrdner { get; set; }
+        public System.Windows.Visibility MandantMenuSichtbar =>
+            IsMandantOrdner ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+        private bool _isExpanded;
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set { if (_isExpanded == value) return; _isExpanded = value; OnPropertyChanged(nameof(IsExpanded)); }
+        }
+
+        private bool _isAktiv;
+        /// <summary>Der oben ausgewählte Mandant — im Baum hervorgehoben.</summary>
+        public bool IsAktiv
+        {
+            get => _isAktiv;
+            set { if (_isAktiv == value) return; _isAktiv = value; OnPropertyChanged(nameof(IsAktiv)); }
+        }
         public ObservableCollection<FileTreeNode> Children { get; } = new();
 
         // Konstruktor für Ordner

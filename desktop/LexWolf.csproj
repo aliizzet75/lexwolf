@@ -20,8 +20,15 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.0" />
+    <PackageReference Include="OpenMcdf" Version="3.3.0" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.14" />
     <PackageReference Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
     <PackageReference Include="DiffPlex" Version="1.7.0" />
+    <PackageReference Include="MailKit" Version="4.18.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Vosk" Version="0.3.38" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
   </ItemGroup>
 
@@ -39,4 +46,16 @@
     <Compile Remove="LexWolf.Tests\**\*.cs" />
     <None Remove="LexWolf.Tests\**\*.cs" />
   </ItemGroup>
+
+  <!-- Whisper.net (Spracheingabe) lädt seine nativen DLLs selbst aus
+       runtimes\win-x64\ neben der .exe. In der Single-File-.exe (release.sh)
+       fände es sie nicht — daher werden sie neben die .exe gelegt (der
+       Installer kopiert den Ordner mit) und die Dateien der anderen
+       Plattformen gar nicht erst veröffentlicht. -->
+  <Target Name="WhisperNativeNichtBuendeln" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Update="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/').StartsWith('runtimes/win-x64/')) And $([System.String]::Copy('%(ResolvedFileToPublish.Filename)').Contains('whisper'))" ExcludeFromSingleFile="true" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/').StartsWith('runtimes/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/').StartsWith('runtimes/win-x64/'))" />
+    </ItemGroup>
+  </Target>
 </Project>

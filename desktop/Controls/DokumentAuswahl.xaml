@@ -1,0 +1,64 @@
+<UserControl x:Class="LexWolf.Controls.DokumentAuswahl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <!-- Ablagezone -->
+        <Grid x:Name="Ablagezone" AllowDrop="True" Background="#0d1117"
+              DragEnter="OnDragEnter" DragOver="OnDragEnter" DragLeave="OnDragLeave" Drop="OnDrop">
+            <Rectangle x:Name="Rahmen" Stroke="#484f58" StrokeThickness="2" StrokeDashArray="4 3" RadiusX="8" RadiusY="8"/>
+            <StackPanel Margin="16,18" HorizontalAlignment="Center">
+                <TextBlock Text="📎" FontSize="{DynamicResource LwSchriftTitel}" HorizontalAlignment="Center" Foreground="#9da7b3"/>
+                <TextBlock Text="Dateien oder E-Mails hierher ziehen" Style="{StaticResource LwHeading}" HorizontalAlignment="Center"
+                           Margin="0,4,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
+                <TextBlock Style="{StaticResource LwHinweis}" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,2,0,0"
+                           Text="aus dem Explorer oder direkt aus Outlook — PDF, Word, E-Mails, Fotos"/>
+                <Button Content="📁 Dateien auswählen …" Style="{StaticResource LwButton}" HorizontalAlignment="Center"
+                        Margin="0,12,0,0" Click="OnWaehlen"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Gewählte Dateien -->
+        <ItemsControl x:Name="Liste" Margin="0,10,0,0">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource LwEintrag}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource LwSmallButton}" Click="OnEntfernen"
+                                    Tag="{Binding}" VerticalAlignment="Center" ToolTip="Nicht übernehmen"/>
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding Symbol}" FontSize="{DynamicResource LwSchriftGross}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="32" TextAlignment="Center"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3"
+                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                                <TextBlock Text="{Binding Hinweis}" Style="{StaticResource LwHinweis}" Foreground="{Binding HinweisFarbe}"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Noch keiner Akte zugeordnete Postfach-Mails -->
+        <StackPanel x:Name="PostfachBereich" Visibility="Collapsed" Margin="0,10,0,0">
+            <TextBlock Text="📥 Aus dem Postfach — noch keiner Akte zugeordnet" Style="{StaticResource LwHeading}" Margin="0,0,0,6"/>
+            <ItemsControl x:Name="PostfachListe">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource LwEintrag}">
+                            <CheckBox IsChecked="{Binding Ausgewaehlt}" Style="{StaticResource LwCheckBox}" Margin="0"
+                                      VerticalContentAlignment="Top" Click="OnPostfachGeaendert">
+                                <StackPanel Margin="4,0,0,0">
+                                    <TextBlock Style="{StaticResource LwFliesstext}" TextWrapping="Wrap">
+                                        <Run Text="{Binding Datum, Mode=OneWay}" Foreground="#e8a838" FontWeight="SemiBold"/>
+                                        <Run Text="{Binding Betreff, Mode=OneWay}" Foreground="#e6edf3"/>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Absender}" Style="{StaticResource LwHinweis}"/>
+                                </StackPanel>
+                            </CheckBox>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,59 @@
+<Window x:Class="LexWolf.Dialogs.AntwortDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LexWolf — Antwort entwerfen"
+        Icon="/Assets/lexwolf.ico"
+        Width="1000" Height="720" MinWidth="780" MinHeight="520"
+        Background="#0d1117"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+    <Grid Margin="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="20"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" x:Name="HeaderText" Style="{StaticResource LwHeading}" TextWrapping="Wrap"/>
+            <StackPanel DockPanel.Dock="Top">
+                <TextBlock Text="Antwort an" Style="{StaticResource LwLabel}"/>
+                <ComboBox x:Name="EmpfaengerBox" Style="{StaticResource DarkComboBoxStyle}"/>
+                <TextBlock Text="Was soll die Antwort sagen? (optional)" Style="{StaticResource LwLabel}"/>
+                <TextBox x:Name="HinweisBox" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True"
+                         Height="90" VerticalScrollBarVisibility="Auto"
+                         ToolTip="z. B. „Fristverlängerung um 2 Wochen beantragen“ oder „Vergleich ablehnen, Gegenangebot 6.000 €“"/>
+                <TextBlock Text="Eingegangenes Dokument" Style="{StaticResource LwLabel}"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom">
+                <Button x:Name="ErstellenBtn" Content="✨ Entwurf schreiben" Style="{StaticResource LwPrimaryButton}"
+                        Margin="0,10,0,0" Click="OnErstellen"/>
+                <TextBlock x:Name="StatusText" Foreground="#8b949e" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+            </StackPanel>
+            <Border Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="6" Padding="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBlock x:Name="DokumentText" Foreground="#c9d1d9" FontSize="11" TextWrapping="Wrap"/>
+                </ScrollViewer>
+            </Border>
+        </DockPanel>
+
+        <DockPanel Grid.Column="2">
+            <TextBlock DockPanel.Dock="Top" Text="Entwurf (bearbeitbar)" Foreground="#e6edf3" FontWeight="SemiBold" FontSize="13"
+                       Margin="0,0,0,6"/>
+            <WrapPanel DockPanel.Dock="Bottom" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <Button x:Name="ChatBtn" Content="💬 Im Chat weiterbearbeiten" Style="{StaticResource LwButton}" Click="OnChat"
+                        Margin="0,0,8,4"/>
+                <Button x:Name="KopierenBtn" Content="📋 Kopieren" Style="{StaticResource LwButton}" Click="OnKopieren"
+                        IsEnabled="False" Margin="0,0,8,4"/>
+                <Button x:Name="EmailBtn" Content="✉ Als E-Mail öffnen" Style="{StaticResource LwButton}" Click="OnEmail"
+                        IsEnabled="False" Margin="0,0,8,4"/>
+                <Button x:Name="WordBtn" Content="💾 Als Word in der Akte" Style="{StaticResource LwButton}" Click="OnWord"
+                        IsEnabled="False" Margin="0,0,8,4"/>
+                <Button Content="Schließen" Style="{StaticResource LwButton}" IsCancel="True" Click="OnSchliessen" Margin="0,0,0,4"/>
+            </WrapPanel>
+            <TextBox x:Name="EntwurfBox" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto" FontSize="13" Padding="12,10"/>
+        </DockPanel>
+    </Grid>
+</Window>

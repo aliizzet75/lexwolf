@@ -11,14 +11,7 @@ namespace LexWolf.Services
             if (!File.Exists(filePath))
                 return string.Empty;
 
-            try
-            {
-                return File.ReadAllText(filePath);
-            }
-            catch
-            {
-                return string.Empty;
-            }
+            return MailText.LeseEml(filePath);
         }
 
         public bool CanHandle(string extension) => 

@@ -1,0 +1,218 @@
+<Window x:Class="LexWolf.Dialogs.NeuesMandatDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:LexWolf.Controls"
+        Title="LexWolf — Neues Mandat"
+        Icon="/Assets/lexwolf.ico"
+        Width="900" Height="820" MinWidth="700" MinHeight="560"
+        Background="#0d1117"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+    <Window.Resources>
+        <Style x:Key="Karte" TargetType="Border" BasedOn="{StaticResource LwKarte}">
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+        <Style x:Key="Inhalt" TargetType="StackPanel">
+            <Setter Property="Margin" Value="34,0,0,0"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Kopf -->
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock Text="Neues Mandat" Style="{StaticResource LwDialogTitel}"/>
+                <TextBlock Style="{StaticResource LwHinweis}" Margin="0,4,0,0"
+                           Text="Legt Mandant und Akte an, prüft auf Interessenkollision und bereitet die ersten Schritte vor."/>
+            </StackPanel>
+        </Border>
+
+        <!-- Fuß -->
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource LwFussleiste}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Abbrechen" Style="{StaticResource LwButton}" IsCancel="True"/>
+                    <Button x:Name="AnlegenBtn" Content="✓ Mandat anlegen" Style="{StaticResource LwPrimaryButton}"
+                            Margin="8,0,0,0" Padding="18,7" Click="OnAnlegen" IsEnabled="False"/>
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Style="{StaticResource LwStatus}" Text="Bitte den Namen des Mandanten eingeben."/>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,18,8">
+            <StackPanel MaxWidth="940">
+                <!-- 1 Mandant -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="1" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Mandant" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource Inhalt}">
+                            <TextBlock Text="Name *" Style="{StaticResource LwLabel}"/>
+                            <TextBox x:Name="NameBox" Style="{StaticResource LwTextBox}" TextChanged="OnEingabeGeaendert"
+                                     ToolTip="„Nachname, Vorname“ oder Firmenname — wird zum Namen des Aktenordners"/>
+                            <TextBlock Style="{StaticResource LwHinweis}" Margin="0,4,0,0" Text="„Nachname, Vorname“ oder Firma — wird zum Namen des Aktenordners."/>
+
+                            <!-- Mandant gibt es schon -->
+                            <Border x:Name="BestehendHinweis" Background="#2b2111" BorderBrush="#d29922" BorderThickness="1"
+                                    CornerRadius="6" Padding="12,8" Margin="0,10,0,0" Visibility="Collapsed">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Bestehende Akte öffnen" Style="{StaticResource LwSmallButton}"
+                                            Click="OnBestehendeOeffnen" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                    <TextBlock x:Name="BestehendText" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3"
+                                               VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </Border>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Telefon" Style="{StaticResource LwLabel}"/>
+                                    <TextBox x:Name="TelefonBox" Style="{StaticResource LwTextBox}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="E-Mail" Style="{StaticResource LwLabel}"/>
+                                    <TextBox x:Name="EmailBox" Style="{StaticResource LwTextBox}"/>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="Anschrift" Style="{StaticResource LwLabel}"/>
+                            <TextBox x:Name="AnschriftBox" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="52"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 2 Gegenseite + Kollisionsprüfung -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="2" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Gegenseite" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource Inhalt}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Gegner" Style="{StaticResource LwLabel}"/>
+                                    <TextBox x:Name="GegnerBox" Style="{StaticResource LwTextBox}" TextChanged="OnEingabeGeaendert"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Gegnervertreter (falls bekannt)" Style="{StaticResource LwLabel}"/>
+                                    <TextBox x:Name="GegnervertreterBox" Style="{StaticResource LwTextBox}" TextChanged="OnEingabeGeaendert"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Ergebnis der Kollisionsprüfung -->
+                            <Border x:Name="KollisionOk" Background="#0f2417" BorderBrush="#3fb950" BorderThickness="1"
+                                    CornerRadius="6" Padding="12,8" Margin="0,12,0,0" Visibility="Collapsed">
+                                <TextBlock x:Name="KollisionOkText" Style="{StaticResource LwFliesstext}" Foreground="#3fb950"/>
+                            </Border>
+                            <Border x:Name="KollisionWarnung" Background="#2d1416" BorderBrush="#f85149" BorderThickness="1"
+                                    CornerRadius="6" Padding="12,10" Margin="0,12,0,0" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="⚠ Mögliche Interessenkollision (§ 43a Abs. 4 BRAO)" Foreground="#f85149"
+                                               FontWeight="SemiBold" FontSize="{DynamicResource LwSchriftGross}" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="KollisionText" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3" Margin="0,6,0,8"/>
+                                    <CheckBox x:Name="KollisionGeprueftBox" Style="{StaticResource LwCheckBox}" Click="OnEingabeGeaendert"
+                                              Content="Geprüft — es liegt keine Interessenkollision vor"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 3 Worum geht es -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="3" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Worum geht es?" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource Inhalt}">
+                            <TextBlock Text="Rechtsgebiet" Style="{StaticResource LwLabel}"/>
+                            <ComboBox x:Name="RechtsgebietBox" Style="{StaticResource DarkComboBoxStyle}" MinWidth="320" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Anliegen in eigenen Worten" Style="{StaticResource LwLabel}"/>
+                            <TextBox x:Name="AnliegenBox" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True"
+                                     MinHeight="96" MaxHeight="220" VerticalScrollBarVisibility="Auto"
+                                     ToolTip="z. B. „Getrennt seit März, Ehemann zahlt keinen Unterhalt für die Kinder (7 und 11), Mandantin will Scheidung.“"/>
+                            <TextBlock Style="{StaticResource LwHinweis}" Margin="0,4,0,0"
+                                       Text="So wie der Mandant es schildert. Je genauer, desto besser die Vorschläge von LexWolf."/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 4 Frist -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="4" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Läuft schon eine Frist?" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource Inhalt}">
+                            <CheckBox x:Name="FristBox" Style="{StaticResource LwCheckBox}" Margin="0,10,0,0" Click="OnFristGeaendert"
+                                      Content="Ja — der Mandant hat ein Urteil, einen Bescheid oder ein Schreiben mit Frist erhalten"/>
+                            <StackPanel x:Name="FristPanel" Visibility="Collapsed">
+                                <TextBlock Text="Art der Frist" Style="{StaticResource LwLabel}"/>
+                                <ComboBox x:Name="FristartBox" Style="{StaticResource DarkComboBoxStyle}" SelectionChanged="OnFristGeaendert"/>
+                                <TextBlock x:Name="FristDatumLabel" Text="Zugestellt bzw. erhalten am" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="FristDatumBox" Style="{StaticResource LwTextBox}" MinWidth="160" HorizontalAlignment="Left"
+                                         TextChanged="OnFristTextGeaendert" ToolTip="z. B. 14.10.2026, 14.10. oder „heute“"/>
+                                <Border x:Name="FristErgebnisKarte" Style="{StaticResource LwEintrag}" Margin="0,10,0,0" Visibility="Collapsed">
+                                    <StackPanel>
+                                        <TextBlock x:Name="FristEndeText" Foreground="#e8a838" FontWeight="SemiBold"
+                                                   FontSize="{DynamicResource LwSchriftGross}" TextWrapping="Wrap"/>
+                                        <TextBlock x:Name="FristWegText" Style="{StaticResource LwHinweis}" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 5 Unterlagen -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="5" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Unterlagen (optional)" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource Inhalt}">
+                            <TextBlock Style="{StaticResource LwHinweis}" Margin="0,2,0,10"
+                                       Text="Was der Mandant mitgebracht oder geschickt hat — Bescheid, Urteil, Schreiben der Gegenseite, E-Mails. Fließt in die Ersteinschätzung ein."/>
+                            <controls:DokumentAuswahl x:Name="Unterlagen"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 6 Was LexWolf vorbereitet -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="6" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="LexWolf bereitet vor" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource Inhalt}" Margin="34,8,0,0">
+                            <CheckBox x:Name="KiBox" Style="{StaticResource LwCheckBox}" IsChecked="True"
+                                      Content="Ersteinschätzung, Fragen fürs Erstgespräch, Unterlagenliste und nächste Schritte (im Chat)"/>
+                            <CheckBox x:Name="BestaetigungBox" Style="{StaticResource LwCheckBox}" IsChecked="True"
+                                      Content="Mandatsbestätigung an den Mandanten als E-Mail-Entwurf"/>
+                            <CheckBox x:Name="VollmachtBox" Style="{StaticResource LwCheckBox}" IsChecked="True"
+                                      Content="Vollmacht zum Unterschreiben (Word, in der Akte)"/>
+                            <CheckBox x:Name="VermerkBox" Style="{StaticResource LwCheckBox}" IsChecked="True"
+                                      Content="Aktenvermerk über Mandatsaufnahme und Kollisionsprüfung (Word, in der Akte)"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

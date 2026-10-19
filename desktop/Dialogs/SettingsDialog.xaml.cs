@@ -27,12 +27,37 @@ public partial class SettingsDialog : Window
             ChatInputFontSize = current.ChatInputFontSize,
             ChatOutputFont = current.ChatOutputFont,
             ChatOutputFontSize = current.ChatOutputFontSize,
+            Bundesland = current.Bundesland,
+            StilvorlagePfad = current.StilvorlagePfad,
+            PostfachAktiv = current.PostfachAktiv,
+            PostfachServer = current.PostfachServer,
+            PostfachPort = current.PostfachPort,
+            PostfachSsl = current.PostfachSsl,
+            PostfachBenutzer = current.PostfachBenutzer,
+            PostfachPasswortGeschuetzt = current.PostfachPasswortGeschuetzt,
+            PostfachOrdner = current.PostfachOrdner,
+            PostfachAbrufMinuten = current.PostfachAbrufMinuten,
+            EingangAutoAuswertung = current.EingangAutoAuswertung,
+            VoskOrdner = current.VoskOrdner,
+            VoskModell = current.VoskModell,
+            VoskModellGross = current.VoskModellGross,
+            VoskGrossBeimStart = current.VoskGrossBeimStart,
+            VoskGrossLadezeitSek = current.VoskGrossLadezeitSek,
+            DiktatNachkorrektur = current.DiktatNachkorrektur,
+            WhisperOrdner = current.WhisperOrdner,
+            WhisperModell = current.WhisperModell,
         };
         DokumentePfadBox.Text = Settings.DokumentePfad;
         BriefkopfBox.Text = Settings.Briefkopf;
         BriefendeBox.Text = Settings.Briefende;
         FeedbackOptInBox.IsChecked = Settings.FeedbackOptIn;
         AbTestOptInBox.IsChecked = Settings.AbTestOptIn;
+        VoskGrossBox.IsChecked = Settings.VoskGrossBeimStart;
+        var grossVorhanden = DiktatService.VoskGrossExists(Settings);
+        VoskGrossBox.IsEnabled = grossVorhanden;
+        VoskGrossStatus.Text = grossVorhanden
+            ? $"Modell gefunden: {DiktatService.VoskGrossPath(Settings)}"
+            : $"Großes Modell nicht installiert (erwartet unter {DiktatService.VoskGrossPath(Settings)}) — es wird das kleine Modell verwendet.";
 
         var installedFonts = AppSettings.AvailableFontFamilies;
         InputFontCombo.ItemsSource = installedFonts;
@@ -56,6 +81,7 @@ public partial class SettingsDialog : Window
         if (NavList.SelectedItem is not ListBoxItem item) return;
         PanelAllgemein.Visibility = item.Tag as string == "allgemein" ? Visibility.Visible : Visibility.Collapsed;
         PanelDarstellung.Visibility = item.Tag as string == "darstellung" ? Visibility.Visible : Visibility.Collapsed;
+        PanelSprache.Visibility = item.Tag as string == "sprache" ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnInputFontChanged(object sender, SelectionChangedEventArgs e)
@@ -78,6 +104,9 @@ public partial class SettingsDialog : Window
 
     private void OnInputFontSizeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        // Feuert schon in InitializeComponent (Minimum="8" hebt den Wert von 0 an),
+        // bevor Settings und die Labels existieren.
+        if (Settings is null) return;
         Settings.ChatInputFontSize = InputFontSizeSlider.Value;
         InputFontSizeLabel.Text = $"Größe: {Settings.ChatInputFontSize:0} pt";
         UpdatePreview();
@@ -85,6 +114,7 @@ public partial class SettingsDialog : Window
 
     private void OnOutputFontSizeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (Settings is null) return;
         Settings.ChatOutputFontSize = OutputFontSizeSlider.Value;
         OutputFontSizeLabel.Text = $"Größe: {Settings.ChatOutputFontSize:0} pt";
         UpdatePreview();
@@ -114,6 +144,7 @@ public partial class SettingsDialog : Window
         Settings.Briefende = BriefendeBox.Text.Trim();
         Settings.FeedbackOptIn = FeedbackOptInBox.IsChecked == true;
         Settings.AbTestOptIn = AbTestOptInBox.IsChecked == true;
+        Settings.VoskGrossBeimStart = VoskGrossBox.IsChecked == true;
         Settings.ChatInputFont = InputFontCombo.SelectedItem as string ?? "Segoe UI";
         Settings.ChatInputFontSize = InputFontSizeSlider.Value;
         Settings.ChatOutputFont = OutputFontCombo.SelectedItem as string ?? "Segoe UI";

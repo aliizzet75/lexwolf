@@ -4,7 +4,7 @@ using Microsoft.Data.Sqlite;
 
 namespace LexWolf.Database
 {
-    public class LocalDb
+    public partial class LocalDb
     {
         private readonly string _dbPath;
 
@@ -20,7 +20,10 @@ namespace LexWolf.Database
 
         public SqliteConnection GetConnection()
         {
-            var conn = new SqliteConnection($"Data Source={_dbPath}");
+            // Ohne Pooling: jede Methode öffnet ohnehin ihre eigene kurze Verbindung,
+            // und der Pool hielte die Datei unter Windows sonst über Dispose hinaus
+            // gesperrt (Tests konnten ihre Temp-Datenbank nicht löschen).
+            var conn = new SqliteConnection($"Data Source={_dbPath};Pooling=False");
             conn.Open();
             return conn;
         }
@@ -88,6 +91,7 @@ namespace LexWolf.Database
                 );
             ";
             cmd.ExecuteNonQuery();
+            InitializeAkte(conn);
         }
 
         // --- Notizen ---
@@ -243,6 +247,18 @@ namespace LexWolf.Database
             cmd.Parameters.AddWithValue("$chunk", inhaltsChunk);
             cmd.Parameters.AddWithValue("$erstellt", DateTime.UtcNow.ToString("o"));
             cmd.Parameters.AddWithValue("$geaendert", geaendert);
+            cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>Entfernt alle Chunks einer Datei — beim Löschen/Verschieben und vor
+        /// dem Neu-Einlesen (sonst blieben bei kürzerem neuen Inhalt die hinteren
+        /// Chunks der alten Fassung stehen und landeten weiter im KI-Kontext).</summary>
+        public void DeleteDokumentChunks(string pfad)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM dokumente WHERE pfad = $pfad;";
+            cmd.Parameters.AddWithValue("$pfad", pfad);
             cmd.ExecuteNonQuery();
         }
 

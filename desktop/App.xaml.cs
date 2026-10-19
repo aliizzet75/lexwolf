@@ -5,6 +5,17 @@ namespace LexWolf;
 
 public partial class App : WpfApplication
 {
+    /// <summary>Setzt die Schriftstufen der ganzen Oberfläche; alles mit DynamicResource passt sich sofort an.</summary>
+    public static void SetzeSchriftgroesse(double grundgroesse)
+    {
+        if (Current is null) return;
+        var s = LexWolf.Services.Schriftgroessen.Aus(grundgroesse);
+        Current.Resources["LwSchriftKlein"] = s.Klein;
+        Current.Resources["LwSchriftNormal"] = s.Normal;
+        Current.Resources["LwSchriftGross"] = s.Gross;
+        Current.Resources["LwSchriftTitel"] = s.Titel;
+    }
+
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
         try

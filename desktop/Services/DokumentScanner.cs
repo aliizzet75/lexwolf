@@ -17,6 +17,10 @@ namespace LexWolf.Services
         /// Mandanten-Dropdown neu laden ohne Neustart.</summary>
         public Action? OnNeuerMandant;
 
+        /// <summary>Nach jedem erfolgreichen (Neu-)Einlesen einer Datei: (mandantId, pfad).
+        /// Der AkteService entscheidet, ob sie als neuer Eingang ausgewertet wird.</summary>
+        public Action<string, string>? OnDateiIndexiert;
+
         private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
             ".docx", ".pdf", ".txt", ".eml"
@@ -73,11 +77,13 @@ namespace LexWolf.Services
                 var titel     = Path.GetFileNameWithoutExtension(filePath);
                 var chunks    = Chunk(text);
 
+                _db.DeleteDokumentChunks(filePath);
                 for (int i = 0; i < chunks.Count; i++)
                 {
                     var chunkId = ToId($"{filePath}_{i}");
                     _db.UpsertDokumentChunk(chunkId, mandantId, filePath, titel, chunks[i], geaendert);
                 }
+                OnDateiIndexiert?.Invoke(mandantId, filePath);
             }
             catch (Exception ex)
             {
@@ -89,12 +95,31 @@ namespace LexWolf.Services
         // Text aus Datei lesen (.txt / .eml → direkt; .docx / .pdf → Rohtext)
         // -------------------------------------------------------------------------
 
+        /// <summary>Eine gerade abgelegte Datei sofort einlesen, ohne auf den Ordner-Wächter zu warten
+        /// (z. B. damit die KI sie bei der nächsten Frage schon kennt).</summary>
+        public void DateiEinlesen(string mandantId, string pfad)
+        {
+            if (File.Exists(pfad) && SupportedExtensions.Contains(Path.GetExtension(pfad)))
+                IndexFile(mandantId, pfad);
+        }
+
+        public static bool IstLesbar(string pfad) => SupportedExtensions.Contains(Path.GetExtension(pfad));
+
+        /// <summary>Volltext einer Datei (wie beim Indexieren, inkl. OCR-Fallback).</summary>
+        public static string LeseText(string path) => ReadText(path);
+
+        public static string MandantIdFuer(string mandantOrdnerName) => ToId(mandantOrdnerName);
+
         private static string ReadText(string path)
         {
             var ext = Path.GetExtension(path).ToLowerInvariant();
 
-            if (ext == ".txt" || ext == ".eml")
+            if (ext == ".txt")
                 return File.ReadAllText(path, Encoding.UTF8);
+
+            // MIME dekodieren (Base64, quoted-printable, HTML) statt Rohtext
+            if (ext == ".eml")
+                return MailText.LeseEml(path);
 
             if (ext == ".docx")
                 return ReadDocx(path);
@@ -254,12 +279,33 @@ namespace LexWolf.Services
 
             w.Created += handler;
             w.Changed += handler;
+            // Gelöschte/verschobene Dateien aus dem Index nehmen — sonst stünden sie
+            // weiter im KI-Kontext (z.B. ein in die Akte übernommener Entwurf doppelt).
+            // Verschieben zwischen Unterordnern meldet Windows als Deleted + Created.
+            w.Deleted += (_, e) => EntferneAusIndex(e.FullPath);
+            w.Renamed += (_, e) =>
+            {
+                EntferneAusIndex(e.OldFullPath);
+                handler(this, e);
+            };
             _watchers.Add(w);
         }
 
         // -------------------------------------------------------------------------
         // Hilfsmethoden
         // -------------------------------------------------------------------------
+
+        private void EntferneAusIndex(string filePath)
+        {
+            try
+            {
+                _db.DeleteDokumentChunks(filePath);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[DokumentScanner] Entfernen aus Index fehlgeschlagen für {filePath}: {ex.Message}");
+            }
+        }
 
         private static string ToId(string s) =>
             Convert.ToHexString(System.Security.Cryptography.MD5.HashData(

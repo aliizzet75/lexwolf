@@ -1,0 +1,259 @@
+<Window x:Class="LexWolf.Dialogs.FragebogenDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LexWolf — Fragebogen"
+        Icon="/Assets/lexwolf.ico"
+        Width="960" Height="820" MinWidth="740" MinHeight="560"
+        Background="#0d1117"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+    <Window.Resources>
+        <Style x:Key="Zahl" TargetType="TextBox" BasedOn="{StaticResource LwTextBox}">
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+            <Setter Property="MinWidth" Value="160"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style x:Key="Datum" TargetType="TextBox" BasedOn="{StaticResource LwTextBox}">
+            <Setter Property="MinWidth" Value="130"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="ToolTip" Value="z. B. 14.06.2012"/>
+        </Style>
+        <Style x:Key="Karte" TargetType="Border" BasedOn="{StaticResource LwKarte}">
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+        <Style x:Key="Spaltenkopf" TargetType="TextBlock" BasedOn="{StaticResource LwFliesstext}">
+            <Setter Property="Foreground" Value="#e8a838"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,10,0,0"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Kopf -->
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock Text="Mandanten-Fragebogen" Style="{StaticResource LwDialogTitel}"/>
+                <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
+                <TextBlock Style="{StaticResource LwHinweis}" Margin="0,4,0,0"
+                           Text="LexWolf füllt aus, was in der Akte steht. Sie prüfen und ändern. Die Angaben füllen die Rechner vor."/>
+                <!-- Legende: woher kommt ein Wert? -->
+                <WrapPanel Margin="0,10,0,0">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                        <Border Style="{StaticResource LwLegendeFeld}" Background="{StaticResource LwHerkunftLexWolfHintergrund}"
+                                BorderBrush="{StaticResource LwHerkunftLexWolf}"/>
+                        <TextBlock Style="{StaticResource LwHinweis}" Foreground="{StaticResource LwHerkunftLexWolfText}"
+                                   Text="von LexWolf aus der Akte — bitte prüfen" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource LwLegendeFeld}" Background="{StaticResource LwHerkunftAnwaltHintergrund}"
+                                BorderBrush="{StaticResource LwHerkunftAnwalt}"/>
+                        <TextBlock Style="{StaticResource LwHinweis}" Foreground="{StaticResource LwHerkunftAnwaltText}"
+                                   Text="von Ihnen eingegeben" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Fuß -->
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource LwFussleiste}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="AusfuellenBtn" Content="✨ LexWolf ausfüllen" Style="{StaticResource LwButton}" Click="OnLexWolfAusfuellen"
+                            Margin="0,0,8,0"
+                            ToolTip="Akte neu lesen und alle leeren Felder mit den Werten aus den Dokumenten füllen. Ihre Eingaben bleiben."/>
+                    <Button x:Name="EinlesenBtn" Content="📥 Ausgefüllten einlesen" Style="{StaticResource LwButton}" Click="OnEinlesen"
+                            ToolTip="Zurückgeschickten Fragebogen (Word, PDF, E-Mail) auslesen und die Felder füllen"/>
+                    <Button Content="📄 Als Word" Style="{StaticResource LwButton}" Click="OnWord" Margin="8,0,0,0"
+                            ToolTip="Fragebogen (mit bekannten Angaben vorausgefüllt) für den Mandanten in die Akte legen"/>
+                    <Button Content="Speichern" Style="{StaticResource LwPrimaryButton}" Margin="8,0,0,0" Click="OnSpeichern" IsDefault="True"/>
+                    <Button Content="Schließen" Style="{StaticResource LwButton}" Margin="8,0,0,0" IsCancel="True"/>
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Style="{StaticResource LwStatus}"/>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,18,8">
+            <StackPanel MaxWidth="900" HorizontalAlignment="Stretch">
+                <!-- 1 Rolle -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="1" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Rolle" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <WrapPanel Margin="34,8,0,0">
+                            <RadioButton x:Name="RolleBerechtigt" Content="Mandant erhält Unterhalt" Style="{StaticResource LwRadio}" IsChecked="True"/>
+                            <RadioButton x:Name="RollePflichtig" Content="Mandant zahlt Unterhalt" Style="{StaticResource LwRadio}"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 2 Einkommen -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="2" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Einkommen" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource LwHinweis}" Margin="34,2,0,0" Text="Monatlich netto, Durchschnitt der letzten 12 Monate."/>
+                        <Grid Margin="34,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="24"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Mandant" Style="{StaticResource Spaltenkopf}"/>
+                                <TextBlock Text="Nettoeinkommen" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="NettoM" Style="{StaticResource Zahl}"/>
+                                <CheckBox x:Name="ErwerbM" Content="erwerbstätig" Style="{StaticResource LwCheckBox}" IsChecked="True" Margin="0,8,0,0"/>
+                                <TextBlock Text="Abzüge (Kredite, Altersvorsorge)" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="AbzugM" Style="{StaticResource Zahl}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Gegenseite" Style="{StaticResource Spaltenkopf}"/>
+                                <TextBlock Text="Nettoeinkommen" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="NettoG" Style="{StaticResource Zahl}"/>
+                                <CheckBox x:Name="ErwerbG" Content="erwerbstätig" Style="{StaticResource LwCheckBox}" IsChecked="True" Margin="0,8,0,0"/>
+                                <TextBlock Text="Abzüge (Kredite, Altersvorsorge)" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="AbzugG" Style="{StaticResource Zahl}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 3 Kinder -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="+ Kind" Style="{StaticResource LwSmallButton}" Click="OnKindNeu"
+                                    VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Style="{StaticResource LwSchritt}"><TextBlock Text="3" Style="{StaticResource LwSchrittText}"/></Border>
+                                <TextBlock Text="Kinder" Style="{StaticResource LwAbschnitt}"/>
+                                <TextBlock x:Name="KinderHerkunft" Style="{StaticResource LwHinweis}" VerticalAlignment="Center"
+                                           Margin="12,0,0,0" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <StackPanel Margin="34,10,0,0" Grid.IsSharedSizeScope="True">
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3*"/>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="KindHaken"/>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="KindEntfernen"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Name" Style="{StaticResource LwZaehlerText}"/>
+                                <TextBlock Grid.Column="1" Text="Geburtsdatum" Style="{StaticResource LwZaehlerText}" Margin="8,0,0,0"/>
+                            </Grid>
+                            <ItemsControl x:Name="KinderListe">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="3*"/>
+                                                <ColumnDefinition Width="2*"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="KindHaken"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="KindEntfernen"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource LwTextBox}"/>
+                                            <TextBox Grid.Column="1" Text="{Binding Geburt, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource LwTextBox}" Margin="8,0,0,0" ToolTip="z. B. 03.05.2015"/>
+                                            <CheckBox Grid.Column="2" IsChecked="{Binding BeiMandant}" Content="lebt beim Mandanten"
+                                                      Style="{StaticResource LwCheckBox}" Margin="12,0,0,0"/>
+                                            <Button Grid.Column="3" Content="✕" Style="{StaticResource LwSmallButton}" Margin="8,0,0,0"
+                                                    Click="OnKindEntfernen" Tag="{Binding}" ToolTip="Kind entfernen"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Name="KinderLeer" Style="{StaticResource LwHinweis}" Text="Keine Kinder eingetragen."/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 4 Ehe -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="4" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Ehe" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <WrapPanel Margin="34,0,0,0">
+                            <StackPanel Margin="0,0,20,0">
+                                <TextBlock Text="Heirat am" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="Heirat" Style="{StaticResource Datum}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,20,0">
+                                <TextBlock Text="Trennung am" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="Trennung" Style="{StaticResource Datum}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Zustellung Scheidungsantrag" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="Zustellung" Style="{StaticResource Datum}"/>
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 5 Vermögen -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="5" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Vermögen" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource LwHinweis}" Margin="34,2,0,0" Text="Für den Zugewinnausgleich."/>
+                        <Grid Margin="34,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="24"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Mandant" Style="{StaticResource Spaltenkopf}"/>
+                                <TextBlock Text="Anfangsvermögen (bei Heirat)" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="AnfangM" Style="{StaticResource Zahl}"/>
+                                <TextBlock Text="Erbschaften / Schenkungen" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="PrivM" Style="{StaticResource Zahl}"/>
+                                <TextBlock Text="Endvermögen (bei Zustellung)" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="EndeM" Style="{StaticResource Zahl}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Gegenseite" Style="{StaticResource Spaltenkopf}"/>
+                                <TextBlock Text="Anfangsvermögen (bei Heirat)" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="AnfangG" Style="{StaticResource Zahl}"/>
+                                <TextBlock Text="Erbschaften / Schenkungen" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="PrivG" Style="{StaticResource Zahl}"/>
+                                <TextBlock Text="Endvermögen (bei Zustellung)" Style="{StaticResource LwLabel}"/>
+                                <TextBox x:Name="EndeG" Style="{StaticResource Zahl}"/>
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Margin="34,0,0,0">
+                            <TextBlock Text="Anzahl Rentenanrechte (beide zusammen)" Style="{StaticResource LwLabel}"
+                                       ToolTip="Gesetzlich, betrieblich, privat — für den Versorgungsausgleich"/>
+                            <TextBox x:Name="Anrechte" Style="{StaticResource Zahl}" MinWidth="80"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 6 Sonstiges -->
+                <Border Style="{StaticResource Karte}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource LwSchritt}"><TextBlock Text="6" Style="{StaticResource LwSchrittText}"/></Border>
+                            <TextBlock Text="Sonstiges" Style="{StaticResource LwAbschnitt}"/>
+                        </StackPanel>
+                        <StackPanel Margin="34,0,0,0">
+                            <TextBlock Text="Wohnsituation (Eigentum, Miete, wer wohnt wo?)" Style="{StaticResource LwLabel}"/>
+                            <TextBox x:Name="Wohnen" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="56"/>
+                            <TextBlock Text="Bemerkungen" Style="{StaticResource LwLabel}"/>
+                            <TextBox x:Name="Bemerkungen" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="72"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

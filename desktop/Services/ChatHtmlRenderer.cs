@@ -1,9 +1,25 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace LexWolf.Services;
+
+/// <summary>Was die Entwurfskarte anzeigt (siehe ChatHtmlRenderer.WrapEntwurfKarte).</summary>
+/// <param name="Aktiv">false = nur Anzeige (Historie, durch neuere Fassung ersetzt).</param>
+/// <param name="MandantAuswahl">Nicht leer = noch keinem Mandanten zugeordnet; Auswahl anzeigen.</param>
+/// <param name="OeffnenLabel">z.B. "📄 In Word öffnen"; null = kein Öffnen-Button.</param>
+public sealed record EntwurfKarteAnsicht(
+    int Id,
+    ChatEntwurf Entwurf,
+    string Status,
+    bool Aktiv,
+    bool ArtUmschaltbar,
+    bool AblegenMoeglich,
+    string? OeffnenLabel,
+    IReadOnlyList<string>? MandantAuswahl = null);
 
 /// <summary>
 /// Konvertiert KI-Antwort-Text (Markdown-ähnliche Struktur) in sauberes,
@@ -176,25 +192,16 @@ public static class ChatHtmlRenderer
     }
 
     /// <summary>
-    /// Baut eine vollständige Chat-Bubble aus einem KI-Text und dem System-CSS.
+    /// Baut eine vollständige Chat-Bubble aus einem KI-Text. Entwürfe (Schreiben,
+    /// E-Mails) stehen nicht hier, sondern in einer eigenen Karte (WrapEntwurfKarte).
     /// </summary>
-    public static string WrapAiBubble(string html, string suggestedAction)
+    public static string WrapAiBubble(string html)
     {
         var sb = new StringBuilder();
         sb.AppendLine("<div class='ai-message'>");
         sb.AppendLine("  <div class='ai-bubble'>");
         sb.AppendLine(html);
         sb.AppendLine("  </div>");
-
-        if (suggestedAction == "erstelle_dokument")
-        {
-            sb.AppendLine("  <button class='chat-action-button' data-action='erstelle_dokument'>📄 Vorlage erstellen</button>");
-        }
-        else if (suggestedAction == "berechne_unterhalt")
-        {
-            sb.AppendLine("  <button class='chat-action-button primary' data-action='berechne_unterhalt'>⚖ Unterhalt berechnen</button>");
-        }
-
         sb.AppendLine("</div>");
         return sb.ToString();
     }
@@ -207,6 +214,68 @@ public static class ChatHtmlRenderer
     public static string WrapSystemMessage(string text)
     {
         return $"<div class='system-message'>{WebUtility.HtmlEncode(text)}</div>";
+    }
+
+    /// <summary>Entwurfskarte im Chat: Titel, Art (Brief/E-Mail umschaltbar), Empfänger,
+    /// eingeklappter Text, Ablageort und Aktionen. Klicks gehen per data-action an
+    /// MainWindow.OnChatWebMessage. Ohne Aktionen (Historie, ersetzte Fassung) bleibt
+    /// nur die Anzeige.</summary>
+    public static string WrapEntwurfKarte(EntwurfKarteAnsicht k)
+    {
+        static string H(string s) => WebUtility.HtmlEncode(s);
+        var sb = new StringBuilder();
+        sb.Append($"<div id='ek-{k.Id}' class='entwurf-karte{(k.Aktiv ? "" : " inaktiv")}'>");
+
+        sb.Append("<div class='ek-kopf'>");
+        sb.Append($"<span class='ek-titel'>{(k.Entwurf.IstEmail ? "✉️" : "📄")} {H(k.Entwurf.Titel)}</span>");
+        if (k.ArtUmschaltbar)
+        {
+            sb.Append("<span class='ek-art'>");
+            sb.Append($"<button class='ek-art-btn{(k.Entwurf.IstEmail ? "" : " an")}' data-action='art' data-value='brief' data-msg='{k.Id}'>Brief</button>");
+            sb.Append($"<button class='ek-art-btn{(k.Entwurf.IstEmail ? " an" : "")}' data-action='art' data-value='email' data-msg='{k.Id}'>E-Mail</button>");
+            sb.Append("</span>");
+        }
+        else
+        {
+            sb.Append($"<span class='ek-art-fest'>{(k.Entwurf.IstEmail ? "E-Mail" : "Brief")}</span>");
+        }
+        sb.Append("</div>");
+
+        var meta = new List<string>();
+        if (k.Entwurf.An != "") meta.Add($"An: {H(k.Entwurf.An)}");
+        if (k.Entwurf.IstEmail && k.Entwurf.Betreff != "") meta.Add($"Betreff: {H(k.Entwurf.Betreff)}");
+        if (meta.Count > 0) sb.Append($"<div class='ek-meta'>{string.Join(" · ", meta)}</div>");
+
+        var text = DokumentExport.OhneMarkdown(k.Entwurf.Text).Replace("\r\n", "\n").Trim();
+        var vorschau = string.Join(" ", text.Split('\n').Where(z => z.Trim() != "").Take(3).Select(z => z.Trim()));
+        if (vorschau.Length > 220) vorschau = vorschau[..220].TrimEnd() + " …";
+        sb.Append($"<details class='ek-text'><summary>{H(vorschau)}</summary><div class='ek-volltext'>{H(text)}</div></details>");
+
+        if (k.Status != "") sb.Append($"<div class='ek-status'>{H(k.Status)}</div>");
+
+        if (k.MandantAuswahl is { Count: > 0 } auswahl)
+        {
+            sb.Append("<div class='ek-aktionen'>");
+            sb.Append($"<select class='ek-select' id='ek-mandant-{k.Id}'><option value=''>Mandant wählen …</option>");
+            foreach (var name in auswahl) sb.Append($"<option value='{H(name)}'>{H(name)}</option>");
+            sb.Append("</select>");
+            sb.Append($"<button class='chat-action-button primary' data-action='zuordnen' data-msg='{k.Id}' data-select='ek-mandant-{k.Id}'>In Entwürfe ablegen</button>");
+            sb.Append("</div>");
+        }
+
+        if (k.Aktiv)
+        {
+            sb.Append("<div class='ek-aktionen'>");
+            if (k.OeffnenLabel is not null)
+                sb.Append($"<button class='chat-action-button primary' data-action='oeffnen' data-msg='{k.Id}'>{H(k.OeffnenLabel)}</button>");
+            if (k.AblegenMoeglich)
+                sb.Append($"<button class='chat-action-button' data-action='uebernehmen' data-msg='{k.Id}'>📁 In Akte ablegen</button>");
+            sb.Append($"<button class='chat-action-button' data-action='kopieren' data-msg='{k.Id}'>Text kopieren</button>");
+            sb.Append("</div>");
+        }
+
+        sb.Append("</div>");
+        return sb.ToString();
     }
 
     /// <summary>
@@ -255,6 +324,24 @@ public static class ChatHtmlRenderer
             .chat-action-button {{ display: inline-block; margin-top: 8px; padding: 8px 14px; border: 1px solid #30363d; border-radius: 6px; background: #21262d; color: #c9d1d9; font-size: {Math.Max(10, _outputFontSize - 1)}px; cursor: pointer; }}
             .chat-action-button.primary {{ color: #e8a838; }}
             .chat-action-button:hover {{ background: #30363d; }}
+
+            .entwurf-karte {{ background: #161b22; border: 1px solid #30363d; border-left: 3px solid #e8a838; border-radius: 8px; padding: 12px 14px; margin: 8px 60px 12px 8px; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
+            .entwurf-karte.inaktiv {{ border-left-color: #30363d; opacity: 0.75; }}
+            .ek-kopf {{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }}
+            .ek-titel {{ color: #e6edf3; font-weight: 600; }}
+            .ek-art {{ display: inline-flex; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; flex-shrink: 0; }}
+            .ek-art-btn {{ background: transparent; color: #8b949e; border: 0; padding: 3px 10px; cursor: pointer; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
+            .ek-art-btn.an {{ background: #30363d; color: #e6edf3; }}
+            .ek-art-fest {{ color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
+            .ek-meta {{ color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 1)}px; margin-top: 4px; }}
+            .ek-text {{ margin-top: 8px; }}
+            .ek-text summary {{ color: #8b949e; cursor: pointer; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
+            .ek-volltext {{ white-space: pre-wrap; margin-top: 8px; padding: 10px 12px; background: #0d1117; border-radius: 6px; color: #c9d1d9; }}
+            .ek-status {{ color: #3fb950; font-size: {Math.Max(10, _outputFontSize - 1)}px; margin-top: 8px; }}
+            .entwurf-karte.inaktiv .ek-status {{ color: #8b949e; }}
+            .ek-aktionen {{ display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }}
+            .ek-aktionen .chat-action-button {{ margin-top: 4px; }}
+            .ek-select {{ margin-top: 4px; padding: 7px 8px; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
 
             .highlight-frist {{ color: #ff7b72; font-weight: 700; text-decoration: underline; }}
             .highlight-paragraph {{ color: #79c0ff; font-weight: 600; }}

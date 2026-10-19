@@ -11,8 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OpenMcdf" Version="3.3.0" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.14" />
     <PackageReference Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.0" />
+    <PackageReference Include="MailKit" Version="4.18.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
@@ -21,10 +25,27 @@
   <ItemGroup>
     <Compile Include="../Services/PdfTextExtractor.cs" Link="PdfTextExtractor.cs" />
     <Compile Include="../Database/LocalDb.cs" Link="LocalDb.cs" />
+    <Compile Include="../Database/LocalDb.Akte.cs" Link="LocalDb.Akte.cs" />
     <Compile Include="../Services/ChatHtmlRenderer.cs" Link="ChatHtmlRenderer.cs" />
-    <Compile Include="../Services/FeatureNotificationStore.cs" Link="FeatureNotificationStore.cs" />
     <Compile Include="../Services/ScreenshotValidator.cs" Link="ScreenshotValidator.cs" />
     <Compile Include="../Services/MandantFilter.cs" Link="MandantFilter.cs" />
+    <Compile Include="../Services/DokumentExport.cs" Link="DokumentExport.cs" />
+    <Compile Include="../Services/ChatEntwurf.cs" Link="ChatEntwurf.cs" />
+    <Compile Include="../Services/DiktatText.cs" Link="DiktatText.cs" />
+    <Compile Include="../Services/FristRechner.cs" Link="FristRechner.cs" />
+    <Compile Include="../Services/KanzleiRechner.cs" Link="KanzleiRechner.cs" />
+    <Compile Include="../Services/Kollisionspruefung.cs" Link="Kollisionspruefung.cs" />
+    <Compile Include="../Services/AktenAnalyse.cs" Link="AktenAnalyse.cs" />
+    <Compile Include="../Services/MailText.cs" Link="MailText.cs" />
+    <Compile Include="../Services/Fragebogen.cs" Link="Fragebogen.cs" />
+    <Compile Include="../Services/MailZuordnung.cs" Link="MailZuordnung.cs" />
+    <Compile Include="../Services/DatumEingabe.cs" Link="DatumEingabe.cs" />
+    <Compile Include="../Services/FristenListe.cs" Link="FristenListe.cs" />
+    <Compile Include="../Services/Schriftgroessen.cs" Link="Schriftgroessen.cs" />
+    <Compile Include="../Services/MandatAufnahme.cs" Link="MandatAufnahme.cs" />
+    <Compile Include="../Services/AktenAblage.cs" Link="AktenAblage.cs" />
+    <Compile Include="../Services/Formularwerte.cs" Link="Formularwerte.cs" />
+    <Compile Include="../Services/MsgKonverter.cs" Link="MsgKonverter.cs" />
   </ItemGroup>
 
   <ItemGroup>

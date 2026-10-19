@@ -1,0 +1,41 @@
+<Window x:Class="LexWolf.Dialogs.DokumenteDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:LexWolf.Controls"
+        Title="LexWolf — Dokumente zur Akte"
+        Icon="/Assets/lexwolf.ico"
+        Width="760" Height="680" MinWidth="560" MinHeight="460"
+        Background="#0d1117"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+    <DockPanel>
+        <!-- Kopf -->
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock Text="Dokumente zur Akte" Style="{StaticResource LwDialogTitel}"/>
+                <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Fuß -->
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource LwFussleiste}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Abbrechen" Style="{StaticResource LwButton}" IsCancel="True"/>
+                    <Button x:Name="UebernehmenBtn" Content="In die Akte übernehmen" Style="{StaticResource LwPrimaryButton}"
+                            Margin="8,0,0,0" Padding="18,7" Click="OnUebernehmen" IsEnabled="False"/>
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Style="{StaticResource LwStatus}" Text="Noch nichts ausgewählt."/>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,18,8">
+            <StackPanel>
+                <controls:DokumentAuswahl x:Name="Auswahl"/>
+                <TextBlock Style="{StaticResource LwHinweis}" Margin="0,14,0,0"
+                           Text="LexWolf liest die Dokumente und wertet sie aus: Fristen, Beteiligte, Zeitleiste. Erkannte Fristen erscheinen als Vorschlag im Fristen-Reiter und gelten erst nach Ihrer Prüfung."/>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

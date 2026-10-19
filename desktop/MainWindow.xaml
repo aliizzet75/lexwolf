@@ -2,12 +2,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:LexWolf"
+        xmlns:controls="clr-namespace:LexWolf.Controls"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="LexWolf"
         Icon="Assets/lexwolf.ico"
         Width="1200" Height="750"
         MinWidth="900" MinHeight="550"
-        Background="#0d1117">
+        Background="#0d1117"
+        AllowDrop="True" PreviewDragOver="OnFensterDragOver" PreviewDragEnter="OnFensterDragOver" PreviewDrop="OnFensterDrop">
     <DockPanel>
 
         <!-- Top: status bar -->
@@ -29,11 +31,6 @@
                         DockPanel.Dock="Right"
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
                         FontSize="15" FontWeight="Bold" Cursor="Hand" Padding="8,0" ToolTip="Info"/>
-                <Button x:Name="TestbereichBtn" Content="🧪 Testbereich" Click="OnTestbereichClick"
-                        DockPanel.Dock="Right"
-                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                        FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
-                        ToolTip="Manueller Verifikations-Bereich (Task #243)"/>
                 <Button x:Name="FeatureWunschBtn" Content="💡 Feature-Wunsch" Click="OnFeatureWunschClick"
                         DockPanel.Dock="Right"
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
@@ -67,12 +64,17 @@
                                  Background="#21262d" BorderBrush="#30363d" Foreground="#238636"/>
                 </StackPanel>
                 
+                <Button x:Name="NeuesMandatBtn" Content="＋ Neues Mandat" Click="OnNeuesMandatClick"
+                        DockPanel.Dock="Right" Style="{StaticResource LwPrimaryButton}" Padding="12,5"
+                        VerticalAlignment="Center" Margin="0,0,12,0"
+                        ToolTip="Neuen Mandanten mit Akte anlegen — mit Kollisionsprüfung, Frist, Vollmacht und ersten Schritten"/>
                 <ComboBox x:Name="MandantBox"
                           DockPanel.Dock="Right" Width="220"
                           VerticalAlignment="Center" Margin="0,0,8,0"
                           Style="{StaticResource DarkComboBoxStyle}"
                           IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True"
                           SelectionChanged="OnMandantChanged"
+                          DropDownOpened="OnMandantDropDownOpened"
                           PreviewKeyDown="OnMandantBoxKeyDown"
                           TextBoxBase.TextChanged="OnMandantTextChanged"
                           ToolTip="Mandant suchen oder auswählen"/>
@@ -91,11 +93,24 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Left: Dateibaum mit TreeView -->
-            <DockPanel Grid.Column="0" Background="#161b22">
-                <Border DockPanel.Dock="Top" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
-                    <TextBlock Text="Dateibaum" Foreground="#8b949e" FontSize="11" FontWeight="SemiBold"/>
-                </Border>
+            <!-- Left: Reiter Akte (Dateibaum) | Fristen | Eingang -->
+            <TabControl x:Name="LinksTabs" Grid.Column="0" Background="#161b22" Style="{StaticResource LwTabControl}"
+                        BorderThickness="0">
+                <TabControl.Template>
+                    <ControlTemplate TargetType="TabControl">
+                        <DockPanel Background="#161b22">
+                            <Border DockPanel.Dock="Top" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="6,2,6,0">
+                                <TabPanel IsItemsHost="True"/>
+                            </Border>
+                            <ContentPresenter ContentSource="SelectedContent"/>
+                        </DockPanel>
+                    </ControlTemplate>
+                </TabControl.Template>
+                <TabItem>
+                    <TabItem.Header>
+                        <TextBlock Text="📁 Akte"/>
+                    </TabItem.Header>
+            <DockPanel Background="#161b22">
                 <Border DockPanel.Dock="Top" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="10,8">
                     <TextBox x:Name="FileTreeSearchBox"
                              Background="#0d1117" Foreground="#c9d1d9"
@@ -108,9 +123,15 @@
                     <!-- Virtualisierung eingeschaltet, damit die linke Mandanten-/Dateiliste
                          bei vielen Einträgen nur die sichtbaren Zeilen rendert. -->
                     <TreeView x:Name="FileTree" PreviewMouseDoubleClick="OnFileTreeDoubleClick"
+                              SelectedItemChanged="OnFileTreeAuswahl"
                               TreeViewItem.Expanded="OnFileTreeNodeExpanded" Margin="0,0,0,10"
                               VirtualizingPanel.IsVirtualizing="True"
                               VirtualizingPanel.VirtualizationMode="Recycling">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal">
@@ -119,16 +140,45 @@
                                             <MenuItem Header="⭐ Priorisierung umschalten"
                                                       Click="OnTogglePrioritize"
                                                       CommandParameter="{Binding}"/>
+                                            <MenuItem Header="🗑 Mandant löschen …"
+                                                      Click="OnMandantLoeschenAusBaum"
+                                                      CommandParameter="{Binding}"
+                                                      Visibility="{Binding MandantMenuSichtbar}"/>
                                         </ContextMenu>
                                     </StackPanel.ContextMenu>
-                                    <TextBlock Text="{Binding Icon}" FontSize="16" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{Binding Name}" FontSize="14"/>
+                                    <TextBlock Text="{Binding Icon}" FontSize="{DynamicResource LwSchriftGross}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding Name}" FontSize="{DynamicResource LwSchriftNormal}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsAktiv}" Value="True">
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        <Setter Property="Foreground" Value="#e8a838"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
                 </ScrollViewer>
             </DockPanel>
+                </TabItem>
+                <TabItem>
+                    <TabItem.Header>
+                        <TextBlock x:Name="FristenTabHeader" Text="⏰ Fristen"/>
+                    </TabItem.Header>
+                    <controls:FristenPanel x:Name="FristenPanel"/>
+                </TabItem>
+                <TabItem>
+                    <TabItem.Header>
+                        <TextBlock x:Name="EingangTabHeader" Text="📥 Eingang"/>
+                    </TabItem.Header>
+                    <controls:EingangPanel x:Name="EingangPanel"/>
+                </TabItem>
+            </TabControl>
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#21262d"/>
 
@@ -142,31 +192,15 @@
                                 DockPanel.Dock="Right" HorizontalAlignment="Right"
                                 Background="Transparent" Foreground="#8b949e" BorderThickness="0"
                                 FontSize="11" Cursor="Hand" Padding="8,0"/>
-                        <Button x:Name="UnterhaltBtn"
-                                Content="⚖ Unterhalt berechnen"
-                                Click="OnUnterhaltBtnClick"
-                                DockPanel.Dock="Right"
-                                Visibility="Collapsed"
-                                Background="#21262d" Foreground="#e8a838"
-                                BorderBrush="#30363d" BorderThickness="1"
-                                FontSize="11" FontWeight="SemiBold"
-                                Cursor="Hand" Padding="10,4" Margin="0,0,8,0">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="5" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#30363d"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
+                        <!-- Schriftgröße von Eingabe + Ausgabe zusammen (feiner: Einstellungen) -->
+                        <Button x:Name="FontLargerBtn" Content="A+" Click="OnFontLarger"
+                                DockPanel.Dock="Right" ToolTip="Schrift größer (Strg + Plus)"
+                                Background="Transparent" Foreground="#8b949e" BorderThickness="0"
+                                FontSize="12" FontWeight="SemiBold" Cursor="Hand" Padding="6,0"/>
+                        <Button x:Name="FontSmallerBtn" Content="A−" Click="OnFontSmaller"
+                                DockPanel.Dock="Right" ToolTip="Schrift kleiner (Strg + Minus)"
+                                Background="Transparent" Foreground="#8b949e" BorderThickness="0"
+                                FontSize="10" FontWeight="SemiBold" Cursor="Hand" Padding="6,0"/>
                         <Button x:Name="ZusammenfassungBtn"
                                 Content="📊 Zusammenfassung"
                                 Click="OnZusammenfassungClick"
@@ -245,6 +279,28 @@
                         </Button>
                     </DockPanel>
                 </Border>
+                <!-- Werkzeuge für den aktiven Mandanten (sichtbar, sobald einer gewählt ist) -->
+                <Border x:Name="AktenLeiste" DockPanel.Dock="Top" Background="#0d1117" BorderBrush="#30363d"
+                        BorderThickness="0,0,0,1" Padding="10,8,10,0" Visibility="Collapsed">
+                    <WrapPanel>
+                        <Button Content="📎 Dokumente" Style="{StaticResource LwButton}" Padding="12,6" Click="OnDokumenteClick"
+                                Margin="0,0,8,8" ToolTip="Dateien oder E-Mails in die Akte legen — auswählen oder einfach aufs Fenster ziehen, auch direkt aus Outlook"/>
+                        <Button Content="🗂 Aktenstamm" Style="{StaticResource LwButton}" Padding="12,6" Click="OnAktenstammClick"
+                                Margin="0,0,8,8" ToolTip="Beteiligte, Gericht, Aktenzeichen, Zeitleiste und Kollisionsprüfung"/>
+                        <Button Content="📝 Schriftsatz" Style="{StaticResource LwButton}" Padding="12,6" Click="OnSchriftsatzClick"
+                                Margin="0,0,8,8" ToolTip="Schriftsatz aus der Akte entwerfen — mit Belegen und geprüften Zitaten"/>
+                        <Button Content="🧮 Rechner" Style="{StaticResource LwButton}" Padding="12,6" Click="OnRechnerClick"
+                                Margin="0,0,8,8" ToolTip="Unterhalt, Zugewinn, Verfahrenswert, RVG — mit Rechenweg"/>
+                        <Button Content="✉ Sachstand" Style="{StaticResource LwButton}" Padding="12,6" Click="OnSachstandClick"
+                                Margin="0,0,8,8" ToolTip="Sachstandsmitteilung an den Mandanten in verständlicher Sprache"/>
+                        <Button Content="📋 Fragebogen" Style="{StaticResource LwButton}" Padding="12,6" Click="OnFragebogenClick"
+                                Margin="0,0,16,8" ToolTip="Mandanten-Fragebogen (Einkommen, Kinder, Vermögen) — füllt die Rechner vor"/>
+                        <TextBlock x:Name="KollisionHinweis" Foreground="#f85149" FontSize="{DynamicResource LwSchriftNormal}"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed"
+                                   Margin="0,0,0,8" MouseLeftButtonUp="OnKollisionHinweisClick"
+                                   Text="⚠ Mögliche Interessenkollision"/>
+                    </WrapPanel>
+                </Border>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -265,7 +321,7 @@
                                 </StackPanel.Resources>
                                 <Image x:Name="WolfLoadingImage" Source="Assets/lexwolf.ico" Width="32" Height="32"
                                        RenderOptions.BitmapScalingMode="HighQuality" Opacity="1.0"/>
-                                <TextBlock Text="Anfrage wird verarbeitet..." Foreground="#8b949e" FontSize="12"
+                                <TextBlock x:Name="WolfLoadingText" Text="Anfrage wird verarbeitet..." Foreground="#8b949e" FontSize="12"
                                            VerticalAlignment="Center" Margin="10,0,0,0"/>
                             </StackPanel>
                         </Grid>
@@ -276,12 +332,26 @@
                                   VerticalScrollBarVisibility="Auto"
                                   Padding="12,8">
                         <StackPanel x:Name="ChatPanel">
-                            <wv2:WebView2 x:Name="ChatWebView" Visibility="Collapsed" Height="500"/>
+                            <!-- Höhe = sichtbare Höhe des Chatbereichs (statt fest 500 px), damit
+                                 der Chat das Fenster ausfüllt; gescrollt wird innerhalb der WebView. -->
+                            <!-- AllowExternalDrop aus: eine hineingezogene PDF würde sonst den Chat ersetzen -->
+                            <wv2:WebView2 x:Name="ChatWebView" Visibility="Collapsed" AllowExternalDrop="False"
+                                          Height="{Binding ViewportHeight, ElementName=ChatScrollViewer}"/>
                         </StackPanel>
                     </ScrollViewer>
 
                     <Border Grid.Row="2" Background="#161b22" Padding="12,10" BorderBrush="#30363d" BorderThickness="0,1,0,0">
                         <DockPanel>
+                            <!-- Ladeanzeige des großen Sprachmodells (Diktat), oben über der ganzen Breite -->
+                            <StackPanel x:Name="ModellLadePanel" DockPanel.Dock="Top" Margin="0,0,0,8" Visibility="Collapsed">
+                                <DockPanel>
+                                    <TextBlock x:Name="ModellLadeRest" DockPanel.Dock="Right" Foreground="#8b949e" FontSize="11"/>
+                                    <TextBlock x:Name="ModellLadeText" Foreground="#c9d1d9" FontSize="11"
+                                               Text="🎤 Großes Sprachmodell wird geladen …"/>
+                                </DockPanel>
+                                <ProgressBar x:Name="ModellLadeBalken" Height="4" Minimum="0" Maximum="1" Margin="0,4,0,0"
+                                             Background="#21262d" BorderThickness="0" Foreground="#e8a838"/>
+                            </StackPanel>
                             <!-- SendBtn zuerst + Dock=Right, damit InputBox als letztes Kind
                                  (DockPanel-Default LastChildFill=True) den Rest ausfüllt.
                                  Umgekehrte Reihenfolge machte InputBox faktisch unsichtbar,
@@ -290,33 +360,47 @@
                             <Button x:Name="SendBtn" Content="Senden"
                                     DockPanel.Dock="Right"
                                     Width="100"
+                                    Height="36"
+                                    VerticalAlignment="Bottom"
                                     Click="OnSend"
                                     Background="#21262d"
                                     Foreground="#c9d1d9"
                                     BorderBrush="#30363d"
                                     BorderThickness="1"
                                     Padding="10,5"/>
-                            <Button x:Name="FeedbackBtn" Content="🤖 Stil-Feedback senden"
+                            <!-- Spracheingabe: Klick startet, zweiter Klick beendet die Aufnahme;
+                                 Live-Text lokal mit Vosk, danach Nachkorrektur mit Whisper (DiktatService). -->
+                            <Button x:Name="DiktatBtn" Content="🎤"
                                     DockPanel.Dock="Right"
-                                    Width="160"
-                                    Click="OnSendStyleFeedback"
-                                    Background="#161b22"
-                                    Foreground="#8b949e"
+                                    MinWidth="44"
+                                    Height="36"
+                                    VerticalAlignment="Bottom"
+                                    Click="OnDiktatClick"
+                                    Background="#21262d"
+                                    Foreground="#c9d1d9"
                                     BorderBrush="#30363d"
                                     BorderThickness="1"
-                                    Padding="10,5"
+                                    FontSize="15"
+                                    Padding="8,5"
                                     Margin="0,0,8,0"
-                                    ToolTip="Sendet nur anonymisierte, statistische Stil-Metriken an den Server (DSGVO-konform)."/>
+                                    ToolTip="Diktieren — Klick startet, zweiter Klick beendet die Aufnahme. Die Erkennung läuft lokal, kein Ton verlässt den Rechner."/>
+                            <!-- Wächst mit dem Text bis MaxHeight, danach scrollt es (OnInputTextChanged
+                                 hält das Neueste sichtbar). Enter sendet, Umschalt+Enter = neue Zeile. -->
                             <TextBox x:Name="InputBox"
                                      Margin="0,0,8,0"
-                                     Height="36"
+                                     MinHeight="36"
+                                     MaxHeight="200"
+                                     Padding="2,7"
                                      Background="#0d1117"
                                      Foreground="#c9d1d9"
                                      BorderBrush="#30363d"
                                      BorderThickness="1"
                                      TextWrapping="Wrap"
-                                     VerticalContentAlignment="Center"
-                                     KeyDown="OnInputKeyDown"/>
+                                     AcceptsReturn="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     VerticalContentAlignment="Top"
+                                     PreviewKeyDown="OnInputKeyDown"
+                                     TextChanged="OnInputTextChanged"/>
                         </DockPanel>
                     </Border>
                 </Grid>

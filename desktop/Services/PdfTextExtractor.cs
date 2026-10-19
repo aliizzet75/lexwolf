@@ -15,8 +15,12 @@ namespace LexWolf.Services
         {
             using var document = UglyToad.PdfPig.PdfDocument.Open(path);
             var sb = new StringBuilder();
+            // Seitenmarken bei mehrseitigen PDFs: Schriftsatz-Entwürfe können damit
+            // belegbare Fundstellen wie "[D2, S. 3]" angeben.
+            var mehrseitig = document.NumberOfPages > 1;
             foreach (var page in document.GetPages())
             {
+                if (mehrseitig) sb.AppendLine($"[Seite {page.Number}]");
                 sb.AppendLine(page.Text);
             }
             return sb.ToString();

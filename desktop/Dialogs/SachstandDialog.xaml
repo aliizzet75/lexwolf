@@ -1,0 +1,157 @@
+﻿<Window x:Class="LexWolf.Dialogs.SachstandDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LexWolf — Sachstand"
+        Icon="/Assets/lexwolf.ico"
+        Width="1120" Height="780" MinWidth="820" MinHeight="560"
+        Background="#0d1117"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+    <Window.Resources>
+        <!-- Ein auswählbarer Punkt: Haken, Datum, Titel, darunter der Text -->
+        <DataTemplate x:Key="PunktVorlage">
+            <Border Style="{StaticResource LwEintrag}">
+                <CheckBox IsChecked="{Binding Ausgewaehlt}" Style="{StaticResource LwCheckBox}" Margin="0"
+                          VerticalContentAlignment="Top" Click="OnAuswahlGeaendert">
+                    <StackPanel Margin="4,0,0,0">
+                        <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource LwSchriftNormal}">
+                            <Run Text="{Binding Datum, Mode=OneWay}" Foreground="#e8a838" FontWeight="SemiBold"/>
+                            <Run Text="{Binding Titel, Mode=OneWay}" Foreground="#e6edf3" FontWeight="SemiBold"/>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Text}" Style="{StaticResource LwHinweis}" Margin="0,3,0,0"
+                                   Visibility="{Binding TextSichtbar}"/>
+                    </StackPanel>
+                </CheckBox>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Kopf -->
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock Text="Sachstand an den Mandanten" Style="{StaticResource LwDialogTitel}"/>
+                <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Fuß -->
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource LwFussleiste}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="KopierenBtn" Content="📋 Kopieren" Style="{StaticResource LwButton}" Click="OnKopieren" IsEnabled="False"/>
+                    <Button x:Name="EmailBtn" Content="✉ Als E-Mail" Style="{StaticResource LwButton}" Margin="8,0,0,0"
+                            Click="OnEmail" IsEnabled="False" ToolTip="Im E-Mail-Programm als Entwurf öffnen"/>
+                    <Button x:Name="WordBtn" Content="💾 In die Akte" Style="{StaticResource LwButton}" Margin="8,0,0,0"
+                            Click="OnWord" IsEnabled="False" ToolTip="Als Word-Datei im Mandantenordner speichern"/>
+                    <Button Content="Schließen" Style="{StaticResource LwButton}" Margin="8,0,0,0" IsCancel="True" Click="OnSchliessen"/>
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Style="{StaticResource LwStatus}"/>
+            </DockPanel>
+        </Border>
+
+        <Grid Margin="24,16,24,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" MinWidth="360"/>
+                <ColumnDefinition Width="24"/>
+                <ColumnDefinition Width="3*" MinWidth="380"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Links: Inhalte wählen -->
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                    <Border Style="{StaticResource LwSchritt}"><TextBlock Text="1" Style="{StaticResource LwSchrittText}"/></Border>
+                    <TextBlock Text="Was soll hinein?" Style="{StaticResource LwAbschnitt}"/>
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Top" Style="{StaticResource LwHinweis}" Margin="34,0,0,10"
+                           Text="Haken entfernen, was der Mandant nicht erfahren soll."/>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
+                    <StackPanel>
+                        <!-- Neues aus der Akte -->
+                        <Border Style="{StaticResource LwKarte}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <TextBlock Text="📄 Neues aus der Akte" Style="{StaticResource LwHeading}"/>
+                                    <Border Style="{StaticResource LwZaehler}"><TextBlock x:Name="EntwicklungenZahl" Style="{StaticResource LwZaehlerText}"/></Border>
+                                </StackPanel>
+                                <ItemsControl x:Name="EntwicklungenListe" ItemTemplate="{StaticResource PunktVorlage}"/>
+                                <TextBlock x:Name="EntwicklungenLeer" Style="{StaticResource LwHinweis}" Visibility="Collapsed"
+                                           Text="Noch keine ausgewerteten Dokumente. Über „🗂 Aktenstamm → Akte auswerten“ holen."/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Fristen -->
+                        <Border Style="{StaticResource LwKarte}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <TextBlock Text="⏰ Fristen und Termine" Style="{StaticResource LwHeading}"/>
+                                    <Border Style="{StaticResource LwZaehler}"><TextBlock x:Name="FristenZahl" Style="{StaticResource LwZaehlerText}"/></Border>
+                                </StackPanel>
+                                <ItemsControl x:Name="FristenListe" ItemTemplate="{StaticResource PunktVorlage}"/>
+                                <TextBlock x:Name="FristenLeer" Style="{StaticResource LwHinweis}" Visibility="Collapsed" Text="Keine offenen Fristen."/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Notizen -->
+                        <Border Style="{StaticResource LwKarte}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                    <TextBlock Text="📝 Interne Notizen" Style="{StaticResource LwHeading}"/>
+                                    <Border Style="{StaticResource LwZaehler}"><TextBlock x:Name="NotizenZahl" Style="{StaticResource LwZaehlerText}"/></Border>
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource LwHinweis}" Margin="0,0,0,8" Text="Nur anhaken, was für den Mandanten bestimmt ist."/>
+                                <ItemsControl x:Name="NotizenListe" ItemTemplate="{StaticResource PunktVorlage}"/>
+                                <TextBlock x:Name="NotizenLeer" Style="{StaticResource LwHinweis}" Visibility="Collapsed" Text="Keine Notizen."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+
+            <!-- Rechts: Anrede/Zusatz, dann die Mitteilung -->
+            <DockPanel Grid.Column="2">
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource LwSchritt}"><TextBlock Text="2" Style="{StaticResource LwSchrittText}"/></Border>
+                        <TextBlock Text="Anrede und Zusatz" Style="{StaticResource LwAbschnitt}"/>
+                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="3*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Anrede" Style="{StaticResource LwLabel}"/>
+                            <TextBox x:Name="AnredeBox" Style="{StaticResource LwTextBox}"
+                                     ToolTip="z. B. „Sehr geehrte Frau Schmidt“ oder „Liebe Anna“ — leer: LexWolf wählt passend"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Zusätzlich erwähnen (optional)" Style="{StaticResource LwLabel}"/>
+                            <TextBox x:Name="HinweisBox" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True"
+                                     MaxHeight="120" VerticalScrollBarVisibility="Auto"
+                                     ToolTip="z. B. „Bitte Gehaltsabrechnungen der letzten 12 Monate bis 30.11. schicken“"/>
+                        </StackPanel>
+                    </Grid>
+                    <Button x:Name="ErstellenBtn" Content="✨ Sachstand schreiben" Style="{StaticResource LwPrimaryButton}"
+                            Padding="20,9" Margin="0,14,0,0" HorizontalAlignment="Right" Click="OnErstellen"/>
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                    <Border Style="{StaticResource LwSchritt}"><TextBlock Text="3" Style="{StaticResource LwSchrittText}"/></Border>
+                    <TextBlock Text="Prüfen und versenden" Style="{StaticResource LwAbschnitt}"/>
+                </StackPanel>
+                <Grid>
+                    <TextBox x:Name="MitteilungBox" Style="{StaticResource LwEditor}" TextChanged="OnMitteilungGeaendert"/>
+                    <StackPanel x:Name="LeerHinweis" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                                MaxWidth="360">
+                        <TextBlock Text="✉" FontSize="{DynamicResource LwSchriftTitel}" Foreground="#30363d" HorizontalAlignment="Center"/>
+                        <TextBlock Style="{StaticResource LwHinweis}" TextAlignment="Center" Margin="0,8,0,0"
+                                   Text="Links auswählen und „Sachstand schreiben“ klicken. Die Mitteilung erscheint hier und lässt sich frei bearbeiten."/>
+                    </StackPanel>
+                </Grid>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>
