@@ -117,3 +117,7 @@ debug_*.py
 # Laufzeitdaten: von Anwälten hochgeladene Bug-Report-Screenshots (potenziell
 # Mandanten-PII) — gehören nicht ins Repo, nur auf dem Server.
 attachments/
+
+# Fertig gebaute Programme (Ausgabe von dotnet publish) und lokale Claude-Code-Einstellungen
+tools/*/publish/
+.claude/
