@@ -12,6 +12,8 @@ from typing import List, Optional
 from services.search_service import HybridSearchService
 from services.llm_client import ask_llm
 from api.ask import _direct_paragraph_search
+from api.chat_prompt import (action_for_response, build_system_prompt, detect_intent, format_chunks,
+                             format_zitatpruefung)
 
 logger = logging.getLogger(__name__)
 
@@ -43,24 +45,6 @@ class ChatResponse(BaseModel):
     suggested_action: str
 
 
-def _detect_intent(text: str) -> str:
-    """Einfache Intent-Erkennung für Chat ohne schwere Embedding-Last."""
-    lower = text.lower()
-    if any(k in lower for k in ("erstell", "schreib", "formulier", "aufsetzen", "entwurf", "verfass")):
-        return "erstelle"
-    if any(k in lower for k in ("berechne", "berechnung", "höhe", "betrag", "unterhalt", "wie viel", "wieviel")):
-        return "berechne"
-    return "frage"
-
-
-def _intent_to_action(intent: str) -> str:
-    return {
-        "erstelle": "erstelle_dokument",
-        "berechne": "berechne_unterhalt",
-        "frage": "frage",
-    }.get(intent, "frage")
-
-
 def _search_chunks(query: str) -> str:
     """Sucht relevante Chunks und gibt sie als kompakten Text zurück.
     Expliziter §-Verweis (z.B. "§433 BGB") geht zuerst über die direkte
@@ -76,15 +60,7 @@ def _search_chunks(query: str) -> str:
         )
         para_ids = {c.get("id") for c in para_hits}
         results = para_hits + [r for r in fused if r.get("id") not in para_ids]
-        if not results:
-            return ""
-        parts = []
-        for r in results[:5]:
-            title = r.get("title", "")
-            text = (r.get("text") or "")[:300].strip()
-            if title or text:
-                parts.append(f"[{title}] {text}")
-        return "\n\n".join(parts)
+        return format_chunks(results)
     except Exception:
         return ""
 
@@ -126,31 +102,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     chunks_text = await asyncio.to_thread(_search_chunks, last_user_msg) if last_user_msg else ""
 
     # 4. System-Prompt aufbauen
-    system_parts = ["Du bist ein juristischer Rechtsassistent für deutschsprachige Anwälte."]
-    if chunks_text:
-        system_parts.append(f"\nRelevante Rechtsgrundlagen aus der Datenbank:\n{chunks_text}")
-    if request.mandant_context:
-        system_parts.append(f"\nMandanteninformation: {request.mandant_context}")
-    system_parts.append(
-        "\nBeantworte Fragen präzise auf Basis der Rechtsgrundlagen, auf Deutsch. "
-        "Stelle Rückfragen wenn wichtige Informationen fehlen. "
-        "Gib ausschließlich die fertige Antwort aus — keine Zwischengedanken, "
-        "keine Meta-Kommentare zur Aufgabenstellung, kein Denkprotokoll.\n"
-        "\nWichtig zu Mandanten-Dokumenten:\n"
-        "- Ein Dokument gilt nur dann als NICHT lesbar, wenn sein Text explizit eine "
-        "Fehlermeldung in eckigen Klammern enthält (z.B. '[Datei: PDF konnte nicht "
-        "gelesen werden ...]' oder '[... OCR ...]'). In jedem anderen Fall wurde es "
-        "erfolgreich gelesen — behaupte dann NIEMALS, es sei 'nicht auswertbar' oder "
-        "'nicht lesbar'. Wenn die gesuchte Information/Person darin schlicht nicht "
-        "vorkommt, sag das direkt (z.B. 'Dieses Dokument betrifft eine andere Person/"
-        "einen anderen Sachverhalt: ...'), statt einen Lesefehler zu unterstellen.\n"
-        "- Mehrere Dokumente desselben Mandanten gehören oft zusammen. Rollen- oder "
-        "Kürzel-Bezeichnungen in einem Dokument (z.B. 'Mann'/'Frau', 'Hauptverdiener'/"
-        "'Zweitverdiener', 'Antragsteller'/'Antragsgegnerin') können sich auf konkret "
-        "benannte Personen aus einem anderen Dokument desselben Mandanten beziehen — "
-        "prüfe das und verknüpfe die Angaben, statt jedes Dokument isoliert zu lesen."
-    )
-    system_prompt = "\n".join(system_parts)
+    system_prompt = build_system_prompt(chunks_text, request.mandant_context)
 
     # 5. Vollständige Message-History für Ollama aufbauen
     ollama_messages = [{"role": "system", "content": system_prompt}]
@@ -177,8 +129,15 @@ async def chat(request: ChatRequest) -> ChatResponse:
             )
 
     # 7. Intent erkennen und Aktion ableiten
-    intent = _detect_intent(last_user_msg)
-    suggested_action = _intent_to_action(intent)
+    intent = detect_intent(last_user_msg)
+    suggested_action = action_for_response(content, intent)
+
+    # 8. Zitierte Normen/Aktenzeichen gegen die Datenbank prüfen (wie beim Schriftsatz)
+    try:
+        from api.akte import pruefe_belege
+        content += format_zitatpruefung(await asyncio.to_thread(pruefe_belege, content, 0))
+    except Exception as e:
+        logger.warning(f"Zitatprüfung im Chat fehlgeschlagen: {e}")
 
     from services.llm_client import using_temporary_test_backend, TEST_MODE_DISCLAIMER
     if using_temporary_test_backend():

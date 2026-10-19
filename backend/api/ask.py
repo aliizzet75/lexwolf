@@ -328,7 +328,10 @@ def _direct_paragraph_search(text: str, db_svc, limit: int = 3) -> list:
     if not m:
         return []
     nr = m.group(1)
-    abbrevs = [a.lower() for a in re.findall(r"\b[A-ZÄÖÜ]{2,6}\b", text)]
+    # Gesetzeskürzel: großer Anfangsbuchstabe und mind. zwei Großbuchstaben —
+    # erfasst BGB/ZPO, aber auch FamFG, StGB, StPO, InsO, GmbHG.
+    abbrevs = [a.lower() for a in re.findall(
+        r"\b(?=[A-Za-zÄÖÜäöü]*[A-ZÄÖÜ][a-zäöü]*[A-ZÄÖÜ])[A-ZÄÖÜ][A-Za-zÄÖÜäöü]{1,7}\b", text)]
     if not abbrevs:
         return []
     try:
@@ -336,11 +339,14 @@ def _direct_paragraph_search(text: str, db_svc, limit: int = 3) -> list:
         db = db_svc.SessionLocal()
         try:
             for abbrev in abbrevs:
+                # Titel kommen in zwei Formaten vor: "§ 115 Kosten …" und
+                # "FAMFG - § 115 Kosten …" — rund 80.000 Abschnitte nur im zweiten.
                 rows = db.execute(sqltxt(
                     "SELECT id, title, text, tags FROM legal_chunks "
-                    "WHERE tags ILIKE :tag_prefix AND title ILIKE :title_pattern "
+                    "WHERE tags ILIKE :tag_prefix AND (title ILIKE :title_pattern OR title ILIKE :title_pattern2) "
                     "ORDER BY id LIMIT :n"
-                ), {"tag_prefix": f"{abbrev}%", "title_pattern": f"§ {nr} %", "n": limit}).fetchall()
+                ), {"tag_prefix": f"{abbrev}%", "title_pattern": f"§ {nr} %",
+                    "title_pattern2": f"% § {nr} %", "n": limit}).fetchall()
                 if rows:
                     return [{"id": r.id, "title": r.title, "text": r.text,
                              "tags": r.tags, "score": 0.99, "source": r.tags} for r in rows]

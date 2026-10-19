@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/feature-feedback", tags=["feature-feedback"])
 
-BOARD_URL = "http://localhost:8082"
+BOARD_URL = os.environ.get("LEXWOLF_BOARD_URL", "http://localhost:8082").rstrip("/")
 QUEUE_FILE = Path("/docker/openclaw-oo5q/data/lexwolf-wiki/coding_queue.jsonl")
 PROJEKT_ID = 1  # LexWolf
 AUTODEPLOY_MARKER = "[AUTODEPLOY:ANWALT-FEEDBACK]"

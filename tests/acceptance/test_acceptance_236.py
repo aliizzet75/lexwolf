@@ -35,11 +35,15 @@ def test_feature_wunsch_status_und_laufende_entwicklungen_uebersicht_vorhanden()
     )
 
 
-def test_hintergrund_check_mit_fertigstellungs_toast_vorhanden():
+def test_neuigkeiten_nur_ueber_update_dialog_kein_neustart_popup_pro_feature():
+    # Der fruehere FeatureStatusChecker zeigte pro fertigem Milestone ein eigenes
+    # "Jetzt neu starten?"-Popup -> Kette aus Popup+Neustart beim Anwalt, obwohl
+    # ein Neustart ohne Update nichts Neues bringt. Neuigkeiten kommen jetzt
+    # ausschliesslich gesammelt ueber den Update-Dialog (client_update.py notes).
     alle = _all_desktop_cs_and_xaml_text()
-    assert "FeatureStatusChecker" in alle or "FeatureFertigstellungService" in alle, (
-        "Periodischer Hintergrund-Service fuer Feature-Fertigstellung fehlt - erwartet, solange Task #236 nicht implementiert ist"
+    assert "FeatureStatusChecker" not in alle, (
+        "Regression: Feature-Fertigstellungs-Popup mit Neustart ist wieder im Client"
     )
-    assert "Später erinnern" in alle and ("neu starten" in alle.lower()), (
-        "Toast mit 'Client jetzt neu starten' / 'Später erinnern' fehlt - erwartet, solange Task #236 nicht implementiert ist"
+    assert "update.Notes" in alle, (
+        "Update-Dialog zeigt die Changelog-Notizen nicht mehr an"
     )

@@ -31,7 +31,7 @@ def test_chat_single_turn(backend):
     data = resp.json()
     assert "content" in data and len(data["content"]) > 10
     assert "suggested_action" in data
-    assert data["suggested_action"] in ("erstelle_dokument", "berechne_unterhalt", "frage")
+    assert data["suggested_action"] in ("erstelle_dokument", "erstelle_email", "berechne_unterhalt", "frage")
 
 
 def test_chat_multi_turn_history(backend):
@@ -52,6 +52,14 @@ def test_chat_suggested_action_erstelle_dokument(backend):
     }, timeout=30)
     assert resp.status_code == 200
     assert resp.json()["suggested_action"] == "erstelle_dokument"
+
+
+def test_chat_suggested_action_erstelle_email(backend):
+    resp = requests.post(f"{_BACKEND}/chat", json={
+        "messages": [{"role": "user", "content": "Schreib eine Mail an die Gegenseite wegen des Unterhalts."}]
+    }, timeout=30)
+    assert resp.status_code == 200
+    assert resp.json()["suggested_action"] == "erstelle_email"
 
 
 def test_chat_suggested_action_berechne_unterhalt(backend):

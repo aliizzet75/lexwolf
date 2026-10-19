@@ -24,6 +24,7 @@ from api.feature_feedback import router as feature_feedback_router
 from api.style_progress import router as style_progress_router
 from api.routes.export import router as export_router
 from api.routes.kanzlei import router as kanzlei_router
+from api.akte import router as akte_router
 
 # Import Neo4j service
 from services.neo4j_service import Neo4jService
@@ -83,6 +84,7 @@ app.include_router(feature_feedback_router)
 app.include_router(style_progress_router)
 app.include_router(export_router)
 app.include_router(kanzlei_router)
+app.include_router(akte_router)
 app.mount(
     "/client/download",
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static", "client-releases")),

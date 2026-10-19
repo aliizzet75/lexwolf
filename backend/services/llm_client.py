@@ -4,10 +4,11 @@ Jede Stelle im Code, die eine KI-Antwort braucht (Chat, Feature-Feedback,
 LLM-Judge, ReAct-Engine, Search/HyDE/Reranking), ruft ausschliesslich
 ask_llm() auf statt direkt einen Provider anzusprechen.
 
-LLM_PROVIDER steuert den Anbieter — "claude" (Default, aktuell für die
-Entwicklungs-/Testphase) oder "ollama" (der für den kommerziellen Einsatz
-vorgesehene Kimi/Ollama-Zugang). Umschalten = nur diese Env-Var ändern,
-kein Code-Edit nötig.
+LLM_PROVIDER steuert den Anbieter — "claude" (Default, Anthropic-API mit
+ANTHROPIC_API_KEY), "ki-proxy" (Claude Code auf dem Entwicklungsrechner
+über den lokalen KI-Proxy, siehe tools/ki-proxy)
+oder "ollama" (der für den kommerziellen Einsatz vorgesehene Kimi/Ollama-
+Zugang). Umschalten = nur diese Env-Var ändern, kein Code-Edit nötig.
 """
 import json as _json
 import os
@@ -17,7 +18,12 @@ from typing import Optional, Union
 import anthropic
 
 _PROVIDER = os.environ.get("LLM_PROVIDER", "claude").strip().lower()
-_DEFAULT_MODEL = os.environ.get("LLM_MODEL", "claude-opus-5")
+_DEFAULT_MODEL = os.environ.get("LLM_MODEL", "claude-opus-5-5")
+# Aktuelle Claude-Modelle denken immer (adaptive thinking), und das Denken zählt
+# gegen max_tokens. Die max_tokens der Aufrufer meinen aber nur die sichtbare
+# Antwort — z.B. llm_judge mit 200 bekäme sonst eine leere Antwort, weil das
+# Budget schon beim Denken aufgebraucht ist. Bezahlt werden nur echte Tokens.
+_THINKING_HEADROOM = 10000
 _client = anthropic.Anthropic()
 
 Messages = list[dict]
@@ -46,6 +52,8 @@ def ask_llm(
     an die KI und gibt den reinen Antworttext zurück."""
     if _PROVIDER == "ollama":
         return _ask_ollama(prompt_or_messages, max_tokens, model)
+    if _PROVIDER == "ki-proxy":
+        return _ask_ki_proxy(prompt_or_messages, max_tokens, model)
     return _ask_claude(prompt_or_messages, max_tokens, model)
 
 
@@ -64,12 +72,36 @@ def _ask_claude(prompt_or_messages: Union[str, Messages], max_tokens: int, model
             system = messages[0]["content"]
             messages = messages[1:]
 
-    kwargs = {"model": model or _DEFAULT_MODEL, "max_tokens": max_tokens, "messages": messages}
+    kwargs = {
+        "model": model or _DEFAULT_MODEL,
+        "max_tokens": max_tokens + _THINKING_HEADROOM,
+        "messages": messages,
+    }
     if system is not None:
         kwargs["system"] = system
 
     response = _client.messages.create(**kwargs)
     return "".join(block.text for block in response.content if block.type == "text")
+
+
+def _ask_ki_proxy(prompt_or_messages: Union[str, Messages], max_tokens: int, model: Optional[str]) -> str:
+    """Claude Code auf dem Entwicklungsrechner (tools/ki-proxy) — läuft der
+    Proxy nicht, schlägt die Anfrage fehl wie bei jedem anderen nicht
+    erreichbaren Provider."""
+    if isinstance(prompt_or_messages, str):
+        messages = [{"role": "user", "content": prompt_or_messages}]
+    else:
+        messages = prompt_or_messages
+
+    proxy_url = os.environ.get("KI_PROXY_URL", "http://127.0.0.1:8010").rstrip("/")
+    payload = _json.dumps({"messages": messages, "max_tokens": max_tokens, "model": model}).encode()
+    req = _urlreq.Request(f"{proxy_url}/llm", data=payload, headers={"Content-Type": "application/json"})
+    try:
+        # Die Claude-Code-CLI braucht für lange Antworten gut eine Minute.
+        with _urlreq.urlopen(req, timeout=300) as resp:
+            return _json.loads(resp.read().decode())["content"]
+    except Exception as e:
+        raise RuntimeError(f"KI-Proxy nicht erreichbar: {e}") from e
 
 
 def _ask_ollama(prompt_or_messages: Union[str, Messages], max_tokens: int, model: Optional[str]) -> str:
