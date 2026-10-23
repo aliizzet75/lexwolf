@@ -1,0 +1,203 @@
+{
+  "getestete_faelle": 18,
+  "bestanden": 18,
+  "bestehensrate": 1.0,
+  "avg_einwaende_vollstaendigkeit": 1.0,
+  "normen_fehlen_gesamt": 0,
+  "negativtests_korrekt_erkannt": 3,
+  "negativtests_gesamt": 3,
+  "ergebnisse": [
+    {
+      "id": "G01",
+      "rechtsgebiet": "Arbeitsrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G02",
+      "rechtsgebiet": "Mietrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G03",
+      "rechtsgebiet": "Kaufrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G04",
+      "rechtsgebiet": "Werkvertragsrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G05",
+      "rechtsgebiet": "Deliktsrecht / Verkehrsrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G06",
+      "rechtsgebiet": "Familienrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G07",
+      "rechtsgebiet": "Schuldrecht / Darlehen",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G08",
+      "rechtsgebiet": "Handelsrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G09",
+      "rechtsgebiet": "Mietrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G10",
+      "rechtsgebiet": "Erbrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G11",
+      "rechtsgebiet": "Arbeitsrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G12",
+      "rechtsgebiet": "Allgemeines Zivilrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G13",
+      "rechtsgebiet": "Nachbarrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G14",
+      "rechtsgebiet": "Verbraucherrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G15",
+      "rechtsgebiet": "Gesellschaftsrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G16",
+      "rechtsgebiet": "Reiserecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G17",
+      "rechtsgebiet": "Arzthaftungsrecht",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    },
+    {
+      "id": "G18",
+      "rechtsgebiet": "Kaufrecht / Rücktritt",
+      "bestanden": true,
+      "einwaende_vollstaendigkeit": 1.0,
+      "normen_fehlen": 0,
+      "judge_score": 5,
+      "gruende_blockiert": []
+    }
+  ],
+  "negativ_faelle": [
+    {
+      "name": "fehlender_einwand",
+      "bestanden": false,
+      "erwartet_blockiert": true,
+      "gruende_blockiert": [
+        "Einwände-Vollständigkeit 67% < 95% (fehlend: Zwei-Wochen-Frist für außerordentliche Kündigung)",
+        "LLM-Judge-Score 3/5 < 4/5 (Regelbasiert: 0 Schema-Fehler, Einwände-Score 67%, 0 fehlende Normen in DB.)"
+      ]
+    },
+    {
+      "name": "erfundene_norm",
+      "bestanden": false,
+      "erwartet_blockiert": true,
+      "gruende_blockiert": [
+        "1 zitierte Norm(en) nicht in DB gefunden: § 99999z ErfundenesGesetzbuch",
+        "LLM-Judge-Score 1/5 < 4/5 (Regelbasiert: 0 Schema-Fehler, Einwände-Score 100%, 1 fehlende Normen in DB.)"
+      ]
+    },
+    {
+      "name": "schema_ungueltig",
+      "bestanden": false,
+      "erwartet_blockiert": true,
+      "gruende_blockiert": [
+        "Schema ungültig: anspruchsgrundlagen: fehlt oder ist leer; erfolgsprognose.ampel: fehlt oder ungültig (erlaubt: ('hoch', 'mittel', 'gering')); gesamtergebnis: fehlt oder leer",
+        "Einwände-Vollständigkeit 0% < 95% (fehlend: Fehlende vorherige Abmahnung / Verhältnismäßigkeit, Fehlende Anhörung des Betriebsrats, Zwei-Wochen-Frist für außerordentliche Kündigung)",
+        "LLM-Judge-Score 1/5 < 4/5 (Regelbasiert: 3 Schema-Fehler, Einwände-Score 0%, 0 fehlende Normen in DB.)"
+      ]
+    }
+  ]
+}

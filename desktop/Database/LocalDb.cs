@@ -46,6 +46,7 @@ namespace LexWolf.Database
                     pfad         TEXT,
                     titel        TEXT,
                     inhalt_chunk TEXT,
+                    typ          TEXT,
                     erstellt     TEXT,
                     geaendert    TEXT
                 );
@@ -91,7 +92,32 @@ namespace LexWolf.Database
                 );
             ";
             cmd.ExecuteNonQuery();
+            // Bestehende Datenbanken (vor "typ"-Spalte) per ALTER TABLE nachziehen —
+            // CREATE TABLE IF NOT EXISTS fasst eine schon vorhandene Tabelle nicht an.
+            MigriereSpalteFallsFehlt(conn, "dokumente", "typ", "TEXT");
             InitializeAkte(conn);
+        }
+
+        private static void MigriereSpalteFallsFehlt(SqliteConnection conn, string tabelle, string spalte, string spaltenTyp)
+        {
+            var vorhanden = false;
+            using (var pragma = conn.CreateCommand())
+            {
+                pragma.CommandText = $"PRAGMA table_info({tabelle});";
+                using var r = pragma.ExecuteReader();
+                while (r.Read())
+                {
+                    if (string.Equals(r.GetString(1), spalte, StringComparison.OrdinalIgnoreCase))
+                    {
+                        vorhanden = true;
+                        break;
+                    }
+                }
+            }
+            if (vorhanden) return;
+            using var alter = conn.CreateCommand();
+            alter.CommandText = $"ALTER TABLE {tabelle} ADD COLUMN {spalte} {spaltenTyp};";
+            alter.ExecuteNonQuery();
         }
 
         // --- Notizen ---
@@ -230,24 +256,38 @@ namespace LexWolf.Database
 
         // --- Dokumente ---
 
+        /// <param name="typ">Dokumenttyp, z. B. "Gutachten" für einen per SchriftsatzDialog erzeugten
+        /// Gutachten-Entwurf (siehe DokumentExport.TypAusDateiname); "" wenn kein bekannter Typ.</param>
         public void UpsertDokumentChunk(string id, string mandantId, string pfad,
-                                        string titel, string inhaltsChunk, string geaendert)
+                                        string titel, string inhaltsChunk, string geaendert, string typ = "")
         {
             using var conn = GetConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO dokumente (id, mandant_id, pfad, titel, inhalt_chunk, erstellt, geaendert)
-                VALUES ($id, $mandant_id, $pfad, $titel, $chunk, $erstellt, $geaendert)
-                ON CONFLICT(id) DO UPDATE SET inhalt_chunk=$chunk, geaendert=$geaendert;
+                INSERT INTO dokumente (id, mandant_id, pfad, titel, inhalt_chunk, typ, erstellt, geaendert)
+                VALUES ($id, $mandant_id, $pfad, $titel, $chunk, $typ, $erstellt, $geaendert)
+                ON CONFLICT(id) DO UPDATE SET inhalt_chunk=$chunk, typ=$typ, geaendert=$geaendert;
             ";
             cmd.Parameters.AddWithValue("$id", id);
             cmd.Parameters.AddWithValue("$mandant_id", mandantId);
             cmd.Parameters.AddWithValue("$pfad", pfad);
             cmd.Parameters.AddWithValue("$titel", titel);
             cmd.Parameters.AddWithValue("$chunk", inhaltsChunk);
+            cmd.Parameters.AddWithValue("$typ", typ);
             cmd.Parameters.AddWithValue("$erstellt", DateTime.UtcNow.ToString("o"));
             cmd.Parameters.AddWithValue("$geaendert", geaendert);
             cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>Dokumenttyp, wie beim Einlesen in UpsertDokumentChunk gesetzt (z. B. "Gutachten");
+        /// "" wenn das Dokument unbekannt ist oder keinen Typ hat.</summary>
+        public string GetDokumentTyp(string pfad)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT typ FROM dokumente WHERE pfad = $pfad LIMIT 1;";
+            cmd.Parameters.AddWithValue("$pfad", pfad);
+            return cmd.ExecuteScalar() as string ?? "";
         }
 
         /// <summary>Entfernt alle Chunks einer Datei — beim Löschen/Verschieben und vor

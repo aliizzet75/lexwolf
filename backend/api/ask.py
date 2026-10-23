@@ -123,6 +123,26 @@ _INTENT_EXAMPLES = {
         "Wie berechnet sich der Kindesunterhalt?",
         "Was sind Schönheitsreparaturen und wer muss sie durchführen?",
     ],
+    "gutachten": [
+        "Prüfe die Erfolgsaussichten einer Kündigungsschutzklage",
+        "Wie stehen die Erfolgsaussichten unseres Falls?",
+        "Ist der Anspruch auf Schadensersatz gegeben?",
+        "Ist ein Anspruch auf Abfindung gegeben?",
+        "Bitte ein Gutachten zu den Erfolgsaussichten erstellen",
+        "Erstelle ein Gutachten zur Rechtslage meines Mandanten",
+        "Hat die Klage Aussicht auf Erfolg?",
+        "Besteht ein Anspruch des Mandanten gegen den Vermieter?",
+        "Wie hoch sind die Erfolgsaussichten einer Berufung?",
+        "Lohnt sich eine Klage in diesem Fall?",
+        "Wie stehen die Chancen vor Gericht?",
+        "Bitte prüfe, ob ein Anspruch auf Unterhalt besteht",
+        "Begutachte die Erfolgsaussichten des Widerspruchs",
+        "Prüfe gutachterlich, ob der Anspruch begründet ist",
+        "Wie bewertest du die Erfolgsaussichten dieses Verfahrens?",
+        "Ist eine Kündigungsschutzklage hier erfolgversprechend?",
+        "Bitte Erfolgsaussichten vor Klageerhebung einschätzen",
+        "Wie schätzt du unsere Prozesschancen ein?",
+    ],
 }
 
 _intent_embeddings: dict | None = None
@@ -382,7 +402,7 @@ def _extract_query(text: str, intent: str = "frage") -> str:
 
 # ── Ergebnis-Formatierung ─────────────────────────────────────────────────────
 
-def _format_output(intent: str, original_text: str, chunks: list) -> str:
+def _format_output(intent: str, original_text: str, chunks: list, gegensuche_chunks: list | None = None) -> str:
     if not chunks:
         return (
             "Zu dieser Anfrage konnten keine passenden Einträge in der "
@@ -442,6 +462,71 @@ def _format_output(intent: str, original_text: str, chunks: list) -> str:
         for i, chunk in enumerate(chunks[:3], 1):
             lines.append(f"\n**{i}. {chunk.get('title','Ohne Titel')}**")
             lines.append(f"{chunk.get('text','')[:250].strip()}...\n")
+        return "\n".join(lines)
+
+    elif intent == "gutachten":
+        # Gutachten-Reasoning: Sachverhalt → rechtliche Würdigung im Gutachtenstil
+        # (Obersatz, Definition, Subsumtion) → Erfolgsaussichten-Einschätzung.
+        # Ersetzt die Schriftsatz-Generierung — hier wird bewertet, nicht entworfen.
+        scores = [c.get("score", 0) for c in chunks if isinstance(c, dict)]
+        avg = sum(scores) / len(scores) if scores else 0
+        if avg >= 0.85:
+            einschaetzung = "hoch"
+        elif avg >= 0.70:
+            einschaetzung = "mittel"
+        else:
+            einschaetzung = "eher gering / unklar"
+        gesetze = [c.get("title", "") for c in chunks[:5] if c.get("title")]
+        gesetze_str = " · ".join(gesetze[:3]) if gesetze else "relevante Rechtsgrundlagen"
+        lines = [
+            f"🎯 **Gutachten: Erfolgsaussichten — {original_text}**\n",
+            "---\n",
+            "**I. Sachverhalt**\n",
+            f"_[Kurzdarstellung des zugrunde liegenden Sachverhalts gemäß Anfrage: {original_text}]_\n",
+            "**II. Rechtliche Würdigung**\n",
+            f"*Einschlägige Rechtsgrundlagen: {gesetze_str}*\n",
+        ]
+        for i, chunk in enumerate(chunks[:3], 1):
+            lines.append(f"\n**{i}. {chunk.get('title','Ohne Titel')}**")
+            lines.append(f"{chunk.get('text','')[:300].strip()}...\n")
+        lines += [
+            "\n**III. Erfolgsaussichten**\n",
+            f"Einschätzung: **{einschaetzung}** "
+            f"(Konfidenz der Rechtsgrundlagen-Recherche: {avg:.0%})\n",
+        ]
+
+        # Aktive Gegensuche (T#275): Einwände, Gegenargumente und gegenteilige
+        # Rechtsprechung — nicht nur bestätigende Quellen. Das deckt den Teil
+        # "Angriffsmöglichkeiten gegen eine Klage der Gegenseite" aus der
+        # Anforderung des Anwalts ab (docs/KONZEPT_GUTACHTEN.md, Abschnitt 1.3).
+        lines.append("\n**IV. Einwände und Angriffsmöglichkeiten gegen die Klage**\n")
+        if gegensuche_chunks:
+            gegen_ids = {c.get("id") for c in chunks if isinstance(c, dict)}
+            neue_gegenquellen = [
+                g for g in gegensuche_chunks
+                if isinstance(g, dict) and g.get("id") not in gegen_ids
+            ]
+            if neue_gegenquellen:
+                for i, g in enumerate(neue_gegenquellen[:3], 1):
+                    lines.append(f"\n**{i}. {g.get('title', 'Ohne Titel')}**")
+                    lines.append(f"{(g.get('text') or '')[:300].strip()}...\n")
+            else:
+                lines.append(
+                    "_Die Gegensuche fand keine zusätzlichen Gegen-Normen oder "
+                    "gegenteiligen Entscheidungen über die oben bereits genannten "
+                    "Rechtsgrundlagen hinaus._\n"
+                )
+        else:
+            lines.append(
+                "_Die aktive Gegensuche nach Einwänden, Gegenargumenten und "
+                "gegenteiliger Rechtsprechung lieferte keine Treffer in der "
+                "Datenbank._\n"
+            )
+
+        lines.append(
+            "\n_Diese Einschätzung ersetzt keine abschließende rechtliche Prüfung "
+            "durch einen Volljuristen._\n"
+        )
         return "\n".join(lines)
 
     elif intent == "erklaere":
@@ -531,6 +616,7 @@ async def ask(request: AskRequest):
         "erklaere":  "Rechtliche Erklärung",
         "suche":     "Rechtsprechungssuche",
         "frage":     "Rechtliche Auskunft",
+        "gutachten": "Gutachten / Erfolgsaussichten",
     }
     reasoning.append(ReasoningStep(
         emoji="🧠",
@@ -542,7 +628,7 @@ async def ask(request: AskRequest):
     # tag_query:   für Tag-Boost (enthält explizite Gesetzes-Abkürzungen)
     tag_query = _extract_query(text, intent)   # z.B. "KSchG Kündigung Arbeitsverhältnis BGB"
     embed_query = _extract_query(text, "frage") or text  # natürlichsprachliche Keywords
-    emoji_map = {"erstelle": "📝", "erklaere": "📖", "suche": "🔍", "frage": "⚖️"}
+    emoji_map = {"erstelle": "📝", "erklaere": "📖", "suche": "🔍", "frage": "⚖️", "gutachten": "🎯"}
     reasoning.append(ReasoningStep(
         emoji=emoji_map.get(intent, "🔍"),
         text=f"Suche relevante Rechtsgrundlagen: *{tag_query}*"
@@ -585,17 +671,45 @@ async def ask(request: AskRequest):
     if chunks:
         scores = [c.get("score", 0) for c in chunks if isinstance(c, dict)]
         avg = sum(scores) / len(scores) if scores else 0
-        reasoning.append(ReasoningStep(
-            emoji="📊",
-            text=f"Durchschnittliche Relevanz: {avg:.0%}"
-        ))
+        if intent == "gutachten":
+            reasoning.append(ReasoningStep(
+                emoji="🎯",
+                text=f"Erfolgsaussichten-Einschätzung (Konfidenz der Rechtsgrundlagen): {avg:.0%}"
+            ))
+        else:
+            reasoning.append(ReasoningStep(
+                emoji="📊",
+                text=f"Durchschnittliche Relevanz: {avg:.0%}"
+            ))
+
+    # 4b. Gutachten: aktive Gegensuche (T#275) — läuft zwingend im ReAct-Tiefmodus,
+    # nie im Schnellmodus, denn ohne sie fehlt der vom Anwalt geforderte Teil
+    # "Angriffsmöglichkeiten gegen eine Klage der Gegenseite" (nicht nur
+    # bestätigende Quellen, siehe docs/KONZEPT_GUTACHTEN.md Abschnitt 1.3).
+    gegensuche_chunks: list = []
+    if intent == "gutachten":
+        try:
+            from services.react_engine import ReActEngine
+            gegensuche_chunks = await ReActEngine().run_gegensuche(embed_query)
+            reasoning.append(ReasoningStep(
+                emoji="🛡️",
+                text=(
+                    f"Aktive Gegensuche (Tiefmodus): {len(gegensuche_chunks)} Treffer zu "
+                    "Einwänden, Gegenargumenten und gegenteiliger Rechtsprechung geprüft"
+                )
+            ))
+        except Exception as e:
+            reasoning.append(ReasoningStep(
+                emoji="⚠️",
+                text=f"Gegensuche fehlgeschlagen: {str(e)[:120]}"
+            ))
 
     # 5. Output aufbereiten
     reasoning.append(ReasoningStep(
         emoji="✍️",
         text="Ergebnis wird aufbereitet..."
     ))
-    output = _format_output(intent, text, chunks)
+    output = _format_output(intent, text, chunks, gegensuche_chunks)
 
     # Sources
     sources = []

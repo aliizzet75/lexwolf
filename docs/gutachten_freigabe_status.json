@@ -1,0 +1,7 @@
+{
+  "freigegeben": false,
+  "freigegeben_durch": null,
+  "rolle": "Rechtsanwalt",
+  "datum": null,
+  "hinweis": "Schriftliche Freigabe durch den Anwalt erforderlich vor Produktiv-Einsatz des Gutachten-Modus (analog M3/Entry 48, siehe docs/quality_protocol.md). Solange 'freigegeben' nicht true ist UND 'freigegeben_durch' nicht gesetzt ist, blockiert tests/quality/gutachten_quality_gate.py den Produktions-Release und T#274 (Intent-Routing) darf den Gutachten-Modus nicht live schalten. Siehe docs/freigabe_gutachten.md für den Prozess."
+}

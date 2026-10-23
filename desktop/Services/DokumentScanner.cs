@@ -75,13 +75,14 @@ namespace LexWolf.Services
                 var text      = ReadText(filePath);
                 var geaendert = File.GetLastWriteTimeUtc(filePath).ToString("o");
                 var titel     = Path.GetFileNameWithoutExtension(filePath);
+                var typ       = DokumentExport.TypAusDateiname(filePath);
                 var chunks    = Chunk(text);
 
                 _db.DeleteDokumentChunks(filePath);
                 for (int i = 0; i < chunks.Count; i++)
                 {
                     var chunkId = ToId($"{filePath}_{i}");
-                    _db.UpsertDokumentChunk(chunkId, mandantId, filePath, titel, chunks[i], geaendert);
+                    _db.UpsertDokumentChunk(chunkId, mandantId, filePath, titel, chunks[i], geaendert, typ);
                 }
                 OnDateiIndexiert?.Invoke(mandantId, filePath);
             }
