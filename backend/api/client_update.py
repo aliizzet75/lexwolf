@@ -41,6 +41,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.52.0",
         "Fachliche Anforderung des Anwalts: KI soll Rechtsfragen/Rechtsfälle im Gutachtenstil prüfen können — Anspruchsgrundlage(n) ermitteln, Voraussetzungen durchgehen, Einwände/Angriffsmöglichkeiten prüfen,",
     ),
+    (
+        "0.53.0",
+        "Fachliche Anforderung des Anwalts: KI soll Rechtsfragen/Rechtsfälle im Gutachtenstil prüfen können — Anspruchsgrundlage(n) ermitteln, Voraussetzungen durchgehen, Einwände/Angriffsmöglichkeiten prüfen,",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
