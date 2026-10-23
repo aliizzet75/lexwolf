@@ -1,0 +1,269 @@
+[
+  {
+    "id": "G01",
+    "rechtsgebiet": "Arbeitsrecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Hat die außerordentliche Kündigung Aussicht auf Erfolg (Sicht Arbeitgeber)?",
+    "sachverhalt": "Arbeitnehmer A (sechs Jahre Betriebszugehörigkeit, Betrieb mit 40 Mitarbeitern) kam einmalig 20 Minuten zu spät zur Schicht. Arbeitgeber B kündigte daraufhin fristlos, ohne vorherige Abmahnung. Der Betriebsrat wurde vor der Kündigung nicht angehört.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Wirksamkeit der außerordentlichen Kündigung", "norm": "§ 626 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Fehlende vorherige Abmahnung / Verhältnismäßigkeit", "norm": "§ 626 BGB"},
+      {"bezeichnung": "Fehlende Anhörung des Betriebsrats", "norm": "§ 102 BetrVG"},
+      {"bezeichnung": "Zwei-Wochen-Frist für außerordentliche Kündigung", "norm": "§ 626 Abs. 2 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering", "mittel"]
+  },
+  {
+    "id": "G02",
+    "rechtsgebiet": "Mietrecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Ist die Eigenbedarfskündigung wirksam?",
+    "sachverhalt": "Vermieter V kündigt der Mieterin M (72 Jahre, seit 25 Jahren in der Wohnung, gesundheitlich stark eingeschränkt) wegen Eigenbedarfs für seine Tochter. Die Kündigung nennt den Eigenbedarfsgrund nur mit einem Satz, ohne Name und Verwandtschaftsverhältnis der Tochter zu benennen.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Räumungsanspruch wegen Eigenbedarfskündigung", "norm": "§ 573 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Formmangel der Kündigungsbegründung", "norm": "§ 573 Abs. 3 BGB"},
+      {"bezeichnung": "Härtefalleinwand der Mieterin", "norm": "§ 574 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering", "mittel"]
+  },
+  {
+    "id": "G03",
+    "rechtsgebiet": "Kaufrecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Bestehen Gewährleistungsansprüche gegen den Verkäufer des Gebrauchtwagens?",
+    "sachverhalt": "Käufer K erwarb von Privatverkäufer P einen Gebrauchtwagen vor 4 Jahren 'unter Ausschluss jeder Gewährleistung'. Jetzt zeigt sich ein Getriebeschaden, den K auf einen bei Übergabe schon vorhandenen Vorschaden zurückführt.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Mängelgewährleistung beim Kauf", "norm": "§ 437 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Verjährung der Gewährleistungsansprüche", "norm": "§ 438 BGB"},
+      {"bezeichnung": "Wirksamer Gewährleistungsausschluss", "norm": "§ 444 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering"]
+  },
+  {
+    "id": "G04",
+    "rechtsgebiet": "Werkvertragsrecht",
+    "schwierigkeit": "schwer",
+    "fragestellung": "Kann der Bauherr Mängelbeseitigung bzw. Schadensersatz vom Bauunternehmer verlangen?",
+    "sachverhalt": "Bauunternehmer U hat vor 3 Jahren eine Terrasse für Bauherr H errichtet. Risse im Belag traten nach 6 Monaten auf. H setzte dem U keine Frist zur Nacherfüllung, sondern ließ sofort einen anderen Betrieb reparieren und verlangt nun die Kosten von U erstattet.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Schadensersatz statt der Leistung wegen Mängeln", "norm": "§ 634 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Fehlende Fristsetzung zur Nacherfüllung", "norm": "§ 636 BGB"},
+      {"bezeichnung": "Verjährung der Mängelansprüche", "norm": "§ 634a BGB"},
+      {"bezeichnung": "Mitverschulden durch verspätete Mängelanzeige", "norm": "§ 254 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering", "mittel"]
+  },
+  {
+    "id": "G05",
+    "rechtsgebiet": "Deliktsrecht / Verkehrsrecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Besteht ein Schadensersatzanspruch nach dem Verkehrsunfall?",
+    "sachverhalt": "Fahrer F fuhr bei Rot über eine Ampel und kollidierte mit dem bei Grün einfahrenden Fahrzeug der Geschädigten G. G hatte laut Unfallbericht selbst 10 km/h zu schnell gemessen. Der Unfall liegt 3,5 Jahre zurück, G hat erst jetzt Ansprüche angemeldet.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Schadensersatz aus unerlaubter Handlung", "norm": "§ 823 BGB"},
+      {"bezeichnung": "Halterhaftung", "norm": "§ 7 StVG"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Mitverschulden der Geschädigten wegen Geschwindigkeitsüberschreitung", "norm": "§ 254 BGB"},
+      {"bezeichnung": "Verjährung der Ansprüche", "norm": "§ 195 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["mittel", "hoch"]
+  },
+  {
+    "id": "G06",
+    "rechtsgebiet": "Familienrecht",
+    "schwierigkeit": "schwer",
+    "fragestellung": "Besteht Anspruch auf nachehelichen Unterhalt?",
+    "sachverhalt": "Ehefrau E (45 Jahre, kinderlose Ehe seit 8 Jahren geschieden) verlangt von Ex-Ehemann M nachehelichen Unterhalt. E ist seit der Scheidung vollzeitfähig und arbeitet aber nur 15 Stunden/Woche, obwohl eine Vollzeitstelle in ihrem Beruf verfügbar wäre. E lebt seit 2 Jahren mit einem neuen Partner in eheähnlicher Gemeinschaft.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Nachehelicher Unterhalt wegen Erwerbslosigkeit/Aufstockung", "norm": "§ 1573 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Verwirkung des Unterhalts wegen verfestigter neuer Lebensgemeinschaft", "norm": "§ 1579 BGB"},
+      {"bezeichnung": "Verletzung der Erwerbsobliegenheit", "norm": "§ 1574 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering", "mittel"]
+  },
+  {
+    "id": "G07",
+    "rechtsgebiet": "Schuldrecht / Darlehen",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Kann der Darlehensgeber die Rückzahlung verlangen?",
+    "sachverhalt": "D gab seinem Freund F vor 5 Jahren 8.000 EUR, mündlich als Darlehen vereinbart, ohne schriftlichen Vertrag und ohne festes Rückzahlungsdatum. F behauptet, das Geld sei ein Geschenk gewesen. D verlangt nun Rückzahlung; er hat außerdem noch eine offene Gegenforderung von F in Höhe von 1.000 EUR aus einem anderen Geschäft, die F mit der Darlehensforderung verrechnen möchte.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Rückzahlungsanspruch aus Darlehen", "norm": "§ 488 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Aufrechnung mit Gegenforderung", "norm": "§ 387 BGB"},
+      {"bezeichnung": "Beweislast für Darlehen statt Schenkung", "norm": "§ 488 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["mittel", "hoch"]
+  },
+  {
+    "id": "G08",
+    "rechtsgebiet": "Handelsrecht",
+    "schwierigkeit": "schwer",
+    "fragestellung": "Kann der Verkäufer den vollen Kaufpreis von der Käuferin (Unternehmerin) verlangen?",
+    "sachverhalt": "Großhändler G lieferte Käuferin K (Einzelhändlerin, beide Kaufleute) eine Warenlieferung. K rügte einen Teil der Lieferung als mangelhaft erst 6 Wochen nach Wareneingang, obwohl eine Sichtprüfung den Mangel sofort erkennen hätte lassen.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Kaufpreisanspruch", "norm": "§ 433 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Genehmigungsfiktion wegen verspäteter Rüge zwischen Kaufleuten", "norm": "§ 377 HGB"}
+    ],
+    "erwartete_ampel_bereich": ["hoch"]
+  },
+  {
+    "id": "G09",
+    "rechtsgebiet": "Mietrecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Hat die Räumungsklage wegen Zahlungsverzugs Aussicht auf Erfolg?",
+    "sachverhalt": "Mieter M zahlte zwei Monatsmieten nicht, weil die Heizung in der Wohnung seit Monaten defekt ist und V trotz mehrfacher Mängelanzeige nicht reagiert hat. V kündigte fristlos wegen Zahlungsverzugs und erhebt Räumungsklage. M zahlt den Rückstand drei Wochen nach Klagezustellung vollständig nach.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Räumungsanspruch wegen Zahlungsverzugs", "norm": "§ 543 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Zurückbehaltungsrecht wegen Mängeln", "norm": "§ 536 BGB"},
+      {"bezeichnung": "Schonfristzahlung heilt die Kündigung", "norm": "§ 569 Abs. 3 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering"]
+  },
+  {
+    "id": "G10",
+    "rechtsgebiet": "Erbrecht",
+    "schwierigkeit": "schwer",
+    "fragestellung": "Besteht ein Pflichtteilsanspruch des enterbten Sohnes?",
+    "sachverhalt": "Erblasser E hat seinen Sohn S testamentarisch enterbt und alles der Tochter T vermacht. E ist vor 4 Jahren verstorben, S hat erst jetzt vom Testament erfahren, weil T ihn nicht informiert hat, und macht seinen Pflichtteil geltend. E hatte S zu Lebzeiten bereits 20.000 EUR für eine Immobilienfinanzierung geschenkt.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Pflichtteilsanspruch", "norm": "§ 2303 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Verjährung des Pflichtteilsanspruchs", "norm": "§ 2332 BGB"},
+      {"bezeichnung": "Anrechnung von Vorempfängen auf den Pflichtteil", "norm": "§ 2315 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["mittel", "hoch"]
+  },
+  {
+    "id": "G11",
+    "rechtsgebiet": "Arbeitsrecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Kann der Arbeitnehmer die Vergütung der Überstunden einklagen?",
+    "sachverhalt": "Arbeitnehmer A verlangt Vergütung für 150 Überstunden aus den letzten 14 Monaten. Der Arbeitsvertrag enthält eine zweistufige Ausschlussfrist von je drei Monaten; A hat die Überstunden erst jetzt schriftlich geltend gemacht. Ein Stundenzettel-Nachweis liegt nur für die letzten 4 Monate vor.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Vergütungsanspruch für geleistete Überstunden", "norm": "§ 611 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Verfall durch vertragliche Ausschlussfrist", "norm": "§ 307 BGB"},
+      {"bezeichnung": "Fehlender Nachweis der Überstunden (Darlegungs- und Beweislast)", "norm": "§ 611 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering", "mittel"]
+  },
+  {
+    "id": "G12",
+    "rechtsgebiet": "Allgemeines Zivilrecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Kann der Käufer den Kaufvertrag wegen arglistiger Täuschung anfechten?",
+    "sachverhalt": "Käufer K hat vor 3 Jahren ein Grundstück von Verkäufer V gekauft. V hatte wahrheitswidrig erklärt, es gebe keine Altlasten auf dem Grundstück, obwohl ihm ein Bodengutachten mit gegenteiligem Ergebnis vorlag. K erfuhr davon erst vor zwei Monaten durch Zufall und möchte nun anfechten.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Anfechtung wegen arglistiger Täuschung", "norm": "§ 123 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Einhaltung der Anfechtungsfrist", "norm": "§ 124 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["hoch"]
+  },
+  {
+    "id": "G13",
+    "rechtsgebiet": "Nachbarrecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Kann der Grundstückseigentümer Beseitigung des Grenzüberbaus verlangen?",
+    "sachverhalt": "Nachbar N hat vor 12 Jahren beim Bau seiner Garage versehentlich 30 cm auf das Grundstück von Eigentümer E hinübergebaut. E hat dies damals bemerkt, aber nie widersprochen, und verlangt jetzt Beseitigung.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Beseitigungs- und Unterlassungsanspruch", "norm": "§ 1004 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Duldungspflicht bei Überbau ohne rechtzeitigen Widerspruch", "norm": "§ 912 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering"]
+  },
+  {
+    "id": "G14",
+    "rechtsgebiet": "Verbraucherrecht",
+    "schwierigkeit": "leicht",
+    "fragestellung": "Kann der Verbraucher den Fernabsatzvertrag noch widerrufen?",
+    "sachverhalt": "Verbraucherin V hat vor 20 Tagen online einen Staubsauger bestellt und erhalten. Über ihr Widerrufsrecht wurde sie ordnungsgemäß belehrt. Sie möchte den Vertrag jetzt widerrufen, weil ihr das Gerät nicht gefällt.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Widerrufsrecht bei Fernabsatzverträgen", "norm": "§ 355 BGB"}
+    ],
+    "erwartete_einwaende": [],
+    "erwartete_ampel_bereich": ["hoch"]
+  },
+  {
+    "id": "G15",
+    "rechtsgebiet": "Gesellschaftsrecht",
+    "schwierigkeit": "schwer",
+    "fragestellung": "Hat der ausgeschiedene Gesellschafter Anspruch auf sein Abfindungsguthaben?",
+    "sachverhalt": "Gesellschafter G ist vor 4 Jahren aus einer GbR ausgeschieden und verlangt jetzt sein Abfindungsguthaben. Die verbleibenden Gesellschafter werfen ihm vor, unmittelbar nach seinem Ausscheiden ein Konkurrenzunternehmen im selben Marktsegment gegründet und dadurch gegen ein vertraglich vereinbartes nachvertragliches Wettbewerbsverbot verstoßen zu haben, und wollen damit gegen die Abfindung aufrechnen.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Abfindungsanspruch des ausgeschiedenen Gesellschafters", "norm": "§ 738 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Aufrechnung mit Schadensersatz wegen Wettbewerbsverstoß", "norm": "§ 387 BGB"},
+      {"bezeichnung": "Verjährung des Abfindungsanspruchs", "norm": "§ 195 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["mittel"]
+  },
+  {
+    "id": "G16",
+    "rechtsgebiet": "Reiserecht",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Kann der Reisende eine Minderung des Reisepreises verlangen?",
+    "sachverhalt": "Reisender R buchte eine zweiwöchige Pauschalreise, bei der das Hotelzimmer durchgehend Schimmelbefall aufwies. R beschwerte sich erst nach Rückkehr beim Reiseveranstalter, nicht während der Reise vor Ort.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Minderung des Reisepreises wegen Reisemangels", "norm": "§ 651m BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Unterlassene Mängelanzeige während der Reise", "norm": "§ 651o BGB"}
+    ],
+    "erwartete_ampel_bereich": ["mittel"]
+  },
+  {
+    "id": "G17",
+    "rechtsgebiet": "Arzthaftungsrecht",
+    "schwierigkeit": "schwer",
+    "fragestellung": "Besteht ein Schmerzensgeldanspruch wegen des Behandlungsfehlers?",
+    "sachverhalt": "Patientin P wirft Arzt Ä vor, eine Operation ohne ausreichende Aufklärung über die Risiken durchgeführt zu haben, wodurch eine Komplikation eintrat. P hat die Nachsorgetermine zur Wundkontrolle zweimal versäumt. Der Eingriff liegt knapp 3 Jahre zurück.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Schadensersatz/Schmerzensgeld wegen Behandlungsfehler", "norm": "§ 280 BGB"},
+      {"bezeichnung": "Deliktische Haftung des Arztes", "norm": "§ 823 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Ordnungsgemäße Aufklärung/Einwilligung des Patienten", "norm": "§ 630e BGB"},
+      {"bezeichnung": "Mitverschulden durch versäumte Nachsorgetermine", "norm": "§ 254 BGB"},
+      {"bezeichnung": "Beginnende Verjährung der Ansprüche", "norm": "§ 195 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["gering", "mittel"]
+  },
+  {
+    "id": "G18",
+    "rechtsgebiet": "Kaufrecht / Rücktritt",
+    "schwierigkeit": "mittel",
+    "fragestellung": "Kann der Käufer die geleistete Anzahlung nach Rücktritt zurückfordern?",
+    "sachverhalt": "Käufer K hat eine Anzahlung von 5.000 EUR für eine noch zu liefernde Maschine geleistet. Verkäufer V liefert seit 8 Monaten trotz mehrfacher Mahnung nicht. K erklärt den Rücktritt vom Vertrag ohne vorher eine Frist zur Lieferung gesetzt zu haben, und verlangt die Anzahlung zurück.",
+    "erwartete_anspruchsgrundlagen": [
+      {"bezeichnung": "Rückgewähr der Anzahlung nach Rücktritt", "norm": "§ 346 BGB"}
+    ],
+    "erwartete_einwaende": [
+      {"bezeichnung": "Fehlende wirksame Fristsetzung vor Rücktritt", "norm": "§ 323 BGB"}
+    ],
+    "erwartete_ampel_bereich": ["mittel", "hoch"]
+  }
+]
