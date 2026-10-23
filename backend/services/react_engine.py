@@ -43,6 +43,20 @@ def evaluate_completeness(query: str, results: List[str]) -> Dict[str, object]:
     }
 
 
+def build_gegensuche_queries(query: str) -> List[str]:
+    """Suchanfragen für die aktive Gegensuche (T#275): zielt bewusst auf
+    Gegen-Normen, Gegenargumente und gegenteilige Rechtsprechung statt auf
+    weitere bestätigende Quellen — sonst fehlt im Gutachten der Teil
+    "Angriffsmöglichkeiten gegen eine Klage der Gegenseite" aus der
+    Anforderung des Anwalts (docs/KONZEPT_GUTACHTEN.md, Abschnitt 1.3)."""
+    query = query.strip()
+    return [
+        f"Einwände und Einreden gegen {query}",
+        f"Gegenargumente und Ausschlussgründe zu {query}",
+        f"Rechtsprechung die einen Anspruch wie {query} verneint oder abweist",
+    ]
+
+
 def traverse_graph(paragraph_id: str, max_depth: int = 2) -> List[Dict]:
     neo4j_service = Neo4jService()
     if not neo4j_service.connect():
@@ -68,11 +82,43 @@ class ReActEngine:
 
     MAX_ROUNDS = 5
 
+    async def run_gegensuche(self, initial_query: str) -> List[Dict]:
+        """Aktiver Gegensuche-Schritt, nur im Tief-Modus (T#275): sucht gezielt
+        nach Gegen-Normen, Gegenargumenten und gegenteiliger Rechtsprechung,
+        statt nur weitere bestätigende Quellen anzuhäufen. Ohne diesen Schritt
+        fehlt im Gutachten der vom Anwalt geforderte Teil "Einwände und
+        Angriffsmöglichkeiten gegen eine Klage der Gegenseite". Nutzt eine
+        regulär initialisierte HybridSearchService-Instanz (echte Embeddings/
+        DB-Verbindung), nicht die Test-Only-__new__()-Variante von run_loop."""
+        from services.search_service import HybridSearchService as _HSS
+        search_service = _HSS()
+        gegen_queries = build_gegensuche_queries(initial_query)
+        results_per_query = await search_service.parallel_search(gegen_queries)
+
+        gegensuche_chunks: List[Dict] = []
+        seen_ids = set()
+        for result_list in results_per_query:
+            for chunk in result_list:
+                if isinstance(chunk, dict):
+                    cid = chunk.get('id', chunk.get('chunk_id'))
+                    if cid is not None:
+                        if cid in seen_ids:
+                            continue
+                        seen_ids.add(cid)
+                    chunk = {**chunk, 'gegensuche': True}
+                gegensuche_chunks.append(chunk)
+        return gegensuche_chunks
+
     async def run_loop(self, initial_query: str, modus: str = "schnell") -> dict:
-        """ReAct-Loop. modus=tief aktiviert Reranking via Claude für höchste Präzision."""
+        """ReAct-Loop. modus=tief aktiviert Reranking via Claude für höchste
+        Präzision UND die aktive Gegensuche (run_gegensuche) nach Einwänden,
+        Gegenargumenten und gegenteiliger Rechtsprechung (T#275). Der
+        Gutachten-Modus MUSS modus='tief' verwenden — niemals 'schnell' —
+        sonst fehlt die Gegensuche und damit der Angriffsmöglichkeiten-Teil
+        der Anforderung."""
         current_module = sys.modules[__name__]
         _evaluate_completeness = getattr(current_module, 'evaluate_completeness')
-        
+
         # Use sys.modules lookup for test compatibility
         search_module = sys.modules['services.search_service']
         HybridSearchService = getattr(search_module, 'HybridSearchService')
@@ -80,16 +126,17 @@ class ReActEngine:
         accumulated_chunks = []
         queries = [initial_query]
         round_num = 0
+        vollstaendig = False
 
         for round_num in range(1, self.MAX_ROUNDS + 1):
             # Create a minimal instance to avoid database initialization
             # The tests will patch the parallel_search method directly
             search_service = HybridSearchService.__new__(HybridSearchService)
-            
+
             # Call the method using getattr and handle the binding manually
             # This works around the mock function signature issue
             parallel_search_func = getattr(HybridSearchService, 'parallel_search')
-            
+
             # Create a wrapper function that adapts the call to match the mock signature
             async def call_parallel_search(queries):
                 # When the mock is called, it will receive (self, queries)
@@ -104,7 +151,7 @@ class ReActEngine:
                         # This is a workaround for the test mock signature issue
                         return await parallel_search_func(queries)
                     raise
-            
+
             results_per_query = await call_parallel_search(queries)
 
             for result_list in results_per_query:
@@ -118,29 +165,38 @@ class ReActEngine:
             completeness = _evaluate_completeness(initial_query, text_chunks)
 
             if completeness.get('vollstaendig', False):
-                return {
-                    'accumulated_chunks': accumulated_chunks,
-                    'rounds': round_num,
-                    'vollstaendig': True,
-                }
+                vollstaendig = True
+                break
 
             fehlende = completeness.get('fehlende_aspekte', [])
             if not fehlende:
                 break
             queries = fehlende
 
-        # Tief-Modus: Rerank mit Claude für höchste Präzision (teurer, aber präziser)
-        if modus == 'tief' and accumulated_chunks:
+        # Tief-Modus: Rerank mit Claude für höchste Präzision (teurer, aber
+        # präziser) UND aktive Gegensuche nach Einwänden/Gegenargumenten/
+        # gegenteiliger Rechtsprechung. Läuft unabhängig davon, ob die
+        # normale Suche schon 'vollstaendig' war — sonst würde die Gegensuche
+        # im Regelfall (vollstaendig meist schon nach Runde 1) nie ausgeführt.
+        gegensuche_chunks: List[Dict] = []
+        if modus == 'tief':
             try:
-                search_svc = HybridSearchService.__new__(HybridSearchService)
-                accumulated_chunks = search_svc.rerank_results(initial_query, accumulated_chunks)
+                gegensuche_chunks = await self.run_gegensuche(initial_query)
             except Exception as _e:
-                logger.warning(f'Reranking im Tief-Modus fehlgeschlagen: {_e}')
+                logger.warning(f'Gegensuche im Tief-Modus fehlgeschlagen: {_e}')
+
+            if accumulated_chunks:
+                try:
+                    search_svc = HybridSearchService.__new__(HybridSearchService)
+                    accumulated_chunks = search_svc.rerank_results(initial_query, accumulated_chunks)
+                except Exception as _e:
+                    logger.warning(f'Reranking im Tief-Modus fehlgeschlagen: {_e}')
 
         return {
             'accumulated_chunks': accumulated_chunks,
+            'gegensuche_chunks': gegensuche_chunks,
             'rounds': round_num,
-            'vollstaendig': False,
+            'vollstaendig': vollstaendig,
         }
 
 

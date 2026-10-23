@@ -402,7 +402,7 @@ def _extract_query(text: str, intent: str = "frage") -> str:
 
 # ── Ergebnis-Formatierung ─────────────────────────────────────────────────────
 
-def _format_output(intent: str, original_text: str, chunks: list) -> str:
+def _format_output(intent: str, original_text: str, chunks: list, gegensuche_chunks: list | None = None) -> str:
     if not chunks:
         return (
             "Zu dieser Anfrage konnten keine passenden Einträge in der "
@@ -493,9 +493,40 @@ def _format_output(intent: str, original_text: str, chunks: list) -> str:
             "\n**III. Erfolgsaussichten**\n",
             f"Einschätzung: **{einschaetzung}** "
             f"(Konfidenz der Rechtsgrundlagen-Recherche: {avg:.0%})\n",
-            "_Diese Einschätzung ersetzt keine abschließende rechtliche Prüfung "
-            "durch einen Volljuristen._\n",
         ]
+
+        # Aktive Gegensuche (T#275): Einwände, Gegenargumente und gegenteilige
+        # Rechtsprechung — nicht nur bestätigende Quellen. Das deckt den Teil
+        # "Angriffsmöglichkeiten gegen eine Klage der Gegenseite" aus der
+        # Anforderung des Anwalts ab (docs/KONZEPT_GUTACHTEN.md, Abschnitt 1.3).
+        lines.append("\n**IV. Einwände und Angriffsmöglichkeiten gegen die Klage**\n")
+        if gegensuche_chunks:
+            gegen_ids = {c.get("id") for c in chunks if isinstance(c, dict)}
+            neue_gegenquellen = [
+                g for g in gegensuche_chunks
+                if isinstance(g, dict) and g.get("id") not in gegen_ids
+            ]
+            if neue_gegenquellen:
+                for i, g in enumerate(neue_gegenquellen[:3], 1):
+                    lines.append(f"\n**{i}. {g.get('title', 'Ohne Titel')}**")
+                    lines.append(f"{(g.get('text') or '')[:300].strip()}...\n")
+            else:
+                lines.append(
+                    "_Die Gegensuche fand keine zusätzlichen Gegen-Normen oder "
+                    "gegenteiligen Entscheidungen über die oben bereits genannten "
+                    "Rechtsgrundlagen hinaus._\n"
+                )
+        else:
+            lines.append(
+                "_Die aktive Gegensuche nach Einwänden, Gegenargumenten und "
+                "gegenteiliger Rechtsprechung lieferte keine Treffer in der "
+                "Datenbank._\n"
+            )
+
+        lines.append(
+            "\n_Diese Einschätzung ersetzt keine abschließende rechtliche Prüfung "
+            "durch einen Volljuristen._\n"
+        )
         return "\n".join(lines)
 
     elif intent == "erklaere":
@@ -651,12 +682,34 @@ async def ask(request: AskRequest):
                 text=f"Durchschnittliche Relevanz: {avg:.0%}"
             ))
 
+    # 4b. Gutachten: aktive Gegensuche (T#275) — läuft zwingend im ReAct-Tiefmodus,
+    # nie im Schnellmodus, denn ohne sie fehlt der vom Anwalt geforderte Teil
+    # "Angriffsmöglichkeiten gegen eine Klage der Gegenseite" (nicht nur
+    # bestätigende Quellen, siehe docs/KONZEPT_GUTACHTEN.md Abschnitt 1.3).
+    gegensuche_chunks: list = []
+    if intent == "gutachten":
+        try:
+            from services.react_engine import ReActEngine
+            gegensuche_chunks = await ReActEngine().run_gegensuche(embed_query)
+            reasoning.append(ReasoningStep(
+                emoji="🛡️",
+                text=(
+                    f"Aktive Gegensuche (Tiefmodus): {len(gegensuche_chunks)} Treffer zu "
+                    "Einwänden, Gegenargumenten und gegenteiliger Rechtsprechung geprüft"
+                )
+            ))
+        except Exception as e:
+            reasoning.append(ReasoningStep(
+                emoji="⚠️",
+                text=f"Gegensuche fehlgeschlagen: {str(e)[:120]}"
+            ))
+
     # 5. Output aufbereiten
     reasoning.append(ReasoningStep(
         emoji="✍️",
         text="Ergebnis wird aufbereitet..."
     ))
-    output = _format_output(intent, text, chunks)
+    output = _format_output(intent, text, chunks, gegensuche_chunks)
 
     # Sources
     sources = []
