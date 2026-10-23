@@ -9,6 +9,7 @@ from services.database_service import DatabaseService
 from services.neo4j_service import Neo4jService
 from services.paragraph_parser import extract_references
 from scripts.import_to_neo4j import create_paragraph_node, create_simple_relationships
+from services.notification_service import notify
 import hashlib
 import logging
 
@@ -51,10 +52,12 @@ class LegalDatabaseCrawler:
         self.embedding_service = EmbeddingService()
         self.database_service = DatabaseService()
 
-    async def crawl_all_sources(self, limit_per_source: int = None):
-        """Crawl all legal sources, store in pgvector, then update Neo4j."""
+    async def crawl_all_sources(self, limit_per_source: int = None) -> Dict:
+        """Crawl all legal sources, store in pgvector, then update Neo4j.
+        Gibt Statistik-Dict zurück (für Erfolgs-/Fehler-Benachrichtigung)."""
         logger.info("Starting legal database crawl...")
         all_new_chunks = []
+        stats = {"gesetze_neu": 0, "rechtsprechung_neu": 0, "errors": []}
 
         logger.info("Crawling gesetze-im-internet.de...")
         try:
@@ -62,8 +65,10 @@ class LegalDatabaseCrawler:
             logger.info(f"Generated {len(law_chunks)} chunks from laws")
             new_chunks = await self.process_and_store_chunks(law_chunks)
             all_new_chunks.extend(new_chunks)
+            stats["gesetze_neu"] = len(new_chunks)
         except Exception as e:
             logger.error(f"Error crawling gesetze-im-internet.de: {e}")
+            stats["errors"].append(f"gesetze-im-internet.de: {e}")
 
         logger.info("Crawling rechtsprechung-im-internet.de (BVerfG, BGH, BAG, BFH, BVerwG, BSG, BPatG)...")
         try:
@@ -71,14 +76,22 @@ class LegalDatabaseCrawler:
             logger.info(f"Generated {len(decision_chunks)} chunks from decisions")
             new_chunks = await self.process_and_store_chunks(decision_chunks)
             all_new_chunks.extend(new_chunks)
+            stats["rechtsprechung_neu"] = len(new_chunks)
         except Exception as e:
             logger.error(f"Error crawling rechtsprechung-im-internet.de: {e}")
+            stats["errors"].append(f"rechtsprechung-im-internet.de: {e}")
 
         if all_new_chunks:
             logger.info(f"Updating Neo4j with {len(all_new_chunks)} new chunks...")
-            update_neo4j(all_new_chunks)
+            try:
+                update_neo4j(all_new_chunks)
+            except Exception as e:
+                logger.error(f"Neo4j update failed: {e}")
+                stats["errors"].append(f"Neo4j-Update: {e}")
 
+        stats["chunks_neu_gesamt"] = len(all_new_chunks)
         logger.info("Legal database crawl completed")
+        return stats
 
     def _embed_and_save(self, chunk: Dict) -> Dict:
         """Embed + store one chunk, return chunk with 'id' set."""
@@ -165,7 +178,39 @@ async def main():
     limit_env = os.getenv("LEXWOLF_CRAWL_LIMIT")
     limit = int(limit_env) if limit_env else None
     crawler = LegalDatabaseCrawler()
-    await crawler.crawl_all_sources(limit_per_source=limit)
+    start = datetime.utcnow()
+
+    try:
+        stats = await crawler.crawl_all_sources(limit_per_source=limit)
+    except Exception as e:
+        duration_min = (datetime.utcnow() - start).total_seconds() / 60
+        logger.error(f"Crawl komplett fehlgeschlagen: {e}")
+        notify(
+            "LexWolf-Crawl fehlgeschlagen",
+            f"Dauer: {duration_min:.1f} Min\nDer Crawl ist mit einer unbehandelten "
+            f"Ausnahme abgebrochen:\n{e}",
+            is_error=True,
+        )
+        raise
+
+    duration_min = (datetime.utcnow() - start).total_seconds() / 60
+    if stats["errors"]:
+        notify(
+            "LexWolf-Crawl mit Fehlern abgeschlossen",
+            f"Dauer: {duration_min:.1f} Min\n"
+            f"Neue Chunks: {stats['chunks_neu_gesamt']} "
+            f"(Gesetze: {stats['gesetze_neu']}, Rechtsprechung: {stats['rechtsprechung_neu']})\n"
+            f"Fehler ({len(stats['errors'])}):\n- " + "\n- ".join(stats["errors"]),
+            is_error=True,
+        )
+    else:
+        notify(
+            "LexWolf-Crawl erfolgreich",
+            f"Dauer: {duration_min:.1f} Min\n"
+            f"Neue Chunks: {stats['chunks_neu_gesamt']} "
+            f"(Gesetze: {stats['gesetze_neu']}, Rechtsprechung: {stats['rechtsprechung_neu']})",
+            is_error=False,
+        )
 
 
 if __name__ == "__main__":
