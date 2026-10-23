@@ -21,6 +21,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.47.0",
         "Absturz beim Oeffnen von Feature-Wunsch behoben (SelectionChanged feuerte waehrend InitializeComponent, bevor BugFieldsPanel verbunden war). Versionsnummer von Client (.exe) und Server synchronisiert, damit das Update-Popup nicht mehr bei jedem Neustart erneut erscheint. Update-Hinweis zeigt jetzt alle verpassten Versionen gesammelt an.",
     ),
+    (
+        "0.48.0",
+        "Fachliche Anforderung des Anwalts: KI soll Rechtsfragen/Rechtsfälle im Gutachtenstil prüfen können — Anspruchsgrundlage(n) ermitteln, Voraussetzungen durchgehen, Einwände/Angriffsmöglichkeiten prüfen,",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
