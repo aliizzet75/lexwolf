@@ -123,6 +123,26 @@ _INTENT_EXAMPLES = {
         "Wie berechnet sich der Kindesunterhalt?",
         "Was sind Schönheitsreparaturen und wer muss sie durchführen?",
     ],
+    "gutachten": [
+        "Prüfe die Erfolgsaussichten einer Kündigungsschutzklage",
+        "Wie stehen die Erfolgsaussichten unseres Falls?",
+        "Ist der Anspruch auf Schadensersatz gegeben?",
+        "Ist ein Anspruch auf Abfindung gegeben?",
+        "Bitte ein Gutachten zu den Erfolgsaussichten erstellen",
+        "Erstelle ein Gutachten zur Rechtslage meines Mandanten",
+        "Hat die Klage Aussicht auf Erfolg?",
+        "Besteht ein Anspruch des Mandanten gegen den Vermieter?",
+        "Wie hoch sind die Erfolgsaussichten einer Berufung?",
+        "Lohnt sich eine Klage in diesem Fall?",
+        "Wie stehen die Chancen vor Gericht?",
+        "Bitte prüfe, ob ein Anspruch auf Unterhalt besteht",
+        "Begutachte die Erfolgsaussichten des Widerspruchs",
+        "Prüfe gutachterlich, ob der Anspruch begründet ist",
+        "Wie bewertest du die Erfolgsaussichten dieses Verfahrens?",
+        "Ist eine Kündigungsschutzklage hier erfolgversprechend?",
+        "Bitte Erfolgsaussichten vor Klageerhebung einschätzen",
+        "Wie schätzt du unsere Prozesschancen ein?",
+    ],
 }
 
 _intent_embeddings: dict | None = None
@@ -444,6 +464,40 @@ def _format_output(intent: str, original_text: str, chunks: list) -> str:
             lines.append(f"{chunk.get('text','')[:250].strip()}...\n")
         return "\n".join(lines)
 
+    elif intent == "gutachten":
+        # Gutachten-Reasoning: Sachverhalt → rechtliche Würdigung im Gutachtenstil
+        # (Obersatz, Definition, Subsumtion) → Erfolgsaussichten-Einschätzung.
+        # Ersetzt die Schriftsatz-Generierung — hier wird bewertet, nicht entworfen.
+        scores = [c.get("score", 0) for c in chunks if isinstance(c, dict)]
+        avg = sum(scores) / len(scores) if scores else 0
+        if avg >= 0.85:
+            einschaetzung = "hoch"
+        elif avg >= 0.70:
+            einschaetzung = "mittel"
+        else:
+            einschaetzung = "eher gering / unklar"
+        gesetze = [c.get("title", "") for c in chunks[:5] if c.get("title")]
+        gesetze_str = " · ".join(gesetze[:3]) if gesetze else "relevante Rechtsgrundlagen"
+        lines = [
+            f"🎯 **Gutachten: Erfolgsaussichten — {original_text}**\n",
+            "---\n",
+            "**I. Sachverhalt**\n",
+            f"_[Kurzdarstellung des zugrunde liegenden Sachverhalts gemäß Anfrage: {original_text}]_\n",
+            "**II. Rechtliche Würdigung**\n",
+            f"*Einschlägige Rechtsgrundlagen: {gesetze_str}*\n",
+        ]
+        for i, chunk in enumerate(chunks[:3], 1):
+            lines.append(f"\n**{i}. {chunk.get('title','Ohne Titel')}**")
+            lines.append(f"{chunk.get('text','')[:300].strip()}...\n")
+        lines += [
+            "\n**III. Erfolgsaussichten**\n",
+            f"Einschätzung: **{einschaetzung}** "
+            f"(Konfidenz der Rechtsgrundlagen-Recherche: {avg:.0%})\n",
+            "_Diese Einschätzung ersetzt keine abschließende rechtliche Prüfung "
+            "durch einen Volljuristen._\n",
+        ]
+        return "\n".join(lines)
+
     elif intent == "erklaere":
         header = f"**{original_text}**\n\n"
     elif intent == "frage":
@@ -531,6 +585,7 @@ async def ask(request: AskRequest):
         "erklaere":  "Rechtliche Erklärung",
         "suche":     "Rechtsprechungssuche",
         "frage":     "Rechtliche Auskunft",
+        "gutachten": "Gutachten / Erfolgsaussichten",
     }
     reasoning.append(ReasoningStep(
         emoji="🧠",
@@ -542,7 +597,7 @@ async def ask(request: AskRequest):
     # tag_query:   für Tag-Boost (enthält explizite Gesetzes-Abkürzungen)
     tag_query = _extract_query(text, intent)   # z.B. "KSchG Kündigung Arbeitsverhältnis BGB"
     embed_query = _extract_query(text, "frage") or text  # natürlichsprachliche Keywords
-    emoji_map = {"erstelle": "📝", "erklaere": "📖", "suche": "🔍", "frage": "⚖️"}
+    emoji_map = {"erstelle": "📝", "erklaere": "📖", "suche": "🔍", "frage": "⚖️", "gutachten": "🎯"}
     reasoning.append(ReasoningStep(
         emoji=emoji_map.get(intent, "🔍"),
         text=f"Suche relevante Rechtsgrundlagen: *{tag_query}*"
@@ -585,10 +640,16 @@ async def ask(request: AskRequest):
     if chunks:
         scores = [c.get("score", 0) for c in chunks if isinstance(c, dict)]
         avg = sum(scores) / len(scores) if scores else 0
-        reasoning.append(ReasoningStep(
-            emoji="📊",
-            text=f"Durchschnittliche Relevanz: {avg:.0%}"
-        ))
+        if intent == "gutachten":
+            reasoning.append(ReasoningStep(
+                emoji="🎯",
+                text=f"Erfolgsaussichten-Einschätzung (Konfidenz der Rechtsgrundlagen): {avg:.0%}"
+            ))
+        else:
+            reasoning.append(ReasoningStep(
+                emoji="📊",
+                text=f"Durchschnittliche Relevanz: {avg:.0%}"
+            ))
 
     # 5. Output aufbereiten
     reasoning.append(ReasoningStep(

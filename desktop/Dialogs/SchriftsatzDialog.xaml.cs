@@ -52,7 +52,8 @@ public partial class SchriftsatzDialog : Window
     {
         "Klageerwiderung", "Klageschrift", "Antragsschrift (Familiensache)", "Antragserwiderung (Familiensache)",
         "Stellungnahme an das Gericht", "Berufungsbegründung", "Beschwerdebegründung",
-        "Außergerichtliches Schreiben an die Gegenseite", "Freier Entwurf (siehe Anweisung)",
+        "Außergerichtliches Schreiben an die Gegenseite", "Gutachten / Erfolgsaussichten",
+        "Freier Entwurf (siehe Anweisung)",
     };
 
     private readonly LocalDb _db;

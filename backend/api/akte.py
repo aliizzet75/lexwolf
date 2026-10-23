@@ -289,11 +289,26 @@ Die Akte besteht aus folgenden Dokumenten, nummeriert als [D1], [D2], ...:
 {dokumente}
 
 Anforderungen an den Entwurf:
-- Vollständig ausformuliert, gerichtsüblicher Aufbau (Rubrum soweit bekannt, Anträge, Sachverhalt, rechtliche Würdigung), Deutsch.
+- Vollständig ausformuliert, {aufbau}, Deutsch.
 - JEDE Tatsachenbehauptung aus der Akte mit Fundstelle belegen, z.B. [D2] oder [D2, S. 3]. Seitenzahlen nur angeben, wenn das Dokument [Seite N]-Marken enthält — sonst nur [D2]. Was nicht in der Akte steht, als [Ergänzung erforderlich: ...] markieren — nichts erfinden.
 - Anlagen als K1/B1 usw. bezeichnen und am Ende ein Anlagenverzeichnis mit Zuordnung zu [Dn] anfügen.
 - Normen genau zitieren (z.B. § 1361 Abs. 1 BGB). Rechtsprechung nur zitieren, wenn du dir des Aktenzeichens sicher bist, sonst weglassen.
 - Keine Vorrede, keine Meta-Kommentare — nur der Schriftsatz.{stil}"""
+
+_GUTACHTEN_AUFBAU = (
+    "Gutachtenstil statt gerichtsüblichem Schriftsatz (Sachverhalt, rechtliche Würdigung je Anspruch/"
+    "Streitpunkt im Gutachtenstil — Obersatz, Definition, Subsumtion, Zwischenergebnis —, abschließende "
+    "Einschätzung der Erfolgsaussichten als hoch/mittel/gering mit Begründung)"
+)
+_SCHRIFTSATZ_AUFBAU = "gerichtsüblicher Aufbau (Rubrum soweit bekannt, Anträge, Sachverhalt, rechtliche Würdigung)"
+
+
+def _aufbau_fuer_art(art: str) -> str:
+    """Gutachten/Erfolgsaussichten-Anfragen brauchen Gutachtenstil statt Klage-Rubrum+Anträge."""
+    a = art.lower()
+    if "gutachten" in a or "erfolgsaussicht" in a:
+        return _GUTACHTEN_AUFBAU
+    return _SCHRIFTSATZ_AUFBAU
 
 
 @router.post("/schriftsatz")
@@ -316,6 +331,7 @@ async def schriftsatz(req: SchriftsatzRequest):
         stammdaten=f"Aktenstamm: {req.stammdaten}" if req.stammdaten else "",
         anweisung=req.anweisung or "keine besonderen Vorgaben",
         dokumente="\n\n".join(teile) or "(keine Dokumente)",
+        aufbau=_aufbau_fuer_art(req.art),
         stil=stil)
     try:
         text = await asyncio.to_thread(ask_llm, prompt, max_tokens=8000)
