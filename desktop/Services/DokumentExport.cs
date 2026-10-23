@@ -165,6 +165,23 @@ public static class DokumentExport
 
     public const string EmlEntwurfPraefix = "E-Mail-Entwurf_";
 
+    /// <summary>Präfix der Dateien, die SchriftsatzDialog für die Art "Gutachten / Erfolgsaussichten"
+    /// erzeugt (art.Split(' ')[0] == "Gutachten") — daran erkennt TypAusDateiname den Dokumenttyp,
+    /// mit dem der DokumentScanner den Entwurf in der dokumente-Tabelle der Akte vermerkt.</summary>
+    public const string GutachtenDateiPraefix = "LexWolf_Gutachten_";
+
+    /// <summary>Dokumenttyp für die dokumente-Tabelle, abgeleitet aus dem Dateinamen eines in die
+    /// Akte übernommenen Entwurfs. Liefert "Gutachten" für einen Gutachten-Entwurf, sonst "".
+    /// Trennt den Dateinamen selbst anhand von '/' und '\' statt über Path.GetFileName — das
+    /// kennt unter Linux (z.B. im plattformunabhängigen Testprojekt) nur '/' als Trenner und
+    /// würde bei Windows-Pfaden ("C:\Akten\...") sonst die komplette Pfadangabe zurückgeben.</summary>
+    public static string TypAusDateiname(string dateiname)
+    {
+        var idx = dateiname.LastIndexOfAny(new[] { '/', '\\' });
+        var name = idx >= 0 ? dateiname[(idx + 1)..] : dateiname;
+        return name.StartsWith(GutachtenDateiPraefix, StringComparison.OrdinalIgnoreCase) ? "Gutachten" : "";
+    }
+
     /// <summary>Dateiname eines Entwurfs, wenn er in die Akte übernommen wird
     /// ("E-Mail-Entwurf_…" wird zu "E-Mail_…"; Schreiben behalten ihren Namen).</summary>
     public static string NameNachUebernahme(string entwurfDateiname) =>
