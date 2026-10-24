@@ -96,6 +96,7 @@ namespace LexWolf.Database
             // CREATE TABLE IF NOT EXISTS fasst eine schon vorhandene Tabelle nicht an.
             MigriereSpalteFallsFehlt(conn, "dokumente", "typ", "TEXT");
             InitializeAkte(conn);
+            InitializeEinwilligung(conn);
         }
 
         private static void MigriereSpalteFallsFehlt(SqliteConnection conn, string tabelle, string spalte, string spaltenTyp)
