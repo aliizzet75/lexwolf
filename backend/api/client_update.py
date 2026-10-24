@@ -57,6 +57,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.56.0",
         "502 Bad Gateway bei Schriftsatz-Entwurf behoben (Server-Konfiguration: LLM_PROVIDER=ollama, OLLAMA_MODEL=gemma4:31b-cloud in lexwolf-backend.service — bisherige Cloud-Modelle waren zurueckgezogen/ohne",
     ),
+    (
+        "0.57.0",
+        "502 Bad Gateway bei Schriftsatz-Entwurf behoben (Server-Konfiguration: LLM_PROVIDER=ollama, OLLAMA_MODEL=gemma4:31b-cloud in lexwolf-backend.service — bisherige Cloud-Modelle waren zurueckgezogen/ohne",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
