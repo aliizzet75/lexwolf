@@ -307,6 +307,85 @@ class ConversationAssistant:
         
         return next_steps
     
+    def analyze_transcript(self, transcript: str) -> Dict:
+        """
+        Strukturiert ein (bereits anonymisiertes) Gesprächstranskript über die
+        zentrale KI-Schnittstelle (services.llm_client.ask_llm) statt der
+        bisherigen Regex-Heuristik. Liefert Fristen, Aufgaben, Themen und
+        nächste Schritte als JSON zurück.
+
+        Erkennt dabei auch relative/sprachliche Fristangaben ("bis Freitag",
+        "innerhalb von 30 Tagen"), die eine reine Regex-Heuristik nicht
+        verstehen kann — das ist der Grund für den Wechsel auf die KI.
+        Schlägt der LLM-Aufruf fehl (kein Provider erreichbar o.ä.), fällt
+        die Funktion auf die alte Regex-Heuristik zurück, damit die Pipeline
+        auch offline nutzbar bleibt.
+        """
+        prompt = (
+            "Du bist ein Assistent für deutsche Rechtsanwälte. Strukturiere das "
+            "folgende, bereits anonymisierte Gesprächstranskript aus einer "
+            "Mandantenbesprechung. Erkenne dabei auch sprachliche bzw. relative "
+            "Fristangaben wie 'bis Freitag', 'innerhalb von 30 Tagen' oder "
+            "'15. Juni', nicht nur exakte Kalenderdaten.\n\n"
+            f"Transkript:\n{transcript}\n\n"
+            "Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in genau diesem "
+            "Format, ohne weiteren Text oder Erklärung:\n"
+            '{"fristen": [{"datum": "<Datum oder relative Angabe>", '
+            '"beschreibung": "<worum es bei der Frist geht>"}], '
+            '"aufgaben": [{"was": "<zu erledigende Aufgabe>", '
+            '"bis_wann": "<Frist oder null, falls keine>"}], '
+            '"themen": ["<Thema 1>", "<Thema 2>"], '
+            '"naechste_schritte": ["<Schritt 1>", "<Schritt 2>"]}'
+        )
+
+        try:
+            from services.llm_client import ask_llm
+
+            text = ask_llm(prompt, max_tokens=1500).strip()
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if not match:
+                raise ValueError(f"Kein JSON in LLM-Antwort: {text[:200]}")
+            data = json.loads(match.group())
+            result = {
+                "fristen": data.get("fristen", []) or [],
+                "aufgaben": data.get("aufgaben", []) or [],
+                "themen": data.get("themen", []) or [],
+                "naechste_schritte": data.get("naechste_schritte", []) or [],
+            }
+        except Exception as e:
+            logger.warning(
+                f"LLM-Strukturierung des Transkripts fehlgeschlagen ({e}), "
+                "Fallback auf Regex-Heuristik"
+            )
+            result = self._fallback_analyze(transcript)
+
+        result["timestamp"] = datetime.now().isoformat()
+        return result
+
+    def _fallback_analyze(self, transcript: str) -> Dict:
+        """
+        Regelbasierter Rückfall für analyze_transcript(), falls die zentrale
+        KI-Schnittstelle (ask_llm) nicht erreichbar ist.
+        """
+        dates = self._extract_dates(transcript)
+        deadlines = self._extract_deadlines(transcript)
+        actions = self._extract_actions(transcript)
+        topics = self._extract_topics(transcript)
+
+        fristen = [{"datum": d, "beschreibung": None} for d in dates]
+        fristen += [{"datum": d, "beschreibung": None} for d in deadlines]
+        aufgaben = [{"was": a.strip(), "bis_wann": None} for a in actions if a.strip()]
+        naechste_schritte = self._generate_next_steps({
+            "entities": {"actions": actions, "dates": dates, "deadlines": deadlines}
+        })
+
+        return {
+            "fristen": fristen,
+            "aufgaben": aufgaben,
+            "themen": topics,
+            "naechste_schritte": naechste_schritte,
+        }
+
     def anonymize_conversation(self, conversation_data: Dict) -> Dict:
         """
         Anonymize conversation data for server transmission

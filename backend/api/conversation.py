@@ -58,6 +58,21 @@ class HistoryRequest(BaseModel):
 class HistoryResponse(BaseModel):
     conversations: List[ConversationResponse]
 
+class Frist(BaseModel):
+    datum: Optional[str] = None
+    beschreibung: Optional[str] = None
+
+class Aufgabe(BaseModel):
+    was: Optional[str] = None
+    bis_wann: Optional[str] = None
+
+class AnalyzeResponse(BaseModel):
+    fristen: List[Frist]
+    aufgaben: List[Aufgabe]
+    themen: List[str]
+    naechste_schritte: List[str]
+    timestamp: str
+
 # Global conversation assistant instance
 conversation_assistant = ConversationAssistant()
 
@@ -93,6 +108,26 @@ async def process_transcript(request: TranscriptRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing transcript: {str(e)}")
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+async def analyze_transcript(request: TranscriptRequest):
+    """
+    Strukturiert ein bereits anonymisiertes Gesprächstranskript über die
+    zentrale KI-Schnittstelle (services.llm_client.ask_llm): Fristen,
+    Aufgaben, Themen und nächste Schritte.
+    """
+    try:
+        result = conversation_assistant.analyze_transcript(request.transcript)
+
+        return AnalyzeResponse(
+            fristen=[Frist(**f) for f in result.get("fristen", [])],
+            aufgaben=[Aufgabe(**a) for a in result.get("aufgaben", [])],
+            themen=result.get("themen", []),
+            naechste_schritte=result.get("naechste_schritte", []),
+            timestamp=result.get("timestamp", ""),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing transcript: {str(e)}")
 
 @router.post("/summarize", response_model=SummaryResponse)
 async def generate_summary(request: SummaryRequest):

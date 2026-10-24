@@ -6,6 +6,8 @@ import requests
 from datetime import datetime
 import re
 
+from anonymizer import Anonymizer
+
 class ConversationRecorder:
     def __init__(self, server_url="http://localhost:8000"):
         self.is_recording = False
@@ -14,6 +16,7 @@ class ConversationRecorder:
         self.audio_queue = queue.Queue()
         self.server_url = server_url
         self.client_id = None
+        self.anonymizer = Anonymizer()
         
     def set_client_id(self, client_id):
         """
@@ -302,10 +305,16 @@ class ConversationRecorder:
         try:
             # Combine all transcripts into one
             full_transcript = "\n".join([entry["transcript"] for entry in self.conversation_data])
-            
+
+            # Transkript VOR dem Versand anonymisieren (bestehende
+            # Anonymisierungs-Pipeline) - der Server bekommt niemals
+            # Klartext mit Namen/Orten/Daten des Mandanten zu sehen.
+            anonymized = self.anonymizer.anonymize_text(full_transcript)
+            anonymized_transcript = anonymized["anonymized_text"]
+
             # Prepare data for server
             payload = {
-                "transcript": full_transcript,
+                "transcript": anonymized_transcript,
                 "client_id": self.client_id
             }
             
