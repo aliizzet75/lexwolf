@@ -90,6 +90,19 @@ namespace LexWolf.Database
                     content   TEXT,
                     timestamp TEXT
                 );
+
+                -- Mandanten-Gespräche (Task #130): Erweiterung der bestehenden M16-Struktur
+                -- um Gesprächsprotokolle (z.B. via GespraechsRecorder transkribiert), statt
+                -- einer eigenen separaten Datenbank. Gleiche LocalDb-Verbindung und gleiche
+                -- Mandanten-Zuordnung (mandant_id) wie chat_history/notizen.
+                CREATE TABLE IF NOT EXISTS gespraeche (
+                    id                TEXT PRIMARY KEY,
+                    mandant_id        TEXT,
+                    datum             TEXT,
+                    strukturiert_json TEXT,
+                    erstellt          TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_gespraeche_mandant ON gespraeche(mandant_id, datum);
             ";
             cmd.ExecuteNonQuery();
             // Bestehende Datenbanken (vor "typ"-Spalte) per ALTER TABLE nachziehen —
@@ -459,6 +472,60 @@ namespace LexWolf.Database
                     DateTime.Parse(reader.GetString(3), null, System.Globalization.DateTimeStyles.RoundtripKind),
                     reader.GetString(4),
                     DateTime.Parse(reader.GetString(5), null, System.Globalization.DateTimeStyles.RoundtripKind)
+                ));
+            }
+            return result;
+        }
+
+        // --- Gespräche (Task #130) ---
+
+        /// <summary>Speichert ein Mandantengespräch (z.B. Whisper-Transkript aus
+        /// GespraechsRecorder) strukturiert als JSON — mandantenbezogen, in derselben
+        /// LocalDb wie Chat-Historie und Notizen. <paramref name="strukturiertJson"/>
+        /// liegt in der Verantwortung des Aufrufers (z.B. {"zusammenfassung": "...",
+        /// "transkript": "..."}).</summary>
+        public void InsertGespraech(string mandantId, DateTime datum, string strukturiertJson)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO gespraeche (id, mandant_id, datum, strukturiert_json, erstellt)
+                VALUES ($id, $mandant_id, $datum, $json, $erstellt);
+            ";
+            cmd.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
+            cmd.Parameters.AddWithValue("$mandant_id", mandantId);
+            cmd.Parameters.AddWithValue("$datum", datum.ToString("o"));
+            cmd.Parameters.AddWithValue("$json", strukturiertJson);
+            cmd.Parameters.AddWithValue("$erstellt", DateTime.UtcNow.ToString("o"));
+            cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>Gespräche eines Mandanten, älteste zuerst (wie GetChatZusammenfassungen) —
+        /// wird von der bestehenden Historien-/Kontextabfrage (MandantAnalyseService,
+        /// MandantZusammenfassungService) zusammen mit Chat-Zusammenfassungen und Notizen
+        /// gelesen, damit Fragen wie "Was haben wir beim letzten Gespräch besprochen?" über
+        /// denselben Mandanten-Kontext beantwortet werden können.</summary>
+        public System.Collections.Generic.List<(string Id, string MandantId, DateTime Datum, string StrukturiertJson, DateTime Erstellt)> GetGespraeche(string mandantId)
+        {
+            var result = new System.Collections.Generic.List<(string, string, DateTime, string, DateTime)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT id, mandant_id, datum, strukturiert_json, erstellt
+                FROM gespraeche
+                WHERE mandant_id = $mandantId
+                ORDER BY datum ASC;
+            ";
+            cmd.Parameters.AddWithValue("$mandantId", mandantId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind),
+                    reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    DateTime.Parse(reader.GetString(4), null, System.Globalization.DateTimeStyles.RoundtripKind)
                 ));
             }
             return result;

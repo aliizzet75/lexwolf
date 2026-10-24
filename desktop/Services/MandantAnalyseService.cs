@@ -100,16 +100,18 @@ public class MandantAnalyseService
             var chatTask = Task.Run(() => _db.GetChatZusammenfassungen(mandantId), token);
             var notizenTask = Task.Run(() => _db.GetNotizen(mandantId), token);
             var dokumenteTask = Task.Run(() => _db.GetDokumenteForMandant(mandantId), token);
+            var gespraecheTask = Task.Run(() => _db.GetGespraeche(mandantId), token);
 
-            await Task.WhenAll(chatTask, notizenTask, dokumenteTask).ConfigureAwait(false);
+            await Task.WhenAll(chatTask, notizenTask, dokumenteTask, gespraecheTask).ConfigureAwait(false);
 
             token.ThrowIfCancellationRequested();
 
             var chat = await chatTask.ConfigureAwait(false);
             var notizen = await notizenTask.ConfigureAwait(false);
             var dokumente = await dokumenteTask.ConfigureAwait(false);
+            var gespraeche = await gespraecheTask.ConfigureAwait(false);
 
-            var kontext = BaueKontext(chat, notizen, dokumente);
+            var kontext = BaueKontext(chat, notizen, dokumente, gespraeche);
             if (!string.IsNullOrWhiteSpace(kontext))
             {
                 // Hintergrund-Analyse via LLM; Fehler werden abgefangen, damit die
@@ -140,7 +142,8 @@ public class MandantAnalyseService
               string Zusammenfassung, DateTime Erstellt)> chat,
         List<(string Id, string MandantId, string TitelKurz, string Text,
               DateTime Erstellt, DateTime Geaendert)> notizen,
-        List<(string Titel, string Pfad, string Text)> dokumente)
+        List<(string Titel, string Pfad, string Text)> dokumente,
+        List<(string Id, string MandantId, DateTime Datum, string StrukturiertJson, DateTime Erstellt)> gespraeche)
     {
         var sb = new StringBuilder();
 
@@ -149,6 +152,16 @@ public class MandantAnalyseService
             sb.AppendLine("Chat-Zusammenfassungen:");
             foreach (var item in chat.OrderByDescending(c => c.SitzungEnde))
                 sb.AppendLine($"- {item.Zusammenfassung}");
+            sb.AppendLine();
+        }
+
+        if (gespraeche.Count > 0)
+        {
+            // Task #130: Gesprächsprotokolle fließen in denselben Hintergrund-Kontext wie
+            // Chat/Notizen/Dokumente ein, statt in einer separaten Struktur zu landen.
+            sb.AppendLine("Gespräche:");
+            foreach (var item in gespraeche.OrderByDescending(g => g.Datum))
+                sb.AppendLine($"- {item.Datum:dd.MM.yyyy}: {GespraechStruktur.Parse(item.StrukturiertJson).AlsKurztext()}");
             sb.AppendLine();
         }
 

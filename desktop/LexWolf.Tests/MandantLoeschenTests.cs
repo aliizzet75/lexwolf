@@ -36,6 +36,7 @@ public sealed class MandantLoeschenTests : IDisposable
         _db.SetMailAbsender($"gegner-{id}@example.de", id);
         _db.SaveFormularFelder(id, "fragebogen", new Dictionary<string, FeldWert> { ["netto_mandant"] = new() { Ki = "1" } });
         _db.SetMeta(MandatAufnahme.MetaSchluessel(id), "{}");
+        _db.InsertGespraech(id, DateTime.UtcNow, "{\"zusammenfassung\":\"Telefonat zur Akte\"}");
     }
 
     [Fact]

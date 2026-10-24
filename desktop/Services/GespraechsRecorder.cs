@@ -117,3 +117,35 @@ public sealed class GespraechsRecorder : IDisposable
         if (_wavPfad is not null && File.Exists(_wavPfad)) File.Delete(_wavPfad);
     }
 }
+
+/// <summary>Strukturierter Inhalt eines gespeicherten Mandantengesprächs (Task #130) — so
+/// liegt es als JSON in LocalDb.InsertGespraech/GetGespraeche (Spalte strukturiert_json).
+/// Tolerant beim Parsen (fehlende Felder = leer), analog zu DokumentAnalyse.Parse.</summary>
+public sealed record GespraechStruktur(string Zusammenfassung, string Transkript)
+{
+    public static GespraechStruktur Parse(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var r = doc.RootElement;
+            string S(string key) => r.TryGetProperty(key, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String
+                ? (v.GetString() ?? "").Trim() : "";
+            return new GespraechStruktur(S("zusammenfassung"), S("transkript"));
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Rohtext ohne JSON-Hülle (z.B. direkt das Whisper-Transkript) — als Transkript behandeln.
+            return new GespraechStruktur("", json);
+        }
+    }
+
+    /// <summary>Kurztext für Historie/Kontext: die Zusammenfassung, sonst (falls keine
+    /// erzeugt wurde) die ersten 300 Zeichen des Rohtranskripts.</summary>
+    public string AlsKurztext()
+    {
+        if (!string.IsNullOrWhiteSpace(Zusammenfassung)) return Zusammenfassung;
+        if (Transkript.Length > 300) return Transkript[..300] + "...";
+        return Transkript;
+    }
+}
