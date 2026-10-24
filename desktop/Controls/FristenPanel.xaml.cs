@@ -52,7 +52,6 @@ public partial class FristenPanel : UserControl
     private LocalDb? _db;
     private Func<AppSettings>? _settings;
     private string? _aktiverMandant;
-    private bool _init;
 
     /// <summary>Klick auf eine Frist: zu diesem Mandanten wechseln.</summary>
     public event Action<string>? MandantGewaehlt;
@@ -73,9 +72,6 @@ public partial class FristenPanel : UserControl
     {
         _db = db;
         _settings = settings;
-        BundeslandBox.ItemsSource = FristRechner.Bundeslaender.Select(kv => new Land(kv.Key, kv.Value)).ToList();
-        BundeslandBox.SelectedValue = settings().Bundesland;
-        _init = true;
         Aktualisieren();
     }
 
@@ -227,13 +223,4 @@ public partial class FristenPanel : UserControl
     }
 
     private void OnFilterGeaendert(object sender, RoutedEventArgs e) => Aktualisieren();
-
-    private void OnBundeslandGeaendert(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_init || _settings is null || BundeslandBox.SelectedValue is not string land) return;
-        var s = _settings();
-        if (s.Bundesland == land) return;
-        s.Bundesland = land;
-        try { s.Save(); } catch { }
-    }
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using LexWolf.Controls;
 using LexWolf.Services;
 using Microsoft.Win32;
 
@@ -50,6 +51,8 @@ public partial class SettingsDialog : Window
         DokumentePfadBox.Text = Settings.DokumentePfad;
         BriefkopfBox.Text = Settings.Briefkopf;
         BriefendeBox.Text = Settings.Briefende;
+        BundeslandBox.ItemsSource = FristRechner.Bundeslaender.Select(kv => new Land(kv.Key, kv.Value)).ToList();
+        BundeslandBox.SelectedValue = Settings.Bundesland;
         FeedbackOptInBox.IsChecked = Settings.FeedbackOptIn;
         AbTestOptInBox.IsChecked = Settings.AbTestOptIn;
         VoskGrossBox.IsChecked = Settings.VoskGrossBeimStart;
@@ -142,6 +145,7 @@ public partial class SettingsDialog : Window
         Settings.DokumentePfad = DokumentePfadBox.Text.Trim();
         Settings.Briefkopf = BriefkopfBox.Text.Trim();
         Settings.Briefende = BriefendeBox.Text.Trim();
+        Settings.Bundesland = BundeslandBox.SelectedValue as string ?? Settings.Bundesland;
         Settings.FeedbackOptIn = FeedbackOptInBox.IsChecked == true;
         Settings.AbTestOptIn = AbTestOptInBox.IsChecked == true;
         Settings.VoskGrossBeimStart = VoskGrossBox.IsChecked == true;

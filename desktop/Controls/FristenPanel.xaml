@@ -69,10 +69,6 @@
                 <DockPanel Margin="0,8,0,0">
                     <CheckBox x:Name="NurMandantBox" Content="Nur aktueller Mandant" Style="{StaticResource LwCheckBox}"
                               DockPanel.Dock="Left" Checked="OnFilterGeaendert" Unchecked="OnFilterGeaendert"/>
-                    <ComboBox x:Name="BundeslandBox" Style="{StaticResource DarkComboBoxStyle}" Width="150"
-                              DockPanel.Dock="Right" HorizontalAlignment="Right" DisplayMemberPath="Value"
-                              SelectedValuePath="Key" SelectionChanged="OnBundeslandGeaendert"
-                              ToolTip="Feiertage für die Fristberechnung (Gerichtsort)"/>
                 </DockPanel>
             </StackPanel>
         </Border>
