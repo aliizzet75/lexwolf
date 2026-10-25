@@ -1,3 +1,4 @@
+import io
 import requests
 import re
 from typing import List, Dict
@@ -6,6 +7,7 @@ import hashlib
 from datetime import datetime, timedelta
 import logging
 from bs4 import BeautifulSoup
+from pypdf import PdfReader
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,7 +30,7 @@ class OpenJurCrawler:
             "Accept-Language": "de-DE,de;q=0.5",
         })
 
-    def get_recent_decisions(self, days: int = 1) -> List[Dict]:
+    def get_recent_decisions(self, days: int = 1, max_results: int = 50) -> List[Dict]:
         """
         Get recent court decisions. Tries openjur.de first, falls back to BGH.
         """
@@ -44,7 +46,7 @@ class OpenJurCrawler:
 
         # Attempt 2: BGH official website (no CAPTCHA, always works)
         logger.warning("openjur.de unavailable (CAPTCHA protection). Using BGH official website.")
-        decisions = self._fetch_from_bgh(max(days, 30))
+        decisions = self._fetch_from_bgh(max(days, 30), max_results=max_results)
         if decisions:
             logger.info(f"BGH returned {len(decisions)} real decisions")
             return decisions
@@ -117,38 +119,57 @@ class OpenJurCrawler:
                 })
         return decisions
 
-    def _fetch_from_bgh(self, days: int = 30) -> List[Dict]:
+    BGH_RESULTS_PER_PAGE = 50
+
+    def _fetch_from_bgh(self, days: int = 30, max_results: int = 50) -> List[Dict]:
         """
         Fetch real decisions from bundesgerichtshof.de (official BGH website).
         This site has no CAPTCHA and provides real, current German court decisions.
+
+        Durchblättert die Trefferliste (resultsPerPage + gtp-Seiten-Parameter) bis
+        max_results erreicht ist oder keine weiteren Seiten mehr vorhanden sind — die
+        Suche liefert über ein Jahr zurück tausende Treffer, vorher wurde nur die
+        erste Seite (~10 Treffer) abgerufen.
         """
-        try:
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=days)
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        bgh_headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Language": "de-DE,de;q=0.5",
+            "Referer": "https://www.bundesgerichtshof.de/",
+        }
+        decisions: List[Dict] = []
+        seen_ids = set()
+        page = 1
+        while len(decisions) < max_results:
             params = {
                 "startDate": start_date.strftime("%Y-%m-%d"),
                 "endDate": end_date.strftime("%Y-%m-%d"),
                 "nn": "372530",
+                "resultsPerPage": str(self.BGH_RESULTS_PER_PAGE),
             }
-            bgh_headers = {
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
-                "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "de-DE,de;q=0.5",
-                "Referer": "https://www.bundesgerichtshof.de/",
-            }
-            response = requests.get(
-                "https://www.bundesgerichtshof.de/SiteGlobals/Forms/Suche/EntscheidungssucheBGH_Formular.html",
-                params=params,
-                headers=bgh_headers,
-                timeout=15,
-            )
-            response.raise_for_status()
+            if page > 1:
+                params["gtp"] = f"565194_list%3D{page}"
+            try:
+                response = requests.get(
+                    "https://www.bundesgerichtshof.de/SiteGlobals/Forms/Suche/EntscheidungssucheBGH_Formular.html",
+                    params=params,
+                    headers=bgh_headers,
+                    timeout=15,
+                )
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                logger.error(f"BGH request failed (Seite {page}): {e}")
+                break
             time.sleep(1)
 
             soup = BeautifulSoup(response.text, "html.parser")
-            decisions = []
+            page_links = soup.find_all("a", href=lambda x: x and "/SharedDocs/Entscheidungen/" in x and ".pdf" in x)
+            if not page_links:
+                break  # keine weiteren Seiten
 
-            for link in soup.find_all("a", href=lambda x: x and "/SharedDocs/Entscheidungen/" in x and ".pdf" in x):
+            for link in page_links:
                 href = link.get("href", "")
                 case_number = link.get_text(strip=True)
                 if not case_number:
@@ -166,6 +187,10 @@ class OpenJurCrawler:
                 )
                 court = ("BGH " + senate_match.group(1)) if senate_match else "BGH"
                 decision_id = re.sub(r"[^a-zA-Z0-9_-]", "_", case_number)[:40]
+                if decision_id in seen_ids:
+                    continue
+                seen_ids.add(decision_id)
+                pdf_url = href if href.startswith("http") else "https://www.bundesgerichtshof.de" + href
                 decisions.append({
                     "id": decision_id,
                     "title": f"{case_number} - BGH Urteil vom {date}",
@@ -179,18 +204,48 @@ class OpenJurCrawler:
                         else "Sonstiges"
                     ),
                     "tags": "BGH",
-                    "url": "https://www.bundesgerichtshof.de" + href,
+                    "url": pdf_url,
                     "_source": "real",
+                    "_bgh_pdf": True,
                 })
+                if len(decisions) >= max_results:
+                    break
 
-            return decisions
+            if len(page_links) < self.BGH_RESULTS_PER_PAGE:
+                break  # letzte Seite erreicht
+            page += 1
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"BGH request failed: {e}")
-            return []
+        return decisions
+
+    def _fetch_bgh_pdf_content(self, decision: Dict) -> Dict:
+        """Lädt den Volltext einer BGH-Entscheidung direkt aus dem PDF
+        (bundesgerichtshof.de liefert keine HTML-Volltextseite, nur PDFs)."""
+        try:
+            resp = requests.get(
+                decision["url"],
+                timeout=30,
+                headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0"},
+            )
+            resp.raise_for_status()
+            reader = PdfReader(io.BytesIO(resp.content))
+            text = "\n".join((page.extract_text() or "") for page in reader.pages).strip()
+            if not text:
+                return self._make_placeholder_content(decision["id"])
+            return {
+                "id":          decision["id"],
+                "title":       decision["title"],
+                "court":       decision["court"],
+                "case_number": decision["case_number"],
+                "date":        decision["date"],
+                "content":     text,
+                "legal_field": decision["legal_field"],
+                "tags":        decision["tags"],
+                "url":         decision["url"],
+                "_source":     "real",
+            }
         except Exception as e:
-            logger.error(f"BGH parsing failed: {e}")
-            return []
+            logger.warning(f"PDF-Fehler für {decision['id']}: {e}")
+            return self._make_placeholder_content(decision["id"])
 
     def get_decision_content(self, decision_id: str) -> Dict:
         """
@@ -286,31 +341,32 @@ class OpenJurCrawler:
         }
         chunks.append(parent_chunk)
 
+        # Child-Chunks: Satzweise zu ~2000-Zeichen-Fenstern gruppiert (Parent-Child
+        # Chunking wie bei Gesetzen, M7 — gleiche Strategie wie RisCrawler._split_into_chunks).
+        from crawlers.ris_crawler import RisCrawler
         content = decision_content.get("content", "")
-        sentences = content.split(". ")
-        for i, sentence in enumerate(sentences):
-            if sentence.strip():
-                child_text = sentence + "." if i < len(sentences) - 1 else sentence
-                child_chunk = {
-                    "text": child_text,
-                    "title": f"Leitsatz {i + 1}",
-                    "parent_id": 0,
-                    "is_parent": False,
-                    "chunk_hash": hashlib.md5(child_text.encode()).hexdigest(),
-                    "court": decision_content.get("court", ""),
-                    "case_number": decision_content.get("case_number", ""),
-                    "date": decision_content.get("date", ""),
-                    "legal_field": decision_content.get("legal_field", ""),
-                    "tags": decision_content.get("tags", ""),
-                }
-                chunks.append(child_chunk)
+        for i, para in enumerate(RisCrawler._split_into_chunks(content, 2000)):
+            child_text = f"{decision_content.get('title', '')}\n{para}"
+            child_chunk = {
+                "text": child_text,
+                "title": f"{decision_content.get('case_number', '')} — Abs. {i + 1}",
+                "parent_id": 0,
+                "is_parent": False,
+                "chunk_hash": hashlib.md5(child_text.encode()).hexdigest(),
+                "court": decision_content.get("court", ""),
+                "case_number": decision_content.get("case_number", ""),
+                "date": decision_content.get("date", ""),
+                "legal_field": decision_content.get("legal_field", ""),
+                "tags": decision_content.get("tags", ""),
+            }
+            chunks.append(child_chunk)
 
         return chunks
 
-    def crawl_decisions(self, days: int = 1, limit: int = None) -> List[Dict]:
+    def crawl_decisions(self, days: int = 1, limit: int = None, max_results: int = 50) -> List[Dict]:
         """Crawl recent court decisions."""
         logger.info(f"Starting crawl for the last {days} days...")
-        decisions = self.get_recent_decisions(days)
+        decisions = self.get_recent_decisions(days, max_results=max_results)
         logger.info(f"Found {len(decisions)} decisions")
 
         if limit:
@@ -319,16 +375,21 @@ class OpenJurCrawler:
         all_chunks = []
         for i, decision in enumerate(decisions):
             logger.info(f"Processing {i + 1}/{len(decisions)}: {decision['title']}")
-            decision_content = self.get_decision_content(decision["id"])
+            if decision.get("_bgh_pdf"):
+                decision_content = self._fetch_bgh_pdf_content(decision)
+                source = "bundesgerichtshof.de"
+            else:
+                decision_content = self.get_decision_content(decision["id"])
+                source = "openjur.de"
             if decision_content and decision_content.get("title") and decision_content.get("content"):
                 chunks = self.chunk_decision_content(decision_content)
                 for chunk in chunks:
-                    chunk["source"] = "openjur.de"
+                    chunk["source"] = source
                     chunk["document_type"] = "judgment"
                     chunk["url"] = decision.get("url", "")
                 all_chunks.extend(chunks)
                 logger.info(f"  Generated {len(chunks)} chunks for {decision['id']}")
-            time.sleep(1)
+            time.sleep(0.5 if decision.get("_bgh_pdf") else 1)
 
         logger.info(f"Crawling completed. Generated {len(all_chunks)} chunks")
         return all_chunks

@@ -1,9 +1,12 @@
 import asyncio
 import os
+from collections import Counter
 from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, Set
 from crawlers.gesetze_crawler import GesetzeImInternetCrawler
-from crawlers.ris_crawler import RisCrawler
+from crawlers.ris_crawler import RisCrawler, DEFAULT_FIRM_RECHTSGEBIETE, FEEDS, PRIORITY_COURTS
+from crawlers.openjur_crawler import OpenJurCrawler
+from crawlers.drucksachen_crawler import DrucksachenCrawler
 from services.embedding_service import EmbeddingService, MockEmbeddingService
 from services.database_service import DatabaseService
 from services.neo4j_service import Neo4jService
@@ -19,6 +22,131 @@ logger = logging.getLogger(__name__)
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "lexwolf123")
+
+# Zeitfenster für die Urteils-Crawls: BVerfG/BGH (RisCrawler.PRIORITY_COURTS) sind für
+# praktisch jedes Mandat relevant und werden deshalb über ein deutlich größeres Fenster
+# gecrawlt als die übrigen Bundesgerichte.
+RIS_DAYS = int(os.getenv("LEXWOLF_RIS_DAYS", "7"))
+RIS_DAYS_PRIORITY = int(os.getenv("LEXWOLF_RIS_DAYS_PRIORITY", "30"))
+
+# Das RIS-Feed für BGH/BVerfG deckt nur ein rollendes Fenster von ca. 1 Monat ab.
+# bundesgerichtshof.de erlaubt eine Volltextsuche weit in die Vergangenheit (über ein
+# Jahr, tausende Treffer) — damit wird der Index zusätzlich historisch mit BGH-Urteilen
+# aufgefüllt, die über das RIS-Feed-Fenster hinausgehen.
+BGH_BACKFILL_DAYS = int(os.getenv("LEXWOLF_BGH_BACKFILL_DAYS", "365"))
+BGH_BACKFILL_MAX_RESULTS = int(os.getenv("LEXWOLF_BGH_BACKFILL_MAX_RESULTS", "50"))
+
+# Mindestanzahl §§, für die drucksachen_crawler eine Gesetzesbegründung liefern soll (T#291).
+BEGRUENDUNGEN_TOP_N = int(os.getenv("LEXWOLF_BEGRUENDUNGEN_TOP_N", "50"))
+
+# Tiefe statt Breite (T#292): wie viele der nach echter Nutzung am häufigsten
+# vorkommenden Praxisgebiete zusätzlich zu BVerfG/BGH das große Zeitfenster
+# (RIS_DAYS_PRIORITY) bekommen, statt alle Kanzlei-Rechtsgebiete gleich (RIS_DAYS)
+# zu behandeln.
+TOP_N_DEEP_FIELDS = int(os.getenv("LEXWOLF_TOP_N_DEEP_FIELDS", "1"))
+
+# Gerichts-Rechtsgebiet (ris_crawler.FEEDS) je Gericht, umgekehrt nachschlagbar.
+LEGAL_FIELD_TO_COURT = {legal_field: court for court, (_url, legal_field) in FEEDS.items()}
+
+# Die im Desktop-Client bei der Mandatsaufnahme wählbaren Rechtsgebiete
+# (desktop/Services/MandatAufnahme.cs: MandatAufnahme.Rechtsgebiete), gemappt auf die
+# Gerichts-Rechtsgebiete aus ris_crawler.FEEDS. "Familienrecht – …"-Varianten werden
+# per Präfix erkannt (wie MandatDaten.IstFamilienrecht). "Sonstiges" bleibt unmapped.
+MANDAT_RECHTSGEBIET_TO_COURT_FIELD = {
+    "Arbeitsrecht": "Arbeitsrecht",
+    "Sozialrecht": "Sozialrecht",
+    "Verwaltungsrecht": "Verwaltungsrecht",
+    "Mietrecht": "Zivilrecht",
+    "Verkehrsrecht": "Zivilrecht",
+    "Allgemeines Zivilrecht": "Zivilrecht",
+    "Erbrecht": "Zivilrecht",
+    "Strafrecht": "Zivilrecht",
+}
+
+# Grobe Stichwort-Klassifikation für die Chat-Historie (search_results.query, M16) —
+# Suchanfragen haben kein Rechtsgebiet-Feld, deshalb Keyword-Heuristik statt exaktem Match.
+CHAT_KEYWORDS_TO_COURT_FIELD = {
+    "Arbeitsrecht":     ["kündigung", "arbeitsvertrag", "abmahnung", "abfindung", "betriebsrat"],
+    "Sozialrecht":      ["sozialhilfe", "arbeitslosengeld", "alg ii", "jobcenter", "rente", "pflegegrad"],
+    "Verwaltungsrecht": ["bescheid", "behörde", "verwaltungsakt", "widerspruch", "baugenehmigung"],
+    "Zivilrecht":       ["miete", "mieter", "vermieter", "scheidung", "unterhalt", "sorgerecht",
+                          "erbe", "testament", "verkehrsunfall", "fahrerlaubnis", "kaufvertrag"],
+}
+
+
+def rank_legal_fields_by_usage(database_service: DatabaseService) -> List[str]:
+    """Rangfolge der Gerichts-Rechtsgebiete nach TATSÄCHLICHER Nutzung (M16), absteigend.
+
+    Zwei echte Nutzungsdaten-Quellen werden kombiniert:
+      - Mandanten-Akten: mandanten.rechtsgebiet (sobald das Feld serverseitig existiert,
+        siehe derive_firm_legal_fields).
+      - Chat-Historie: search_results.query — die tatsächlich gestellten Suchanfragen,
+        grob per Stichwort auf ein Gerichts-Rechtsgebiet klassifiziert.
+
+    Liefert eine leere Liste, wenn (noch) keine Nutzungsdaten vorhanden sind — dann bleibt
+    es beim Gleichbehandlungs-Fallback über DEFAULT_FIRM_RECHTSGEBIETE."""
+    from sqlalchemy import text as sqltxt
+    usage = Counter()
+
+    try:
+        db = database_service.SessionLocal()
+        try:
+            result = db.execute(sqltxt(
+                "SELECT rechtsgebiet, COUNT(*) FROM mandanten "
+                "WHERE rechtsgebiet IS NOT NULL GROUP BY rechtsgebiet"
+            ))
+            for rechtsgebiet, count in result:
+                if not rechtsgebiet:
+                    continue
+                field = ("Zivilrecht" if rechtsgebiet.startswith("Familienrecht")
+                         else MANDAT_RECHTSGEBIET_TO_COURT_FIELD.get(rechtsgebiet))
+                if field:
+                    usage[field] += count
+        finally:
+            db.close()
+    except Exception as e:
+        logger.info(f"Keine Akte-Nutzungsdaten (mandanten.rechtsgebiet): {e}")
+
+    try:
+        db = database_service.SessionLocal()
+        try:
+            result = db.execute(sqltxt("SELECT query FROM search_results WHERE query IS NOT NULL"))
+            for (query,) in result:
+                q = query.lower()
+                for field, keywords in CHAT_KEYWORDS_TO_COURT_FIELD.items():
+                    if any(kw in q for kw in keywords):
+                        usage[field] += 1
+        finally:
+            db.close()
+    except Exception as e:
+        logger.info(f"Keine Chat-Historie-Nutzungsdaten (search_results.query): {e}")
+
+    ranked = [field for field, _count in usage.most_common()]
+    if ranked:
+        logger.info(f"Rechtsgebiete nach echter Nutzung priorisiert: {usage.most_common()}")
+    return ranked
+
+
+def derive_firm_legal_fields(database_service: DatabaseService) -> Set[str]:
+    """Leitet die Rechtsgebiete der Kanzlei aus Mandant-/Akte-Daten ab (M16).
+
+    Die mandanten-Tabelle hat aktuell kein Rechtsgebiet-Feld (nur Name/E-Mail/
+    Aktenzeichen — das Rechtsgebiet wird bislang nur lokal im Desktop-Client bei der
+    Mandatsaufnahme erfasst, siehe desktop/Services/MandatAufnahme.cs). Sobald ein
+    solches Feld serverseitig existiert, wird es hier automatisch genutzt; bis dahin
+    greift der Fallback auf die Standard-Praxisgebiete der Kanzlei."""
+    try:
+        db = database_service.SessionLocal()
+        from sqlalchemy import text as sqltxt
+        result = db.execute(sqltxt("SELECT DISTINCT rechtsgebiet FROM mandanten WHERE rechtsgebiet IS NOT NULL"))
+        fields = {row[0] for row in result if row[0]}
+        db.close()
+        if fields:
+            logger.info(f"Rechtsgebiete aus Mandant-Daten abgeleitet: {fields}")
+            return fields
+    except Exception as e:
+        logger.info(f"Kein Rechtsgebiet-Feld in mandanten-Tabelle ({e}) — nutze Standard-Praxisgebiete")
+    return set(DEFAULT_FIRM_RECHTSGEBIETE)
 
 
 def update_neo4j(new_chunks: List[Dict]):
@@ -49,15 +177,33 @@ class LegalDatabaseCrawler:
     def __init__(self):
         self.gesetze_crawler = GesetzeImInternetCrawler()
         self.ris_crawler = RisCrawler()
+        self.openjur_crawler = OpenJurCrawler()
+        self.drucksachen_crawler = DrucksachenCrawler()
         self.embedding_service = EmbeddingService()
         self.database_service = DatabaseService()
+        self.firm_legal_fields = derive_firm_legal_fields(self.database_service)
+
+        # Tiefe statt Breite (T#292): die laut echter Nutzung (Akten + Chat-Historie)
+        # am häufigsten gebrauchten Rechtsgebiete bekommen zusätzlich zu BVerfG/BGH
+        # das größere Zeitfenster — statt alle Kanzlei-Rechtsgebiete gleich zu behandeln.
+        ranked_fields = rank_legal_fields_by_usage(self.database_service)
+        deep_fields = ranked_fields[:TOP_N_DEEP_FIELDS]
+        extra_priority_courts = {
+            LEGAL_FIELD_TO_COURT[f] for f in deep_fields if f in LEGAL_FIELD_TO_COURT
+        }
+        self.priority_courts = PRIORITY_COURTS | extra_priority_courts
+        if extra_priority_courts:
+            logger.info(
+                f"Nach echter Nutzung priorisierte Gerichte (zusätzlich zu "
+                f"BVerfG/BGH): {extra_priority_courts} (Rechtsgebiete: {deep_fields})"
+            )
 
     async def crawl_all_sources(self, limit_per_source: int = None) -> Dict:
         """Crawl all legal sources, store in pgvector, then update Neo4j.
         Gibt Statistik-Dict zurück (für Erfolgs-/Fehler-Benachrichtigung)."""
         logger.info("Starting legal database crawl...")
         all_new_chunks = []
-        stats = {"gesetze_neu": 0, "rechtsprechung_neu": 0, "errors": []}
+        stats = {"gesetze_neu": 0, "rechtsprechung_neu": 0, "begruendungen_neu": 0, "errors": []}
 
         logger.info("Crawling gesetze-im-internet.de...")
         try:
@@ -70,9 +216,19 @@ class LegalDatabaseCrawler:
             logger.error(f"Error crawling gesetze-im-internet.de: {e}")
             stats["errors"].append(f"gesetze-im-internet.de: {e}")
 
-        logger.info("Crawling rechtsprechung-im-internet.de (BVerfG, BGH, BAG, BFH, BVerwG, BSG, BPatG)...")
+        logger.info(
+            f"Crawling rechtsprechung-im-internet.de "
+            f"(priorisierte Gerichte {self.priority_courts}, Fenster {RIS_DAYS_PRIORITY} Tage; "
+            f"übrige Gerichte {RIS_DAYS} Tage, gefiltert auf Kanzlei-Rechtsgebiete {self.firm_legal_fields})..."
+        )
         try:
-            decision_chunks = self.ris_crawler.crawl_decisions(days=1, limit=limit_per_source)
+            decision_chunks = self.ris_crawler.crawl_decisions(
+                days=RIS_DAYS,
+                days_priority=RIS_DAYS_PRIORITY,
+                legal_fields=self.firm_legal_fields,
+                priority_courts=self.priority_courts,
+                limit=limit_per_source,
+            )
             logger.info(f"Generated {len(decision_chunks)} chunks from decisions")
             new_chunks = await self.process_and_store_chunks(decision_chunks)
             all_new_chunks.extend(new_chunks)
@@ -80,6 +236,50 @@ class LegalDatabaseCrawler:
         except Exception as e:
             logger.error(f"Error crawling rechtsprechung-im-internet.de: {e}")
             stats["errors"].append(f"rechtsprechung-im-internet.de: {e}")
+
+        logger.info(
+            f"Crawling bundesgerichtshof.de (BGH-Backfill über das RIS-Feed-Fenster "
+            f"hinaus, {BGH_BACKFILL_DAYS} Tage, max. {BGH_BACKFILL_MAX_RESULTS} Urteile)..."
+        )
+        try:
+            bgh_backfill_chunks = self.openjur_crawler.crawl_decisions(
+                days=BGH_BACKFILL_DAYS,
+                max_results=BGH_BACKFILL_MAX_RESULTS,
+                limit=limit_per_source,
+            )
+            logger.info(f"Generated {len(bgh_backfill_chunks)} chunks from BGH-Backfill")
+            new_chunks = await self.process_and_store_chunks(bgh_backfill_chunks)
+            all_new_chunks.extend(new_chunks)
+            stats["rechtsprechung_neu"] += len(new_chunks)
+        except Exception as e:
+            logger.error(f"Error crawling bundesgerichtshof.de (Backfill): {e}")
+            stats["errors"].append(f"bundesgerichtshof.de-Backfill: {e}")
+
+        logger.info(
+            f"Crawling dip.bundestag.de (Gesetzesbegründungen zu den "
+            f"{BEGRUENDUNGEN_TOP_N} häufigsten §§ im Index)..."
+        )
+        try:
+            neo4j_svc = Neo4jService(uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD)
+            if neo4j_svc.connect():
+                try:
+                    begruendung_chunks = self.drucksachen_crawler.crawl_begruendungen(
+                        neo4j_svc,
+                        database_service=self.database_service,
+                        limit=BEGRUENDUNGEN_TOP_N,
+                    )
+                finally:
+                    neo4j_svc.close()
+                logger.info(f"Generated {len(begruendung_chunks)} chunks from Gesetzesbegründungen")
+                new_chunks = await self.process_and_store_chunks(begruendung_chunks)
+                all_new_chunks.extend(new_chunks)
+                stats["begruendungen_neu"] = len(new_chunks)
+            else:
+                logger.warning("Neo4j nicht erreichbar — drucksachen_crawler übersprungen")
+                stats["errors"].append("dip.bundestag.de: Neo4j nicht erreichbar")
+        except Exception as e:
+            logger.error(f"Error crawling dip.bundestag.de: {e}")
+            stats["errors"].append(f"dip.bundestag.de: {e}")
 
         if all_new_chunks:
             logger.info(f"Updating Neo4j with {len(all_new_chunks)} new chunks...")
@@ -208,7 +408,8 @@ async def main():
             "LexWolf-Crawl erfolgreich",
             f"Dauer: {duration_min:.1f} Min\n"
             f"Neue Chunks: {stats['chunks_neu_gesamt']} "
-            f"(Gesetze: {stats['gesetze_neu']}, Rechtsprechung: {stats['rechtsprechung_neu']})",
+            f"(Gesetze: {stats['gesetze_neu']}, Rechtsprechung: {stats['rechtsprechung_neu']}, "
+            f"Gesetzesbegründungen: {stats['begruendungen_neu']})",
             is_error=False,
         )
 
