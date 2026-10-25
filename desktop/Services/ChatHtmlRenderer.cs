@@ -179,9 +179,19 @@ public static class ChatHtmlRenderer
             m => $"<span class='highlight-frist'>{m.Value}</span>");
 
         // 2) Paragraphen (blau): §/Art./Abs. Referenzen inkl. Gesetzesabkürzungen.
+        // Task #80: Treffer mit konkreter Nummer (§ 23 KSchG, Art. 3 GG, ...) sind
+        // klickbar -> OnChatWebMessage löst sie über /legal-db/chunks/by-reference auf
+        // und zeigt den Gesetzestext im Popup. Bloße Gesetzeskürzel ohne Nummer (z.B.
+        // "nach dem BGB") bleiben reine Hervorhebung, da es dafür keinen eindeutigen Chunk gibt.
         html = Regex.Replace(html,
             @"(?i)(§\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+))*\s*[A-Za-z]*\b|Art\.\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+))*\s*[A-Za-z]*\b|\b(BGB|GG|KSchG|AGBG|AGB|AktG|GmbHG|HGB|StGB|StPO|ZPO|VwGO|BVerfG|BAG|BGH|BSG|LAG|OLG|LG|AG|EU-DSGVO|DSGVO|KWG|InsO|AO|BAföG|AsylbLG|SGB\s*(I{1,3}|IV|V|VI|VII|VIII|IX|X|XI|XII|1|2|3|4|5|6|7|8|9|10|11|12)))\b",
-            m => $"<span class='highlight-paragraph'>{m.Value}</span>");
+            m =>
+            {
+                if (!Regex.IsMatch(m.Value, @"\d"))
+                    return $"<span class='highlight-paragraph'>{m.Value}</span>";
+                var referenz = WebUtility.HtmlEncode(m.Value.Trim());
+                return $"<a href='#' class='highlight-paragraph quelle-link' data-action='quelle' data-value='{referenz}'>{m.Value}</a>";
+            });
 
         // 3) Handlungsempfehlungen (fett/orange): Modalverben und handlungsleitende Verben.
         html = Regex.Replace(html,
@@ -363,6 +373,8 @@ public static class ChatHtmlRenderer
 
             .highlight-frist {{ color: #ff7b72; font-weight: 700; text-decoration: underline; }}
             .highlight-paragraph {{ color: #79c0ff; font-weight: 600; }}
+            a.highlight-paragraph.quelle-link {{ text-decoration: none; cursor: pointer; border-bottom: 1px dotted #79c0ff; }}
+            a.highlight-paragraph.quelle-link:hover {{ color: #a5d6ff; border-bottom-style: solid; }}
             .highlight-empfehlung {{ color: #e8a838; font-weight: 700; }}
 
             .confidence-badge {{ display: inline-block; float: right; margin: 0 0 8px 10px; padding: 2px 9px;

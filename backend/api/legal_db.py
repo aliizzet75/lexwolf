@@ -34,6 +34,7 @@ class ChunkResponse(BaseModel):
     parent_id: Optional[int]
     is_parent: bool
     created_at: str
+    valid_from: Optional[str] = None
 
 class StyleProfileRequest(BaseModel):
     profile_id: str
@@ -54,6 +55,22 @@ async def search_legal_database(request: SearchRequest):
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
+
+@router.get("/chunks/by-reference", response_model=ChunkResponse)
+async def get_chunk_by_reference(ref: str):
+    """
+    Löst eine Paragraphen-Referenz wie "§ 23 KSchG" auf den passenden
+    Gesetzestext-Chunk auf (Task #80: Inline-Quellenangaben klickbar).
+    """
+    try:
+        chunk = database_service.find_chunk_by_reference(ref)
+        if chunk:
+            return chunk
+        raise HTTPException(status_code=404, detail="Kein Gesetzestext für diese Referenz gefunden")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error resolving reference: {str(e)}")
 
 @router.get("/chunks/{chunk_id}", response_model=ChunkResponse)
 async def get_chunk(chunk_id: int):

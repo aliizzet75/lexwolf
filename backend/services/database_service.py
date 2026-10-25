@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 from sqlalchemy import create_engine, text, func
 from sqlalchemy.orm import sessionmaker
@@ -159,14 +160,6 @@ class DatabaseService:
             chunk = db.query(LegalChunk).filter(LegalChunk.id == chunk_id).first()
             
             if chunk:
-                # Parse vector JSON if it exists
-                vector_data = None
-                if chunk.vector:
-                    try:
-                        vector_data = json.loads(chunk.vector)
-                    except:
-                        vector_data = None
-                
                 return {
                     "id": chunk.id,
                     "document_id": chunk.document_id,
@@ -180,7 +173,8 @@ class DatabaseService:
                     "chunk_hash": chunk.chunk_hash,
                     "parent_id": chunk.parent_id,
                     "is_parent": chunk.is_parent,
-                    "created_at": chunk.created_at.isoformat()
+                    "created_at": chunk.created_at.isoformat(),
+                    "valid_from": chunk.valid_from.isoformat() if chunk.valid_from else None
                 }
             else:
                 return None
@@ -189,7 +183,40 @@ class DatabaseService:
             return None
         finally:
             db.close()
-    
+
+    def find_chunk_by_reference(self, referenz: str) -> dict:
+        """
+        Löst eine Inline-Paragraphen-Referenz (z.B. "§ 23 KSchG") auf den passenden
+        Gesetzestext-Chunk auf (Task #80). Sucht per Paragraphennummer und
+        Gesetzeskürzel (aus den chunk.tags) statt über die Hybrid-Suche, da ein
+        exakter Titel-Treffer hier zuverlässiger ist als eine Ähnlichkeitssuche.
+        Bevorzugt den zusammenhängenden Absatz-Chunk vor den Satz-Unterchunks
+        ("... S.1", "... S.2", ...), damit das Popup den vollen Absatztext zeigt.
+        """
+        match = re.search(r"§\s*(\d+)", referenz)
+        if not match:
+            return None
+        nr = match.group(1)
+        woerter = re.findall(r"[A-Za-zÄÖÜäöüß]+", referenz)
+        gesetz = woerter[-1].lower() if woerter else None
+
+        db = self.SessionLocal()
+        try:
+            query = db.query(LegalChunk).filter(LegalChunk.title.ilike(f"§ {nr} %"))
+            if gesetz:
+                query = query.filter(LegalChunk.tags.ilike(f"%{gesetz}%"))
+            treffer = query.filter(~LegalChunk.title.ilike("%S.%")).order_by(LegalChunk.id).first()
+            if treffer is None:
+                treffer = query.order_by(LegalChunk.id).first()
+            if treffer is None:
+                return None
+            return self.get_chunk_by_id(treffer.id)
+        except Exception as e:
+            print(f"Error finding chunk by reference: {e}")
+            return None
+        finally:
+            db.close()
+
     def store_style_profile(self, profile_id: str, vector: list):
         """
         Store a style profile in the database
