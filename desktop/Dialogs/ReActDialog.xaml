@@ -1,0 +1,138 @@
+<Window x:Class="LexWolf.Dialogs.ReActDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LexWolf — Live-Denkprozess"
+        Icon="/Assets/lexwolf.ico"
+        Width="760" Height="680"
+        MinWidth="560" MinHeight="420"
+        Background="#0d1117"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.Resources>
+        <Style x:Key="PrimaryBtn" TargetType="Button">
+            <Setter Property="Background"        Value="#1f6feb"/>
+            <Setter Property="Foreground"        Value="White"/>
+            <Setter Property="BorderThickness"   Value="0"/>
+            <Setter Property="Padding"           Value="16,7"/>
+            <Setter Property="FontSize"          Value="12"/>
+            <Setter Property="Cursor"            Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#388bfd"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#30363d"/>
+                                <Setter Property="Foreground" Value="#6e7681"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GhostBtn" TargetType="Button">
+            <Setter Property="Background"        Value="Transparent"/>
+            <Setter Property="Foreground"        Value="#8b949e"/>
+            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="BorderThickness"   Value="1"/>
+            <Setter Property="Padding"           Value="16,7"/>
+            <Setter Property="FontSize"          Value="12"/>
+            <Setter Property="Cursor"            Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#21262d"/>
+                                <Setter Property="Foreground" Value="#c9d1d9"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#484f58"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ChatInput" TargetType="TextBox">
+            <Setter Property="Background"        Value="#161b22"/>
+            <Setter Property="Foreground"        Value="#c9d1d9"/>
+            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="BorderThickness"   Value="1"/>
+            <Setter Property="Padding"           Value="10,8"/>
+            <Setter Property="FontSize"          Value="13"/>
+            <Setter Property="CaretBrush"        Value="#c9d1d9"/>
+        </Style>
+
+        <Style x:Key="DarkComboBox" TargetType="ComboBox">
+            <Setter Property="Background"        Value="#161b22"/>
+            <Setter Property="Foreground"        Value="#c9d1d9"/>
+            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="BorderThickness"   Value="1"/>
+            <Setter Property="Padding"           Value="8,4"/>
+            <Setter Property="FontSize"          Value="13"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="🧠 Live-Denkprozess" Foreground="#e6edf3" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Zeigt live, welche Quelle durchsucht wird, was gefunden/verworfen wurde und mit welcher Konfidenz — statt einer Black Box."
+                       Foreground="#8b949e" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="QueryBox" Grid.Column="0" Style="{StaticResource ChatInput}"
+                     Margin="0,0,8,0" KeyDown="OnQueryKeyDown"
+                     ToolTip="Rechtsfrage eingeben"/>
+            <ComboBox x:Name="ModusBox" Grid.Column="1" Style="{StaticResource DarkComboBox}" Width="110" Margin="0,0,8,0">
+                <ComboBoxItem Content="Schnell" Tag="schnell" IsSelected="True"/>
+                <ComboBoxItem Content="Tief" Tag="tief"/>
+            </ComboBox>
+            <Button x:Name="SearchBtn" Grid.Column="2" Content="Suchen" Style="{StaticResource PrimaryBtn}" Click="OnSearchClick"/>
+        </Grid>
+
+        <ScrollViewer x:Name="StepsScroll" Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="StepsList"/>
+        </ScrollViewer>
+
+        <Border Grid.Row="3" Background="#161b22" BorderBrush="#30363d" BorderThickness="1"
+                CornerRadius="8" Padding="12,10" Margin="0,10,0,0">
+            <StackPanel>
+                <TextBlock Text="Antwort" Foreground="#e6edf3" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="140">
+                    <TextBlock x:Name="AnswerText" Foreground="#c9d1d9" FontSize="12" TextWrapping="Wrap"/>
+                </ScrollViewer>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

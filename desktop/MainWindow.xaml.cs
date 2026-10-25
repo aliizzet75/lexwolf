@@ -327,6 +327,12 @@ document.addEventListener('click', function (e) {{
         dlg.ShowDialog();
     }
 
+    private void OnReActClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = new LexWolf.Dialogs.ReActDialog(BackendUrl) { Owner = this };
+        dlg.ShowDialog();
+    }
+
     private void OnFeatureUebersichtClick(object sender, RoutedEventArgs e)
     {
         var sessionId = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name ?? "lexwolf";
