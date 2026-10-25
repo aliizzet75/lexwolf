@@ -56,6 +56,9 @@ PROFIL_VEKTOR_DIM = 768
 
 ERLAUBTE_SCHRIFTSATZ_TYPEN = {"klage", "widerspruch", "brief"}
 
+# T#131: gültige Anwalt-Entscheidungen zu Post-Gespräch-Vorschlägen.
+GUELTIGE_VORSCHLAG_ENTSCHEIDUNGEN = {"ja", "nein", "geaendert"}
+
 
 class StyleLearner:
     """Lernt aus feedback_table und aktualisiert das StyleProfile in style_profiles."""
@@ -130,6 +133,7 @@ class StyleLearner:
             ("korrigierte_muster", "TEXT"),
             ("anzahl_eintraege", "INTEGER"),
             ("ab_test_json", "TEXT"),
+            ("vorschlag_feedback_json", "TEXT"),
         ]
         try:
             with self.engine.connect() as conn:
@@ -295,6 +299,65 @@ class StyleLearner:
             "ratio_neu": round(neu_stimmen / total, 4) if total else 0,
             "ratio_alt": round(alt_stimmen / total, 4) if total else 0,
         }
+
+    # ------------------------------------------------------------------
+    # Post-Gespräch-Vorschläge: Entscheidungs-Tracking (T#131)
+    # ------------------------------------------------------------------
+
+    def tracke_vorschlag_entscheidung(self, vorschlag_typ: str, entscheidung: str) -> Dict[str, Any]:
+        """
+        Trackt die Anwalt-Entscheidung (Ja/Nein/Geändert) zu einem Post-Gespräch-
+        Vorschlag (Fristennotiz, E-Mail-Entwurf, ...) im bestehenden StyleProfile
+        (vorschlag_feedback_json) — analog zur A/B-Test-Präferenz-Verfolgung oben.
+        Es wird KEINE separate Tabelle angelegt; die Entscheidung fließt direkt in
+        die bestehende Lernschleife (style_profiles) ein.
+        """
+        entscheidung = (entscheidung or "").strip().lower()
+        if entscheidung not in GUELTIGE_VORSCHLAG_ENTSCHEIDUNGEN:
+            raise ValueError(f"Ungültige Entscheidung: {entscheidung}")
+        if not vorschlag_typ:
+            raise ValueError("vorschlag_typ ist erforderlich")
+
+        db = self.SessionLocal()
+        try:
+            profile = db.query(StyleProfile).filter(StyleProfile.profile_id == self.profile_id).first()
+            if profile is None:
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+                stmt = pg_insert(StyleProfile).values(
+                    profile_id=self.profile_id,
+                    vector=[0.0] * PROFIL_VEKTOR_DIM,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                    vorschlag_feedback_json=json.dumps({}, ensure_ascii=False),
+                ).on_conflict_do_nothing(index_elements=["profile_id"])
+                db.execute(stmt)
+                db.commit()
+                profile = db.query(StyleProfile).filter(StyleProfile.profile_id == self.profile_id).first()
+
+            state = json.loads(profile.vorschlag_feedback_json or "{}")
+            zaehler = state.setdefault(vorschlag_typ, {"ja": 0, "nein": 0, "geaendert": 0})
+            zaehler[entscheidung] = zaehler.get(entscheidung, 0) + 1
+            profile.vorschlag_feedback_json = json.dumps(state, ensure_ascii=False)
+            profile.updated_at = datetime.utcnow()
+            db.commit()
+            return {"vorschlag_typ": vorschlag_typ, "entscheidung": entscheidung, "zaehler": dict(zaehler)}
+        except Exception as e:
+            db.rollback()
+            logger.error("Fehler beim Tracken der Vorschlag-Entscheidung: %s", e)
+            raise
+        finally:
+            db.close()
+
+    def hole_vorschlag_feedback(self) -> Dict[str, Any]:
+        """Liest die bisher getrackten Vorschlag-Entscheidungen (für Tests/Diagnose)."""
+        db = self.SessionLocal()
+        try:
+            profile = db.query(StyleProfile).filter(StyleProfile.profile_id == self.profile_id).first()
+            if profile is None or not profile.vorschlag_feedback_json:
+                return {}
+            return json.loads(profile.vorschlag_feedback_json)
+        finally:
+            db.close()
 
     # ------------------------------------------------------------------
     # Interne Methoden

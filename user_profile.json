@@ -1,0 +1,23 @@
+{
+  "created": "2026-10-24T23:08:44.304010",
+  "decision_patterns": {
+    "test_case": {
+      "test_decision": {
+        "count": 1,
+        "contexts": [
+          {
+            "context": "test"
+          }
+        ],
+        "last_used": "2026-10-24T23:08:44.304022"
+      }
+    }
+  },
+  "style_feedback": [],
+  "client_memory": {},
+  "statistics": {
+    "documents_created": 0,
+    "conversations_recorded": 0,
+    "decisions_made": 1
+  }
+}

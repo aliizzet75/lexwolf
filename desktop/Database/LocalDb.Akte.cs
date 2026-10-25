@@ -395,6 +395,7 @@ namespace LexWolf.Database
         {
             "dokumente", "chat_history", "chat_zusammenfassungen", "notizen", "mandant_zusammenfassung",
             "fristen", "dokument_analyse", "akte_stamm", "fragebogen", "mail_absender", "formular_feld",
+            "gespraeche",
         };
         private static readonly string[] MandantMetaPraefixe = { "mandat_aufnahme:", "formular_ki_stand:" };
 

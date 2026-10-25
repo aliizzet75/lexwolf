@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 import logging
 from services.conversation_assistant import ConversationAssistant
+from services.feedback_service import FeedbackService, FeedbackValidationError
+from services.style_learner import StyleLearner, GUELTIGE_VORSCHLAG_ENTSCHEIDUNGEN
 
 router = APIRouter(prefix="/conversation", tags=["conversation"])
 
@@ -58,6 +60,45 @@ class HistoryRequest(BaseModel):
 class HistoryResponse(BaseModel):
     conversations: List[ConversationResponse]
 
+class Frist(BaseModel):
+    datum: Optional[str] = None
+    beschreibung: Optional[str] = None
+
+class Aufgabe(BaseModel):
+    was: Optional[str] = None
+    bis_wann: Optional[str] = None
+
+class AnalyzeResponse(BaseModel):
+    fristen: List[Frist]
+    aufgaben: List[Aufgabe]
+    themen: List[str]
+    naechste_schritte: List[str]
+    timestamp: str
+
+class Vorschlag(BaseModel):
+    typ: str
+    titel: str
+    text: str
+    metadata: Dict[str, Any] = {}
+
+
+class SuggestionsRequest(BaseModel):
+    strukturiert: Dict[str, Any]
+    mandant_history: List[str] = []
+
+
+class SuggestionsResponse(BaseModel):
+    vorschlaege: List[Vorschlag]
+
+
+class SuggestionDecisionRequest(BaseModel):
+    vorschlag_typ: str
+    vorschlag_text: str
+    entscheidung: str  # "ja" | "nein" | "geaendert"
+    geaenderter_text: Optional[str] = None
+    account_id: str = "default"
+
+
 # Global conversation assistant instance
 conversation_assistant = ConversationAssistant()
 
@@ -93,6 +134,88 @@ async def process_transcript(request: TranscriptRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing transcript: {str(e)}")
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+async def analyze_transcript(request: TranscriptRequest):
+    """
+    Strukturiert ein bereits anonymisiertes Gesprächstranskript über die
+    zentrale KI-Schnittstelle (services.llm_client.ask_llm): Fristen,
+    Aufgaben, Themen und nächste Schritte.
+    """
+    try:
+        result = conversation_assistant.analyze_transcript(request.transcript)
+
+        return AnalyzeResponse(
+            fristen=[Frist(**f) for f in result.get("fristen", [])],
+            aufgaben=[Aufgabe(**a) for a in result.get("aufgaben", [])],
+            themen=result.get("themen", []),
+            naechste_schritte=result.get("naechste_schritte", []),
+            timestamp=result.get("timestamp", ""),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing transcript: {str(e)}")
+
+@router.post("/suggestions", response_model=SuggestionsResponse)
+async def generate_suggestions(request: SuggestionsRequest):
+    """
+    T#131 (Pilot-Scope): Erzeugt aus dem strukturierten Gesprächsergebnis
+    (Ausgabe von /conversation/analyze) konkrete Vorschläge für die nächsten
+    Schritte — mindestens Fristennotiz und E-Mail-Entwurf. Der Anwalt
+    entscheidet im WPF-Dialog mit Ja/Nein/Geändert (siehe /suggestions/decision).
+    """
+    try:
+        vorschlaege = conversation_assistant.generate_suggestions(
+            request.strukturiert, request.mandant_history
+        )
+        return SuggestionsResponse(vorschlaege=[Vorschlag(**v) for v in vorschlaege])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating suggestions: {str(e)}")
+
+@router.post("/suggestions/decision", status_code=201)
+async def submit_suggestion_decision(request: SuggestionDecisionRequest):
+    """
+    T#131: Nimmt die Anwalt-Entscheidung (Ja/Nein/Geändert) zu einem Post-
+    Gespräch-Vorschlag entgegen und speist sie in die BESTEHENDE Lernschleife
+    ein — NICHT separat gespeichert:
+      - style_learner.tracke_vorschlag_entscheidung(): zählt Ja/Nein/Geändert
+        pro Vorschlags-Typ im StyleProfile (style_profiles.vorschlag_feedback_json).
+      - Bei "geaendert" zusätzlich feedback_service.process_feedback(): der
+        tatsächliche Korrektur-Diff (Vorschlagstext -> geänderter Text) fließt
+        wie jede andere Anwalt-Korrektur in feedback_table/style_learner ein.
+    """
+    entscheidung = (request.entscheidung or "").strip().lower()
+    if entscheidung not in GUELTIGE_VORSCHLAG_ENTSCHEIDUNGEN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungültige Entscheidung: {request.entscheidung!r} (erlaubt: ja, nein, geaendert)",
+        )
+    if entscheidung == "geaendert" and not request.geaenderter_text:
+        raise HTTPException(status_code=400, detail="geaenderter_text ist bei 'geaendert' erforderlich")
+
+    try:
+        learner = StyleLearner(account_id=request.account_id)
+        style_ergebnis = learner.tracke_vorschlag_entscheidung(request.vorschlag_typ, entscheidung)
+
+        feedback_eintrag = None
+        if entscheidung == "geaendert":
+            try:
+                feedback_eintrag = FeedbackService().process_feedback({
+                    "original": request.vorschlag_text,
+                    "korrigiert": request.geaenderter_text,
+                })
+            except FeedbackValidationError as e:
+                logger.warning(f"Vorschlag-Korrektur von feedback_service abgelehnt: {e}")
+
+        return {
+            "status": "gespeichert",
+            "style_profile": style_ergebnis,
+            "feedback_entry": feedback_eintrag,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Fehler beim Verarbeiten der Vorschlag-Entscheidung: {e}")
+        raise HTTPException(status_code=500, detail="Interner Fehler bei der Entscheidungs-Verarbeitung")
 
 @router.post("/summarize", response_model=SummaryResponse)
 async def generate_summary(request: SummaryRequest):

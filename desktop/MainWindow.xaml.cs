@@ -762,6 +762,16 @@ document.addEventListener('click', function (e) {{
 
             var nachrichten = await Task.Run(() => _db.GetChatHistorySeit(mandantId, seit), token).ConfigureAwait(false);
 
+            // Task #130: Gesprächsprotokolle (z.B. per GespraechsRecorder transkribierte
+            // Mandantengespräche) erscheinen chronologisch zusammen mit dem Chatverlauf in
+            // der Historie, statt in einer separaten Ansicht — fachlich sind sie wie
+            // Chat-Nachrichten Teil des Mandanten-Gedächtnisses.
+            var gespraeche = await Task.Run(() => _db.GetGespraeche(mandantId), token).ConfigureAwait(false);
+            var gespraechNachrichten = gespraeche
+                .Where(g => seit is null || g.Datum > seit)
+                .Select(g => (Role: "system", Content: $"🎙️ Gespräch vom {g.Datum:dd.MM.yyyy}: {GespraechStruktur.Parse(g.StrukturiertJson).AlsKurztext()}", Timestamp: g.Datum));
+            nachrichten = nachrichten.Concat(gespraechNachrichten).OrderBy(n => n.Timestamp).ToList();
+
             token.ThrowIfCancellationRequested();
 
             // Nur anwenden, wenn der gewählte Mandant noch aktiv ist (Race-Condition-Schutz).

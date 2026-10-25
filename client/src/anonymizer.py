@@ -31,10 +31,13 @@ class Anonymizer:
             # Process text with spaCy
             doc = nlp(text)
             
-            # Find named entities
+            # Find named entities.
+            # de_core_news_sm liefert CoNLL-Labels (PER/LOC), nicht die
+            # englischen spaCy-Labels (PERSON/GPE) - beide werden akzeptiert,
+            # da sonst Personennamen im deutschen Modell nie erkannt werden.
             entities = []
             for ent in doc.ents:
-                if ent.label_ in ["PERSON", "ORG", "GPE"]:  # Person, Organization, Geopolitical Entity
+                if ent.label_ in ["PERSON", "PER", "ORG", "GPE", "LOC"]:
                     entities.append({
                         "text": ent.text,
                         "label": ent.label_,
@@ -104,8 +107,10 @@ class Anonymizer:
         """
         placeholders = {
             "PERSON": f"[PERSON_{index+1}]",
+            "PER": f"[PERSON_{index+1}]",
             "ORG": f"[ORG_{index+1}]",
             "GPE": f"[ORT_{index+1}]",
+            "LOC": f"[ORT_{index+1}]",
             "DATE": f"[DATUM_{index+1}]"
         }
         return placeholders.get(label, f"[ENT_{index+1}]")

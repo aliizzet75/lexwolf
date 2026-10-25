@@ -40,14 +40,14 @@ public class MandantZusammenfassungService
     {
         if (string.IsNullOrEmpty(mandantId)) return "";
 
-        var (chat, notizen, dokumente) = await LadeQuellenAsync(mandantId, token).ConfigureAwait(false);
-        var quellenHash = BerechneQuellenHash(chat, notizen, dokumente);
+        var (chat, notizen, dokumente, gespraeche) = await LadeQuellenAsync(mandantId, token).ConfigureAwait(false);
+        var quellenHash = BerechneQuellenHash(chat, notizen, dokumente, gespraeche);
         var gecacht = await Task.Run(() => _db.GetMandantZusammenfassung(mandantId), token).ConfigureAwait(false);
 
         if (gecacht.HasValue && gecacht.Value.QuellenHash == quellenHash && !string.IsNullOrWhiteSpace(gecacht.Value.Text))
             return gecacht.Value.Text!;
 
-        var kontext = BaueKontext(chat, notizen, dokumente);
+        var kontext = BaueKontext(chat, notizen, dokumente, gespraeche);
         if (string.IsNullOrWhiteSpace(kontext))
         {
             var leerText = "Noch keine Chats, Notizen oder Dokumente für diesen Mandanten vorhanden.";
@@ -66,21 +66,25 @@ public class MandantZusammenfassungService
     private async Task<(
         List<(string Id, string MandantId, DateTime SitzungStart, DateTime SitzungEnde, string Zusammenfassung, DateTime Erstellt)> Chat,
         List<(string Id, string MandantId, string TitelKurz, string Text, DateTime Erstellt, DateTime Geaendert)> Notizen,
-        List<(string Titel, string Pfad, string Text)> Dokumente)
+        List<(string Titel, string Pfad, string Text)> Dokumente,
+        List<(string Id, string MandantId, DateTime Datum, string StrukturiertJson, DateTime Erstellt)> Gespraeche)
     > LadeQuellenAsync(string mandantId, CancellationToken token)
     {
         var chatTask = Task.Run(() => _db.GetChatZusammenfassungen(mandantId), token);
         var notizenTask = Task.Run(() => _db.GetNotizen(mandantId), token);
         var dokumenteTask = Task.Run(() => _db.GetDokumenteForMandant(mandantId), token);
+        var gespraecheTask = Task.Run(() => _db.GetGespraeche(mandantId), token);
 
-        await Task.WhenAll(chatTask, notizenTask, dokumenteTask).ConfigureAwait(false);
-        return (await chatTask.ConfigureAwait(false), await notizenTask.ConfigureAwait(false), await dokumenteTask.ConfigureAwait(false));
+        await Task.WhenAll(chatTask, notizenTask, dokumenteTask, gespraecheTask).ConfigureAwait(false);
+        return (await chatTask.ConfigureAwait(false), await notizenTask.ConfigureAwait(false),
+                await dokumenteTask.ConfigureAwait(false), await gespraecheTask.ConfigureAwait(false));
     }
 
     private static string BerechneQuellenHash(
         List<(string Id, string MandantId, DateTime SitzungStart, DateTime SitzungEnde, string Zusammenfassung, DateTime Erstellt)> chat,
         List<(string Id, string MandantId, string TitelKurz, string Text, DateTime Erstellt, DateTime Geaendert)> notizen,
-        List<(string Titel, string Pfad, string Text)> dokumente)
+        List<(string Titel, string Pfad, string Text)> dokumente,
+        List<(string Id, string MandantId, DateTime Datum, string StrukturiertJson, DateTime Erstellt)> gespraeche)
     {
         var sb = new StringBuilder();
         foreach (var c in chat.OrderBy(c => c.SitzungStart))
@@ -89,6 +93,8 @@ public class MandantZusammenfassungService
             sb.AppendLine($"NOTIZ {n.Geaendert:o} {n.TitelKurz} {n.Text}");
         foreach (var d in dokumente.OrderBy(d => d.Pfad))
             sb.AppendLine($"DOK {d.Pfad} {d.Titel} {d.Text}");
+        foreach (var g in gespraeche.OrderBy(g => g.Datum))
+            sb.AppendLine($"GESPRAECH {g.Datum:o} {g.StrukturiertJson}");
 
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());
         return Convert.ToHexString(SHA256.HashData(bytes));
@@ -97,7 +103,8 @@ public class MandantZusammenfassungService
     private static string BaueKontext(
         List<(string Id, string MandantId, DateTime SitzungStart, DateTime SitzungEnde, string Zusammenfassung, DateTime Erstellt)> chat,
         List<(string Id, string MandantId, string TitelKurz, string Text, DateTime Erstellt, DateTime Geaendert)> notizen,
-        List<(string Titel, string Pfad, string Text)> dokumente)
+        List<(string Titel, string Pfad, string Text)> dokumente,
+        List<(string Id, string MandantId, DateTime Datum, string StrukturiertJson, DateTime Erstellt)> gespraeche)
     {
         var sb = new StringBuilder();
         if (chat.Count > 0)
@@ -105,6 +112,16 @@ public class MandantZusammenfassungService
             sb.AppendLine("Chat-Zusammenfassungen:");
             foreach (var item in chat.OrderByDescending(c => c.SitzungEnde))
                 sb.AppendLine($"- {item.Zusammenfassung}");
+            sb.AppendLine();
+        }
+        if (gespraeche.Count > 0)
+        {
+            // Task #130: Gesprächsprotokolle (z.B. Whisper-Transkripte) gehören in denselben
+            // Mandanten-Kontext wie Chat/Dokumente, damit "Was haben wir beim letzten Gespräch
+            // besprochen?" über diese bestehende Kontextabfrage beantwortet werden kann.
+            sb.AppendLine("Gespräche:");
+            foreach (var item in gespraeche.OrderByDescending(g => g.Datum))
+                sb.AppendLine($"- {item.Datum:dd.MM.yyyy}: {GespraechStruktur.Parse(item.StrukturiertJson).AlsKurztext()}");
             sb.AppendLine();
         }
         if (notizen.Count > 0)
