@@ -126,7 +126,7 @@ class Neo4jService:
         # Read connection parameters from environment variables if not provided
         self.uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
         self.user = user or os.getenv("NEO4J_USER", "neo4j")
-        self.password = password or os.getenv("NEO4J_PASSWORD", "password")
+        self.password = password or os.getenv("NEO4J_PASSWORD", "lexwolf123")
         
         self.driver = None
     
