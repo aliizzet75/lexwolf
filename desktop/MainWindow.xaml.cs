@@ -291,6 +291,12 @@ document.addEventListener('click', function (e) {{
         dlg.ShowDialog();
     }
 
+    private void OnStatistikClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = new StatistikDialog(_db) { Owner = this };
+        dlg.ShowDialog();
+    }
+
     private void OnNotizenClick(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_activeMandantId)) return;
@@ -775,7 +781,7 @@ document.addEventListener('click', function (e) {{
             var gespraeche = await Task.Run(() => _db.GetGespraeche(mandantId), token).ConfigureAwait(false);
             var gespraechNachrichten = gespraeche
                 .Where(g => seit is null || g.Datum > seit)
-                .Select(g => (Role: "system", Content: $"🎙️ Gespräch vom {g.Datum:dd.MM.yyyy}: {GespraechStruktur.Parse(g.StrukturiertJson).AlsKurztext()}", Timestamp: g.Datum));
+                .Select(g => (Role: "system", Content: $"🎙️ Gespräch vom {g.Datum:dd.MM.yyyy}: {GespraechStruktur.Parse(g.StrukturiertJson).AlsKurztext()}", Timestamp: g.Datum, ConfidenceScore: (double?)null));
             nachrichten = nachrichten.Concat(gespraechNachrichten).OrderBy(n => n.Timestamp).ToList();
 
             token.ThrowIfCancellationRequested();
@@ -822,7 +828,7 @@ document.addEventListener('click', function (e) {{
                             AppendSystemMessage(kontextText);
                     }
 
-                    foreach (var (role, content, _) in anzuzeigendeNachrichten)
+                    foreach (var (role, content, _, confidenceScore) in anzuzeigendeNachrichten)
                     {
                         _history.Add(new ChatMessage(role, content));
                         switch (role.ToLowerInvariant())
@@ -840,7 +846,7 @@ document.addEventListener('click', function (e) {{
                                 else
                                 {
                                     if (!string.IsNullOrWhiteSpace(rest))
-                                        AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(rest)));
+                                        AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(rest), confidenceScore));
                                     // Zuordnung zur Datei ist nach Neustart weg -> nur Anzeige + Kopieren.
                                     if (entwurf is not null)
                                         EntwurfKarteAnlegen(entwurf, historie: true, mitRefresh: false);
@@ -1339,15 +1345,15 @@ document.addEventListener('click', function (e) {{
 
         try
         {
-            var (content, suggestedAction) = await PostChatAsync();
+            var (content, suggestedAction, confidence) = await PostChatAsync();
 
             _history.Add(new ChatMessage("assistant", content));
-            _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", content);
+            _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", content, confidence);
             // Versandfertiger Text -> Entwurfskarte (bei geöffnetem Mandanten sofort in
             // <Mandant>\Entwürfe abgelegt); der übrige Text bleibt eine Chat-Bubble.
             // Geöffnet wird nichts von selbst — das entscheidet der Anwalt in der Karte.
             var (rest, entwurf) = ChatEntwurfParser.Zerlege(content, suggestedAction);
-            if (!string.IsNullOrWhiteSpace(rest)) AppendAiMessage(rest);
+            if (!string.IsNullOrWhiteSpace(rest)) AppendAiMessage(rest, confidence);
             if (entwurf is not null) Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf));
 
             Dispatcher.Invoke(() => KopierenBtn.Visibility = Visibility.Visible);
@@ -1385,7 +1391,7 @@ document.addEventListener('click', function (e) {{
 
     // ── Chat-Backend ─────────────────────────────────────────────────────────
 
-    private async Task<(string content, string suggestedAction)> PostChatAsync()
+    private async Task<(string content, string suggestedAction, double confidence)> PostChatAsync()
     {
         // Früher standen hier zusätzlich "Suche in Rechtsdatenbank..." und
         // "Generiere juristische Antwort..." als eigene Schritte — beides pauschale
@@ -1454,11 +1460,14 @@ document.addEventListener('click', function (e) {{
         var root            = doc.RootElement;
         var content         = root.TryGetProperty("content",          out var c)  ? c.GetString()  ?? body  : body;
         var suggestedAction = root.TryGetProperty("suggested_action", out var sa) ? sa.GetString() ?? "frage" : "frage";
+        var confidence      = root.TryGetProperty("confidence_score", out var cs) && cs.ValueKind == JsonValueKind.Number
+            ? cs.GetDouble()
+            : 0.0;
 
         if (root.TryGetProperty("intent", out var ip))
             AddReasoning("🎯", $"Intent: {ip.GetString()}");
 
-        return (content, suggestedAction);
+        return (content, suggestedAction, confidence);
     }
 
     // ── UI Rendering ──────────────────────────────────────────────────────────
@@ -1558,13 +1567,13 @@ document.addEventListener('click', function (e) {{
         });
     }
 
-    private void AppendAiMessage(string text)
+    private void AppendAiMessage(string text, double? confidence = null)
     {
         Dispatcher.Invoke(() =>
         {
             if (_webViewInitialized)
             {
-                AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(text)));
+                AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(text), confidence));
                 RefreshChatWebView();
                 ScrollToBottom();
                 return;
