@@ -25,6 +25,27 @@ namespace LexWolf.Tests
             Assert.Contains("§ 1601 BGB", html);
         }
 
+        /// <summary>Task #80: eine konkrete Paragraphen-Referenz (mit Nummer) wird als
+        /// klickbarer Link gerendert, nicht nur als eingefärbter Text — sonst bliebe der
+        /// Klick wirkungslos. Der generische Klick-Handler in GetChatBaseHtml greift über
+        /// data-action/data-value, siehe MainWindow.OnChatWebMessage ("quelle").</summary>
+        [Fact]
+        public void Paragraph_Referenz_Ist_Klickbarer_Link()
+        {
+            var html = ChatHtmlRenderer.Render("Gemäß § 23 KSchG gilt eine Ausnahme.");
+            Assert.Contains("<a href='#' class='highlight-paragraph quelle-link' data-action='quelle' data-value='&#167; 23 KSchG'>§ 23 KSchG</a>", html);
+        }
+
+        /// <summary>Ein bloßes Gesetzeskürzel ohne Paragraphennummer lässt sich nicht
+        /// eindeutig auf einen Chunk auflösen -> bleibt reine Hervorhebung ohne Link.</summary>
+        [Fact]
+        public void Blosses_Gesetzeskuerzel_Ohne_Nummer_Ist_Nicht_Klickbar()
+        {
+            var html = ChatHtmlRenderer.Render("Das regelt grundsätzlich das BGB.");
+            Assert.Contains("<span class='highlight-paragraph'>BGB</span>", html);
+            Assert.DoesNotContain("data-action='quelle'", html);
+        }
+
         [Fact]
         public void Erkennt_Empfehlung_Und_Hebt_Sie_Hervor()
         {

@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private readonly List<ChatMessage> _history = new();
     private readonly LocalDb _db = new();
     private readonly ChatSummaryService _chatSummaryService;
+    private readonly QuellenangabeService _quellenangabeService;
     private readonly MandantAnalyseService _mandantAnalyseService;
     private readonly MandantZusammenfassungService _zusammenfassungService;
     private DokumentScanner? _scanner;
@@ -94,6 +95,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _chatSummaryService = new ChatSummaryService(_db, _http, BackendUrl);
+        _quellenangabeService = new QuellenangabeService(BackendUrl, _http);
         _mandantAnalyseService = new MandantAnalyseService(_db, _http, BackendUrl);
         _zusammenfassungService = new MandantZusammenfassungService(_db, _http, BackendUrl);
         _mandantAnalyseService.StatusChanged += (_, status) =>
@@ -1631,8 +1633,18 @@ document.addEventListener('click', function (e) {{
             using var doc = JsonDocument.Parse(e.WebMessageAsJson);
             var root = doc.RootElement;
             var action = root.TryGetProperty("action", out var a) ? a.GetString() : null;
-            var id = root.TryGetProperty("msg", out var m) && int.TryParse(m.GetString(), out var i) ? i : -1;
             var value = root.TryGetProperty("value", out var v) ? v.GetString() ?? "" : "";
+
+            // Task #80: Klick auf eine Inline-Quellenangabe (§23 KSchG, Art. 3 GG, ...) —
+            // hat keine Entwurfskarte dahinter (data-msg fehlt), deshalb vor dem
+            // Karten-Lookup behandeln, sonst würde der frühe Return unten greifen.
+            if (action == "quelle")
+            {
+                _ = ZeigeQuellenPopupAsync(value);
+                return;
+            }
+
+            var id = root.TryGetProperty("msg", out var m) && int.TryParse(m.GetString(), out var i) ? i : -1;
             if (!_karten.TryGetValue(id, out var karte)) return;
 
             switch (action)
@@ -1648,6 +1660,29 @@ document.addEventListener('click', function (e) {{
         {
             AppendSystemMessage($"Aktion fehlgeschlagen: {ex.Message}");
         }
+    }
+
+    /// <summary>Task #80: löst eine im Chat angeklickte Quellenangabe (z.B. "§ 23 KSchG")
+    /// über das Backend auf und zeigt sie im GesetzestextPopup — auch bei Fehlern (kein
+    /// Treffer, Backend nicht erreichbar) öffnet sich das Popup mit einem Hinweis, statt
+    /// den Klick wirkungslos zu lassen.</summary>
+    private async Task ZeigeQuellenPopupAsync(string referenz)
+    {
+        GesetzesChunk? chunk = null;
+        try
+        {
+            chunk = await _quellenangabeService.LadeChunkFuerReferenzAsync(referenz);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ZeigeQuellenPopupAsync] {ex.Message}");
+        }
+
+        Dispatcher.Invoke(() =>
+        {
+            var popup = new LexWolf.Dialogs.GesetzestextPopup(referenz, chunk) { Owner = this };
+            popup.ShowDialog();
+        });
     }
 
     // ── Entwurfskarten ──────────────────────────────────────────────────────
