@@ -52,3 +52,26 @@ def route_query(query_text: str) -> str:
     
     # Default to simple for everything else
     return 'simple'
+
+
+def needs_citation_traversal(query_text: str) -> bool:
+    """
+    Entscheidet, ob eine Anfrage den um Urteile/Begründungen erweiterten
+    Zitier-Graphen durchsuchen soll (T#294: ZITIERT/FOLGT/ERLAEUTERT-Kanten,
+    siehe services.neo4j_service und services.react_engine.traverse_citation_graph).
+
+    Unabhängig von route_query(), das nur entscheidet ob pgvector allein
+    reicht oder zusätzlich §-zu-§-Traversal (VERWEIST_AUF) via Neo4j nötig ist:
+    jede Anfrage mit mindestens einer konkreten §-Referenz profitiert vom
+    Zitier-Graphen (automatisch verknüpfte Urteile + Begründung finden) —
+    auch wenn route_query() sie als 'simple' einstuft (z.B. "Was besagt § 1
+    BGB?" bleibt für pgvector 'simple', soll aber trotzdem Urteile zu § 1 BGB
+    nachladen).
+
+    Args:
+        query_text (str): The user's query text
+
+    Returns:
+        bool: True wenn mindestens eine §-Referenz gefunden wurde
+    """
+    return len(extract_references(query_text)) > 0

@@ -62,19 +62,84 @@ def traverse_graph(paragraph_id: str, max_depth: int = 2) -> List[Dict]:
     if not neo4j_service.connect():
         return []
     try:
-        cypher_query = """
-        MATCH (p:Paragraph {id: $paragraph_id})-[:VERWEIST_AUF*1..$max_depth]->(q:Paragraph)
+        # Neo4j erlaubt keine Parameter für die Hop-Range in Variable-Length-
+        # Patterns ("Parameter maps cannot be used in MATCH patterns") — max_depth
+        # muss als literaler int in den Cypher-String eingebettet werden.
+        max_depth = max(1, int(max_depth))
+        cypher_query = f"""
+        MATCH (p:Paragraph {{id: $paragraph_id}})-[:VERWEIST_AUF*1..{max_depth}]->(q:Paragraph)
         WHERE p <> q
         RETURN DISTINCT q.id AS id, q.gesetz AS gesetz, q.paragraph_nr AS paragraph_nr, q.text AS text
         LIMIT 100
         """
-        params = {"paragraph_id": paragraph_id, "max_depth": max_depth}
+        params = {"paragraph_id": paragraph_id}
         results = neo4j_service.run_query(cypher_query, params)
         return results
     except Exception:
         return []
     finally:
         neo4j_service.close()
+
+
+# --- Multi-Hop-Traversal über den Zitier-Graphen (T#294) ---------------------
+#
+# Erweitert die bisherige reine §-zu-§-Traversal (traverse_graph, nur
+# VERWEIST_AUF) um die in T#293 eingeführten Kantentypen ZITIERT (Urteil->§),
+# FOLGT (Urteil->Urteil) und ERLAEUTERT (Begruendung->§), damit eine Anfrage
+# zu einem § automatisch verknüpfte Urteile UND deren Begründungen findet,
+# nicht nur weitere §§.
+
+MULTI_HOP_EDGE_TYPES = ["VERWEIST_AUF", "ZITIERT", "FOLGT", "ERLAEUTERT"]
+
+# M2-Prinzip: der Konfidenz-Score eines Treffers sinkt mit jedem zusätzlichen
+# Hop vom Ausgangs-§ — ein direkt zitierendes Urteil (hop=1) ist verlässlicher
+# als ein über FOLGT nur mittelbar verknüpftes Urteil (hop=2).
+HOP_CONFIDENCE_DECAY = 0.7
+
+
+def traverse_citation_graph(paragraph_nr: str, gesetz: str, max_depth: int = 2) -> List[Dict]:
+    """
+    Multi-Hop-Traversal über VERWEIST_AUF/ZITIERT/FOLGT/ERLAEUTERT ausgehend
+    von einem § (identifiziert über paragraph_nr+gesetz, wie in
+    neo4j_service.get_urteile_fuer_paragraph). Liefert pro Treffer:
+      - id, labels, node_type (Paragraph/Urteil/Begruendung)
+      - hop: kürzeste Distanz (Anzahl Kanten) vom Ausgangs-§
+      - confidence: HOP_CONFIDENCE_DECAY ** (hop - 1) (M2-Prinzip)
+    Gibt [] zurück wenn Neo4j nicht erreichbar ist oder die Query fehlschlägt.
+    """
+    max_depth = max(1, int(max_depth))
+    neo4j_service = Neo4jService()
+    if not neo4j_service.connect():
+        return []
+    try:
+        rel_types = "|".join(MULTI_HOP_EDGE_TYPES)
+        cypher_query = f"""
+        MATCH (p:Paragraph {{paragraph_nr: $nr, gesetz: $gesetz}})
+        MATCH path = (p)-[:{rel_types}*1..{max_depth}]-(n)
+        WHERE n <> p
+        WITH n, min(length(path)) AS hop
+        RETURN DISTINCT n.id AS id, labels(n) AS labels, hop,
+               n.gesetz AS gesetz, n.paragraph_nr AS paragraph_nr,
+               n.text AS text, n.title AS title, n.gericht AS gericht,
+               n.datum AS datum, n.aktenzeichen AS aktenzeichen
+        ORDER BY hop
+        LIMIT 100
+        """
+        results = neo4j_service.run_query(cypher_query, {"nr": paragraph_nr, "gesetz": gesetz})
+    except Exception as e:
+        logger.warning(f"Multi-Hop-Traversal für §{paragraph_nr} {gesetz} fehlgeschlagen: {e}")
+        return []
+    finally:
+        neo4j_service.close()
+
+    enriched = []
+    for row in results:
+        hop = row.get("hop") or 1
+        confidence = round(HOP_CONFIDENCE_DECAY ** max(hop - 1, 0), 4)
+        labels = row.get("labels") or []
+        node_type = next((l for l in labels if l in ("Paragraph", "Urteil", "Begruendung")), (labels[0] if labels else "Unknown"))
+        enriched.append({**row, "hop": hop, "confidence": confidence, "node_type": node_type})
+    return enriched
 
 
 class ReActEngine:
@@ -192,9 +257,37 @@ class ReActEngine:
                 except Exception as _e:
                     logger.warning(f'Reranking im Tief-Modus fehlgeschlagen: {_e}')
 
+        # Multi-Hop-Citation-Traversal (T#294): erweitert die reine §-zu-§-Suche
+        # (route_query/HybridSearchService._fetch_graph_neighbors, nur VERWEIST_AUF)
+        # um die T#293-Kantentypen ZITIERT/FOLGT/ERLAEUTERT, damit eine Anfrage zu
+        # einem § automatisch verknüpfte Urteile und deren Begründungen findet.
+        # Gated über self.use_graph (von api/routes/search.py: schnell=False,
+        # tief=True); Default True, wenn der Flag nicht gesetzt ist (z.B. bei
+        # direkten run_loop()-Aufrufen ohne Route).
+        graph_context: List[Dict] = []
+        if getattr(self, 'use_graph', True):
+            try:
+                from services.query_router import needs_citation_traversal
+                from services.paragraph_parser import extract_references
+
+                if needs_citation_traversal(initial_query):
+                    seen_node_ids = set()
+                    for ref in extract_references(initial_query):
+                        hits = traverse_citation_graph(ref['paragraph_nr'], ref['gesetz'])
+                        for hit in hits:
+                            hid = hit.get('id')
+                            if hid is not None:
+                                if hid in seen_node_ids:
+                                    continue
+                                seen_node_ids.add(hid)
+                            graph_context.append(hit)
+            except Exception as _e:
+                logger.warning(f'Multi-Hop-Citation-Traversal fehlgeschlagen: {_e}')
+
         return {
             'accumulated_chunks': accumulated_chunks,
             'gegensuche_chunks': gegensuche_chunks,
+            'graph_context': graph_context,
             'rounds': round_num,
             'vollstaendig': vollstaendig,
         }

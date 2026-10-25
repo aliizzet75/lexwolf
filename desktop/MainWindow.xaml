@@ -41,6 +41,11 @@
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
                         FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
                         ToolTip="Eigene Feature-Wünsche und laufende Entwicklungen anzeigen"/>
+                <Button x:Name="ReActBtn" Content="🧠 Live-Suche" Click="OnReActClick"
+                        DockPanel.Dock="Right"
+                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
+                        FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
+                        ToolTip="Live-Denkprozess der Rechtsrecherche anzeigen (Suchschritte, Konfidenz)"/>
                 
                 <!-- FolderPicker-Button für Verzeichnis-Scanning -->
                 <Button x:Name="ScanFolderBtn" Content="📂 Ordner scannen" Click="OnScanFolderClicked"
