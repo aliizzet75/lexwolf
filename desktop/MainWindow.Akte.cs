@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -17,6 +18,7 @@ public partial class MainWindow
 {
     private AkteService? _akte;
     private PostfachService? _postfach;
+    private GespraechsRecorder? _gespraechsRecorder;
 
     private void InitAkte()
     {
@@ -385,6 +387,83 @@ public partial class MainWindow
     {
         if (!MandantNoetig()) return;
         new SchriftsatzDialog(_db, BackendUrl, _activeMandantId!, _activeMandantName ?? "", _settings) { Owner = this }.ShowDialog();
+    }
+
+    private async void OnGespraechClick(object sender, RoutedEventArgs e)
+    {
+        if (_gespraechsRecorder is { IsAufnahme: true })
+        {
+            await BeendeGespraechsaufnahmeAsync();
+            return;
+        }
+
+        if (!MandantNoetig()) return;
+
+        if (!DiktatService.WhisperExists(_settings))
+        {
+            System.Windows.MessageBox.Show(this,
+                "Kein Whisper-Modell installiert — Spracheingabe (Einstellungen → Spracheingabe) muss erst eingerichtet sein, bevor Gespräche transkribiert werden können.",
+                "Gespräch aufnehmen", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        _gespraechsRecorder ??= new GespraechsRecorder();
+        try
+        {
+            var gestartet = GespraechEinwilligungDialog.StarteAufnahmeMitEinwilligung(
+                this, _db, _activeMandantId!, _activeMandantName ?? "", _gespraechsRecorder);
+            if (!gestartet) return;
+        }
+        catch (InvalidOperationException ex)
+        {
+            System.Windows.MessageBox.Show(this, ex.Message, "Gespräch aufnehmen",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        GespraechBtn.Content = "⏹ Aufnahme beenden";
+        AddReasoning("🎙", $"Gesprächsaufnahme gestartet — Mandant „{_activeMandantName}“.");
+    }
+
+    /// <summary>Beendet die laufende Gesprächsaufnahme, transkribiert lokal (Whisper),
+    /// strukturiert das Transkript über das Backend (T#129) und zeigt die daraus
+    /// abgeleiteten Vorschläge für die nächsten Schritte (T#130/T#131).</summary>
+    private async Task BeendeGespraechsaufnahmeAsync()
+    {
+        if (_gespraechsRecorder is null) return;
+        var mandantId = _activeMandantId;
+        GespraechBtn.IsEnabled = false;
+        GespraechBtn.Content = "🎙 Gespräch aufnehmen";
+        AddReasoning("🎙", "Aufnahme beendet — transkribiere lokal...");
+
+        try
+        {
+            var transkript = await _gespraechsRecorder.StoppAufnahmeAsync(DiktatService.WhisperPath(_settings));
+            if (string.IsNullOrWhiteSpace(transkript))
+            {
+                AddReasoning("🎙", "Kein Text erkannt — nichts gespeichert.");
+                return;
+            }
+
+            if (mandantId is not null)
+                _db.InsertGespraech(mandantId, DateTime.Now, JsonSerializer.Serialize(new { transkript }));
+
+            var strukturiert = await VorschlaegeService.AnalysiereTranskriptAsync(_http, BackendUrl, transkript);
+            var themen = VorschlaegeService.LeseThemen(strukturiert);
+            AddReasoning("📋", themen.Count > 0 ? $"Themen: {string.Join(", ", themen)}" : "Transkript gespeichert.");
+
+            var vorschlaege = await VorschlaegeService.HoleVorschlaegeAsync(_http, BackendUrl, strukturiert);
+            if (vorschlaege.Count > 0)
+                new VorschlaegeDialog(vorschlaege, _http, BackendUrl) { Owner = this }.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            AddReasoning("⚠️", $"Gespräch konnte nicht verarbeitet werden: {ex.Message}");
+        }
+        finally
+        {
+            GespraechBtn.IsEnabled = true;
+        }
     }
 
     private void OnRechnerClick(object sender, RoutedEventArgs e)
