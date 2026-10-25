@@ -69,6 +69,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.59.0",
         "M9 (Whisper-Transkription, DSGVO-Einwilligung, Gespräch-Strukturierung, Post-Gespräch-Vorschläge) wurde gestern nach main gemerged, aber nie released — der Versionsbump ging auf dem verwaisten M8-Bran",
     ),
+    (
+        "0.60.0",
+        "GespraechsRecorder/Einwilligungsdialog/VorschlaegeService (T#127-131) waren implementiert, aber nie an die UI angeschlossen. Button \"Gespräch aufnehmen\" neben \"Schriftsatz\" ergänzt und kompletten Pfad",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
