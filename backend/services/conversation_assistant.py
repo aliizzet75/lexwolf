@@ -386,6 +386,127 @@ class ConversationAssistant:
             "naechste_schritte": naechste_schritte,
         }
 
+    # ------------------------------------------------------------------
+    # Post-Gespräch-Vorschläge (T#131, Pilot-Scope: 2 Vorschlags-Typen)
+    # ------------------------------------------------------------------
+
+    VORSCHLAG_TYP_FRISTENNOTIZ = "fristennotiz"
+    VORSCHLAG_TYP_EMAIL_ENTWURF = "email_entwurf"
+
+    def generate_suggestions(
+        self, strukturiert: Dict, mandant_history: Optional[List] = None
+    ) -> List[Dict]:
+        """
+        Erzeugt konkrete Vorschläge für die nächsten Schritte nach einem
+        Mandantengespräch, auf Basis des von analyze_transcript() erzeugten
+        strukturierten Ergebnisses (fristen, aufgaben, themen, naechste_schritte).
+
+        Pilot-Scope (T#131): 2 Vorschlags-Typen statt der ursprünglich
+        geplanten 3+ — Fristennotiz und E-Mail-Entwurf. Ein Klage-Vorschlag
+        kann später ergänzt werden.
+
+        Jeder Vorschlag ist ein Dict {"typ", "titel", "text", "metadata"}.
+        Der Anwalt entscheidet im WPF-Dialog mit Ja/Nein/Geändert; diese
+        Entscheidung wird NICHT hier verarbeitet, sondern über
+        /conversation/suggestions/decision an style_learner/feedback_service
+        übergeben (siehe api/conversation.py).
+        """
+        mandant_history = mandant_history or []
+        strukturiert = strukturiert or {}
+        vorschlaege: List[Dict] = []
+
+        fristen = strukturiert.get("fristen") or []
+        if fristen:
+            vorschlaege.append(self._erzeuge_fristennotiz_vorschlag(fristen))
+
+        vorschlaege.append(self._erzeuge_email_entwurf_vorschlag(strukturiert, mandant_history))
+
+        return vorschlaege
+
+    def _erzeuge_fristennotiz_vorschlag(self, fristen: List[Dict]) -> Dict:
+        """Vorschlags-Typ 1: Fristennotiz für die wichtigste erkannte Frist."""
+        frist = fristen[0] or {}
+        datum = (frist.get("datum") or "unbekanntes Datum").strip()
+        beschreibung = (frist.get("beschreibung") or "").strip()
+
+        prompt = (
+            "Formuliere eine kurze, präzise Fristennotiz für die Anwalts-Akte, "
+            "basierend auf folgenden Angaben aus einem Mandantengespräch.\n"
+            f"Datum/Frist: {datum}\n"
+            f"Beschreibung: {beschreibung or 'keine weiteren Angaben'}\n\n"
+            "Antworte AUSSCHLIESSLICH mit dem Notiz-Text (1-2 Sätze), ohne "
+            "Einleitung oder Erklärung."
+        )
+        try:
+            from services.llm_client import ask_llm
+
+            text = ask_llm(prompt, max_tokens=200).strip()
+            if not text:
+                raise ValueError("Leere LLM-Antwort")
+        except Exception as e:
+            logger.warning(
+                f"LLM-Generierung der Fristennotiz fehlgeschlagen ({e}), Fallback auf Vorlage"
+            )
+            text = f"Frist: {datum}" + (f" – {beschreibung}" if beschreibung else "")
+
+        return {
+            "typ": self.VORSCHLAG_TYP_FRISTENNOTIZ,
+            "titel": "Fristennotiz anlegen?",
+            "text": text,
+            "metadata": {"datum": datum, "beschreibung": beschreibung, "alle_fristen": fristen},
+        }
+
+    def _erzeuge_email_entwurf_vorschlag(
+        self, strukturiert: Dict, mandant_history: List
+    ) -> Dict:
+        """Vorschlags-Typ 2: Kurzer E-Mail-Entwurf an den Mandanten als Zusammenfassung."""
+        themen = strukturiert.get("themen") or []
+        naechste_schritte = strukturiert.get("naechste_schritte") or []
+        aufgaben = strukturiert.get("aufgaben") or []
+        aufgaben_text = ", ".join(a.get("was", "") for a in aufgaben if a.get("was"))
+
+        verlauf_kontext = ""
+        if mandant_history:
+            letzte = mandant_history[-3:]
+            verlauf_kontext = "\n".join(str(e) for e in letzte)
+
+        prompt = (
+            "Formuliere einen kurzen, höflichen E-Mail-Entwurf an den Mandanten als "
+            "Zusammenfassung des Gesprächs und der nächsten Schritte. Sprich den "
+            "Mandanten NICHT mit echtem Namen an, sondern mit dem Platzhalter "
+            "'[Mandant]'.\n\n"
+            f"Themen: {', '.join(themen) or 'keine'}\n"
+            f"Nächste Schritte: {', '.join(naechste_schritte) or 'keine'}\n"
+            f"Aufgaben: {aufgaben_text or 'keine'}\n"
+            f"Bisheriger Mandanten-Verlauf (Kontext, optional): {verlauf_kontext or 'keiner'}\n\n"
+            "Antworte AUSSCHLIESSLICH mit dem E-Mail-Text (Anrede, Kurztext, "
+            "Grußformel), ohne weitere Erklärung."
+        )
+        try:
+            from services.llm_client import ask_llm
+
+            text = ask_llm(prompt, max_tokens=400).strip()
+            if not text:
+                raise ValueError("Leere LLM-Antwort")
+        except Exception as e:
+            logger.warning(
+                f"LLM-Generierung des E-Mail-Entwurfs fehlgeschlagen ({e}), Fallback auf Vorlage"
+            )
+            schritte_text = "; ".join(naechste_schritte) or "weitere Abstimmung folgt"
+            text = (
+                "Sehr geehrte/r [Mandant],\n\n"
+                "vielen Dank für das heutige Gespräch. Als nächste Schritte haben wir "
+                f"vereinbart: {schritte_text}.\n\n"
+                "Mit freundlichen Grüßen"
+            )
+
+        return {
+            "typ": self.VORSCHLAG_TYP_EMAIL_ENTWURF,
+            "titel": "E-Mail-Entwurf an Mandant senden?",
+            "text": text,
+            "metadata": {"themen": themen, "naechste_schritte": naechste_schritte},
+        }
+
     def anonymize_conversation(self, conversation_data: Dict) -> Dict:
         """
         Anonymize conversation data for server transmission

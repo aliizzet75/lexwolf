@@ -73,7 +73,10 @@ class StyleProfile(Base):
     
     # A/B-Test State pro Account (T#90)
     ab_test_json = Column(Text, nullable=True)  # JSON: laufende Tests + implizite Praeferenzen
-    
+
+    # Post-Gespräch-Vorschläge: Ja/Nein/Geändert-Zähler pro Vorschlags-Typ (T#131)
+    vorschlag_feedback_json = Column(Text, nullable=True)  # JSON
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

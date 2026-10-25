@@ -51,6 +51,7 @@
     <Compile Include="../Services/Formularwerte.cs" Link="Formularwerte.cs" />
     <Compile Include="../Services/MsgKonverter.cs" Link="MsgKonverter.cs" />
     <Compile Include="../Services/GespraechsRecorder.cs" Link="GespraechsRecorder.cs" />
+    <Compile Include="../Services/VorschlaegeService.cs" Link="VorschlaegeService.cs" />
   </ItemGroup>
 
   <ItemGroup>
