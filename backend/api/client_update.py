@@ -73,6 +73,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.60.0",
         "GespraechsRecorder/Einwilligungsdialog/VorschlaegeService (T#127-131) waren implementiert, aber nie an die UI angeschlossen. Button \"Gespräch aufnehmen\" neben \"Schriftsatz\" ergänzt und kompletten Pfad",
     ),
+    (
+        "0.61.0",
+        "Aufnahme-Dialog mit Timer, Wolf-Animation und großem Stop-Knopf statt Button-Toggle. Whisper-Modell laedt sich jetzt direkt ueber den Gespraech-Button herunter. Kurze Zusammenfassung vor den Vorschlae",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
