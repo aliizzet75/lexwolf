@@ -1,0 +1,89 @@
+<Window x:Class="LexWolf.Dialogs.StatistikDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LexWolf — Statistik"
+        Icon="/Assets/lexwolf.ico"
+        Width="560" Height="420"
+        MinWidth="420" MinHeight="320"
+        Background="#0d1117"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="Konfidenz-Statistik"
+                   Foreground="#e6edf3"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,12"/>
+
+        <Border Grid.Row="1"
+                Background="#161b22"
+                BorderBrush="#30363d"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16"
+                Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock Text="Durchschnittliche Konfidenz der letzten 20 Antworten"
+                           Foreground="#8b949e"
+                           FontSize="12"/>
+                <TextBlock x:Name="DurchschnittText"
+                           Text="—"
+                           FontSize="32"
+                           FontWeight="Bold"
+                           Margin="0,6,0,0"/>
+                <TextBlock x:Name="AnzahlText"
+                           Text=""
+                           Foreground="#8b949e"
+                           FontSize="11"
+                           Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="#161b22"
+                BorderBrush="#30363d"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16,16,16,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Trend (älteste → neueste Antwort)"
+                           Foreground="#8b949e" FontSize="12" Margin="0,0,0,10"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="TrendItems">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Width="22" Margin="2,0" VerticalAlignment="Bottom">
+                                    <Rectangle Width="14"
+                                               Height="{Binding BalkenHoehe}"
+                                               Fill="{Binding Farbe}"
+                                               RadiusX="2" RadiusY="2"
+                                               VerticalAlignment="Bottom"
+                                               HorizontalAlignment="Center"
+                                               ToolTip="{Binding Tooltip}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

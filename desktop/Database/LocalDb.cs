@@ -108,6 +108,10 @@ namespace LexWolf.Database
             // Bestehende Datenbanken (vor "typ"-Spalte) per ALTER TABLE nachziehen —
             // CREATE TABLE IF NOT EXISTS fasst eine schon vorhandene Tabelle nicht an.
             MigriereSpalteFallsFehlt(conn, "dokumente", "typ", "TEXT");
+            // Task #282: Konfidenz-Score je Chat-Antwort, für das Konfidenz-Badge im
+            // Chat und die Statistik-Seite (Durchschnitt der letzten N Antworten).
+            // Nur für role='assistant' gesetzt; bei Nutzer-Nachrichten bleibt es NULL.
+            MigriereSpalteFallsFehlt(conn, "chat_history", "confidence_score", "REAL");
             InitializeAkte(conn);
             InitializeEinwilligung(conn);
         }
@@ -365,34 +369,63 @@ namespace LexWolf.Database
 
         // --- Chat History ---
 
-        public void AddChatMessage(string mandantId, string role, string content)
+        public void AddChatMessage(string mandantId, string role, string content, double? confidenceScore = null)
         {
             using var conn = GetConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO chat_history (id, mandant_id, role, content, timestamp)
-                VALUES ($id, $mandant_id, $role, $content, $timestamp);
+                INSERT INTO chat_history (id, mandant_id, role, content, timestamp, confidence_score)
+                VALUES ($id, $mandant_id, $role, $content, $timestamp, $confidence_score);
             ";
             cmd.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
             cmd.Parameters.AddWithValue("$mandant_id", mandantId);
             cmd.Parameters.AddWithValue("$role", role);
             cmd.Parameters.AddWithValue("$content", content);
             cmd.Parameters.AddWithValue("$timestamp", DateTime.UtcNow.ToString("o"));
+            cmd.Parameters.AddWithValue("$confidence_score", (object?)confidenceScore ?? DBNull.Value);
             cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>Konfidenz-Score der letzten <paramref name="anzahl"/> Chat-Antworten
+        /// (role='assistant', über alle Mandanten hinweg — die Statistik-Seite zeigt einen
+        /// globalen Trend, keinen pro-Mandant-Wert), chronologisch aufsteigend für die
+        /// Trend-Anzeige. Antworten ohne Score (z.B. bei Backend-Fehler) werden ausgelassen.</summary>
+        public System.Collections.Generic.List<(double Score, DateTime Timestamp)> GetLetzteKonfidenzWerte(int anzahl = 20)
+        {
+            var result = new System.Collections.Generic.List<(double, DateTime)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT confidence_score, timestamp FROM chat_history
+                WHERE role = 'assistant' AND confidence_score IS NOT NULL
+                ORDER BY timestamp DESC
+                LIMIT $anzahl;
+            ";
+            cmd.Parameters.AddWithValue("$anzahl", anzahl);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add((
+                    reader.GetDouble(0),
+                    DateTime.Parse(reader.GetString(1), null, System.Globalization.DateTimeStyles.RoundtripKind)
+                ));
+            }
+            result.Reverse();
+            return result;
         }
 
         /// <summary>Chat-Nachrichten eines Mandanten seit einem Zeitpunkt (exklusiv), oder
         /// der komplette Verlauf wenn <paramref name="seit"/> null ist. Wird vom
         /// ChatSummaryService genutzt, um nur den Teil des Verlaufs zu summarisieren,
         /// der noch nicht in einer früheren Zusammenfassung erfasst wurde.</summary>
-        public System.Collections.Generic.List<(string Role, string Content, DateTime Timestamp)> GetChatHistorySeit(
+        public System.Collections.Generic.List<(string Role, string Content, DateTime Timestamp, double? ConfidenceScore)> GetChatHistorySeit(
             string mandantId, DateTime? seit)
         {
-            var result = new System.Collections.Generic.List<(string, string, DateTime)>();
+            var result = new System.Collections.Generic.List<(string, string, DateTime, double?)>();
             using var conn = GetConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                SELECT role, content, timestamp FROM chat_history
+                SELECT role, content, timestamp, confidence_score FROM chat_history
                 WHERE mandant_id = $mandantId
                   AND ($seit IS NULL OR timestamp > $seit)
                 ORDER BY timestamp ASC;
@@ -405,7 +438,8 @@ namespace LexWolf.Database
                 result.Add((
                     reader.GetString(0),
                     reader.GetString(1),
-                    DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind)
+                    DateTime.Parse(reader.GetString(2), null, System.Globalization.DateTimeStyles.RoundtripKind),
+                    reader.IsDBNull(3) ? (double?)null : reader.GetDouble(3)
                 ));
             }
             return result;

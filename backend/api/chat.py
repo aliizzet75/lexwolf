@@ -7,10 +7,11 @@ import logging
 import asyncio
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from services.search_service import HybridSearchService
 from services.llm_client import ask_llm
+from services.quality_verification import QualityVerificationService
 from api.ask import _direct_paragraph_search
 from api.chat_prompt import (action_for_response, build_system_prompt, detect_intent, format_chunks,
                              format_zitatpruefung)
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 
 _search_service = None
+_quality_service = None
 
 
 def _get_search():
@@ -27,6 +29,13 @@ def _get_search():
     if _search_service is None:
         _search_service = HybridSearchService()
     return _search_service
+
+
+def _get_quality_service() -> QualityVerificationService:
+    global _quality_service
+    if _quality_service is None:
+        _quality_service = QualityVerificationService()
+    return _quality_service
 
 
 class ChatMessage(BaseModel):
@@ -39,10 +48,21 @@ class ChatRequest(BaseModel):
     mandant_context: Optional[str] = None
 
 
+class QuellenCheckItem(BaseModel):
+    """Ergebnis der Belegprüfung für ein einzelnes Zitat (§, Rechtsprechung oder Aktendokument)."""
+    zitat: str
+    geprueft: bool  # wurde automatisiert gegen die Datenbank geprüft?
+    existiert: bool  # Norm/Entscheidung/Dokument in der Datenbank vorhanden?
+    inhalt_stimmt: bool  # entspricht das zitierte Detail (Paragraf/Fundstelle) dem DB-Eintrag?
+    hinweis: Optional[str] = None
+
+
 class ChatResponse(BaseModel):
     content: str
     intent: str
     suggested_action: str
+    confidence_score: float
+    quellen_check: List[QuellenCheckItem] = []
 
 
 def _search_chunks(query: str) -> str:
@@ -80,6 +100,37 @@ def _looks_like_reasoning_leak(text: str) -> bool:
         return False
     lower = text.lower()
     return sum(lower.count(m) for m in _REASONING_LEAK_MARKERS) >= 2
+
+
+def _status_zu_flags(status: str, hinweis: Optional[str] = None) -> Tuple[bool, bool, bool]:
+    """Übersetzt den von api.akte.pruefe_belege gelieferten Status-String in
+    (geprueft, existiert, inhalt_stimmt). 'bitte prüfen' heißt je nach Hinweis
+    entweder 'automatisch nicht prüfbar' (Art.-Zitate) oder 'geprüft, aber nicht
+    in der Datenbank gefunden' (Rechtsprechung)."""
+    if status == "geprüft":
+        return True, True, True
+    if status in ("nicht gefunden", "nicht in Datenbank", "Dokument existiert nicht"):
+        return True, False, False
+    if status == "bitte prüfen" and hinweis == "nicht in Datenbank":
+        return True, False, False
+    return False, False, False  # "bitte prüfen" (Art.) oder "nicht prüfbar"
+
+
+def _quellen_check_aus_belegen(belege: list) -> List[QuellenCheckItem]:
+    """Baut die pro-Antwort-Quellen-Check-Liste aus den bereits für die
+    Zitatprüfung berechneten Belegen (api.akte.pruefe_belege) — keine
+    zusätzlichen DB-Abfragen nötig."""
+    items = []
+    for b in belege:
+        geprueft, existiert, inhalt_stimmt = _status_zu_flags(b.get("status", ""), b.get("hinweis"))
+        items.append(QuellenCheckItem(
+            zitat=b["zitat"],
+            geprueft=geprueft,
+            existiert=existiert,
+            inhalt_stimmt=inhalt_stimmt,
+            hinweis=b.get("hinweis"),
+        ))
+    return items
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -132,12 +183,29 @@ async def chat(request: ChatRequest) -> ChatResponse:
     intent = detect_intent(last_user_msg)
     suggested_action = action_for_response(content, intent)
 
-    # 8. Zitierte Normen/Aktenzeichen gegen die Datenbank prüfen (wie beim Schriftsatz)
+    # 8. Zitierte Normen/Aktenzeichen gegen die Datenbank prüfen (wie beim Schriftsatz).
+    # belege wird auch für das quellen_check-Feld der Response weiterverwendet.
+    belege = []
     try:
         from api.akte import pruefe_belege
-        content += format_zitatpruefung(await asyncio.to_thread(pruefe_belege, content, 0))
+        belege = await asyncio.to_thread(pruefe_belege, content, 0)
+        content += format_zitatpruefung(belege)
     except Exception as e:
         logger.warning(f"Zitatprüfung im Chat fehlgeschlagen: {e}")
+
+    # 9. Qualitätsmetriken (M3 LLM-as-Judge-Pipeline) pro Antwort — auf dem
+    # reinen LLM-Content berechnet, bevor Zitatprüfung/Disclaimer angehängt werden,
+    # sonst würden die eigenen "✓ §… gefunden"-Zeilen die Zitat-Extraktion verzerren.
+    confidence_score = 0.0
+    try:
+        quality_result = await asyncio.to_thread(
+            _get_quality_service().verify_generated_content, content
+        )
+        confidence_score = quality_result.get("quality_score", 0.0)
+    except Exception as e:
+        logger.warning(f"Qualitätsprüfung im Chat fehlgeschlagen: {e}")
+
+    quellen_check = _quellen_check_aus_belegen(belege)
 
     from services.llm_client import using_temporary_test_backend, TEST_MODE_DISCLAIMER
     if using_temporary_test_backend():
@@ -147,4 +215,6 @@ async def chat(request: ChatRequest) -> ChatResponse:
         content=content,
         intent=intent,
         suggested_action=suggested_action,
+        confidence_score=confidence_score,
+        quellen_check=quellen_check,
     )

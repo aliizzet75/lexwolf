@@ -191,15 +191,33 @@ public static class ChatHtmlRenderer
         return html;
     }
 
+    /// <summary>Task #282: Ampel-Farbe (grün/gelb/rot) für einen confidence_score aus der
+    /// /chat-Antwort des Backends. Gleiche Schwellen wie desktop/confidence_coloring.py
+    /// (ConfidenceColorizer.score_to_color), damit Satz-Ebene und Antwort-Badge konsistent
+    /// einfärben: &gt;0.8 grün, &gt;=0.5 gelb, sonst rot.</summary>
+    public static string ConfidenceColor(double score) =>
+        score > 0.8 ? "green" : score >= 0.5 ? "yellow" : "red";
+
+    private static string ConfidenceBadgeHtml(double confidence)
+    {
+        var color = ConfidenceColor(confidence);
+        var pct = (int)Math.Round(confidence * 100);
+        return $"<span class='confidence-badge confidence-{color}' title='Konfidenz: {pct}%'>{pct}%</span>";
+    }
+
     /// <summary>
     /// Baut eine vollständige Chat-Bubble aus einem KI-Text. Entwürfe (Schreiben,
     /// E-Mails) stehen nicht hier, sondern in einer eigenen Karte (WrapEntwurfKarte).
+    /// <paramref name="confidence"/> ist der confidence_score der /chat-Antwort (0..1);
+    /// null (z.B. historische Nachrichten ohne gespeicherten Score) zeigt kein Badge.
     /// </summary>
-    public static string WrapAiBubble(string html)
+    public static string WrapAiBubble(string html, double? confidence = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("<div class='ai-message'>");
         sb.AppendLine("  <div class='ai-bubble'>");
+        if (confidence.HasValue)
+            sb.AppendLine(ConfidenceBadgeHtml(confidence.Value));
         sb.AppendLine(html);
         sb.AppendLine("  </div>");
         sb.AppendLine("</div>");
@@ -346,6 +364,13 @@ public static class ChatHtmlRenderer
             .highlight-frist {{ color: #ff7b72; font-weight: 700; text-decoration: underline; }}
             .highlight-paragraph {{ color: #79c0ff; font-weight: 600; }}
             .highlight-empfehlung {{ color: #e8a838; font-weight: 700; }}
+
+            .confidence-badge {{ display: inline-block; float: right; margin: 0 0 8px 10px; padding: 2px 9px;
+                                  border-radius: 10px; font-size: {Math.Max(10, _outputFontSize - 2)}px;
+                                  font-weight: 700; font-family: {_outputFontFamily}; }}
+            .confidence-badge.confidence-green {{ background: #2ea04326; color: #3fb950; }}
+            .confidence-badge.confidence-yellow {{ background: #d2992226; color: #e8a838; }}
+            .confidence-badge.confidence-red {{ background: #f8514926; color: #ff7b72; }}
         </style>";
     }
 }
