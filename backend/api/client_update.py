@@ -81,6 +81,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.62.0",
         "Nutzer-Feedback zur Gespräch-Aufnahme: Dialog verschwand ohne Hinweis waehrend Transkription/Strukturierung (jetzt bitte-warten-Zustand). Gespraechsprotokoll und angenommene Vorschlaege (Fristennotiz/",
     ),
+    (
+        "0.63.0",
+        "Nutzer-Feedback: Vorschlaege-Textbox blieb klein trotz maximiertem Fenster (MaxHeight entfernt). Speicher-Fehler bei Gespraechsprotokoll/E-Mail-Entwurf gingen nur ins Log (jetzt laute Meldung, Abbruch",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
