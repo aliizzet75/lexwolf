@@ -55,6 +55,7 @@ class QuellenCheckItem(BaseModel):
     existiert: bool  # Norm/Entscheidung/Dokument in der Datenbank vorhanden?
     inhalt_stimmt: bool  # entspricht das zitierte Detail (Paragraf/Fundstelle) dem DB-Eintrag?
     hinweis: Optional[str] = None
+    chunk_id: Optional[int] = None  # id des zugehörigen legal_chunks-Eintrags (T#296), Positionsangabe der Quelle
 
 
 class ChatResponse(BaseModel):
@@ -129,6 +130,7 @@ def _quellen_check_aus_belegen(belege: list) -> List[QuellenCheckItem]:
             existiert=existiert,
             inhalt_stimmt=inhalt_stimmt,
             hinweis=b.get("hinweis"),
+            chunk_id=b.get("chunk_id"),
         ))
     return items
 

@@ -40,6 +40,7 @@ class Source(BaseModel):
     date: Optional[str] = None
     case_number: Optional[str] = None
     excerpt: str
+    chunk_id: Optional[int] = None  # id des legal_chunks-Eintrags (T#296), Positionsangabe der Quelle
 
 
 class AskResponse(BaseModel):
@@ -722,6 +723,7 @@ async def ask(request: AskRequest):
             date=c.get("date"),
             case_number=c.get("case_number"),
             excerpt=(c.get("text") or "")[:200],
+            chunk_id=c.get("id"),
         ))
 
     duration_ms = int((time.monotonic() - t0) * 1000)
