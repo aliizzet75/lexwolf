@@ -5,6 +5,7 @@ from typing import List, Dict, Set
 from crawlers.gesetze_crawler import GesetzeImInternetCrawler
 from crawlers.ris_crawler import RisCrawler, DEFAULT_FIRM_RECHTSGEBIETE
 from crawlers.openjur_crawler import OpenJurCrawler
+from crawlers.drucksachen_crawler import DrucksachenCrawler
 from services.embedding_service import EmbeddingService, MockEmbeddingService
 from services.database_service import DatabaseService
 from services.neo4j_service import Neo4jService
@@ -33,6 +34,9 @@ RIS_DAYS_PRIORITY = int(os.getenv("LEXWOLF_RIS_DAYS_PRIORITY", "30"))
 # aufgefüllt, die über das RIS-Feed-Fenster hinausgehen.
 BGH_BACKFILL_DAYS = int(os.getenv("LEXWOLF_BGH_BACKFILL_DAYS", "365"))
 BGH_BACKFILL_MAX_RESULTS = int(os.getenv("LEXWOLF_BGH_BACKFILL_MAX_RESULTS", "50"))
+
+# Mindestanzahl §§, für die drucksachen_crawler eine Gesetzesbegründung liefern soll (T#291).
+BEGRUENDUNGEN_TOP_N = int(os.getenv("LEXWOLF_BEGRUENDUNGEN_TOP_N", "50"))
 
 
 def derive_firm_legal_fields(database_service: DatabaseService) -> Set[str]:
@@ -86,6 +90,7 @@ class LegalDatabaseCrawler:
         self.gesetze_crawler = GesetzeImInternetCrawler()
         self.ris_crawler = RisCrawler()
         self.openjur_crawler = OpenJurCrawler()
+        self.drucksachen_crawler = DrucksachenCrawler()
         self.embedding_service = EmbeddingService()
         self.database_service = DatabaseService()
         self.firm_legal_fields = derive_firm_legal_fields(self.database_service)
@@ -95,7 +100,7 @@ class LegalDatabaseCrawler:
         Gibt Statistik-Dict zurück (für Erfolgs-/Fehler-Benachrichtigung)."""
         logger.info("Starting legal database crawl...")
         all_new_chunks = []
-        stats = {"gesetze_neu": 0, "rechtsprechung_neu": 0, "errors": []}
+        stats = {"gesetze_neu": 0, "rechtsprechung_neu": 0, "begruendungen_neu": 0, "errors": []}
 
         logger.info("Crawling gesetze-im-internet.de...")
         try:
@@ -145,6 +150,32 @@ class LegalDatabaseCrawler:
         except Exception as e:
             logger.error(f"Error crawling bundesgerichtshof.de (Backfill): {e}")
             stats["errors"].append(f"bundesgerichtshof.de-Backfill: {e}")
+
+        logger.info(
+            f"Crawling dip.bundestag.de (Gesetzesbegründungen zu den "
+            f"{BEGRUENDUNGEN_TOP_N} häufigsten §§ im Index)..."
+        )
+        try:
+            neo4j_svc = Neo4jService(uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD)
+            if neo4j_svc.connect():
+                try:
+                    begruendung_chunks = self.drucksachen_crawler.crawl_begruendungen(
+                        neo4j_svc,
+                        database_service=self.database_service,
+                        limit=BEGRUENDUNGEN_TOP_N,
+                    )
+                finally:
+                    neo4j_svc.close()
+                logger.info(f"Generated {len(begruendung_chunks)} chunks from Gesetzesbegründungen")
+                new_chunks = await self.process_and_store_chunks(begruendung_chunks)
+                all_new_chunks.extend(new_chunks)
+                stats["begruendungen_neu"] = len(new_chunks)
+            else:
+                logger.warning("Neo4j nicht erreichbar — drucksachen_crawler übersprungen")
+                stats["errors"].append("dip.bundestag.de: Neo4j nicht erreichbar")
+        except Exception as e:
+            logger.error(f"Error crawling dip.bundestag.de: {e}")
+            stats["errors"].append(f"dip.bundestag.de: {e}")
 
         if all_new_chunks:
             logger.info(f"Updating Neo4j with {len(all_new_chunks)} new chunks...")
@@ -273,7 +304,8 @@ async def main():
             "LexWolf-Crawl erfolgreich",
             f"Dauer: {duration_min:.1f} Min\n"
             f"Neue Chunks: {stats['chunks_neu_gesamt']} "
-            f"(Gesetze: {stats['gesetze_neu']}, Rechtsprechung: {stats['rechtsprechung_neu']})",
+            f"(Gesetze: {stats['gesetze_neu']}, Rechtsprechung: {stats['rechtsprechung_neu']}, "
+            f"Gesetzesbegründungen: {stats['begruendungen_neu']})",
             is_error=False,
         )
 
