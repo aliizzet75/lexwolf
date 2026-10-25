@@ -6,10 +6,11 @@ Quellen:
 """
 import hashlib
 import logging
+import re
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 from email.utils import parsedate_to_datetime
 
 import requests
@@ -29,6 +30,20 @@ FEEDS = {
     "BSG":    (f"{BASE}/jportal/docs/feed/bsjrs-bsg.xml",     "Sozialrecht"),
     "BPatG":  (f"{BASE}/jportal/docs/feed/bsjrs-bpatg.xml",  "Patentrecht"),
 }
+
+# Die beiden höchsten Gerichte: Verfassungsrecht (BVerfG) und die Zivil-/Strafsenate
+# des BGH betreffen praktisch jedes Mandat — sie werden immer mit einem größeren
+# Zeitfenster gecrawlt, unabhängig vom Rechtsgebiet-Filter unten.
+PRIORITY_COURTS = {"BVerfG", "BGH"}
+
+# Praxisgebiete der Kanzlei (Standard-Fallback, siehe main_crawler.derive_firm_legal_fields
+# für die Ableitung aus echten Mandant-/Akte-Daten, M16). Abgeleitet aus den Rechtsgebieten,
+# die der Anwalt bei der Mandatsaufnahme wählen kann
+# (desktop/Services/MandatAufnahme.cs: Familienrecht/Mietrecht/Verkehrsrecht/Allgemeines
+# Zivilrecht/Erbrecht -> Zivilrecht-Senate des BGH, Arbeitsrecht -> BAG, Sozialrecht -> BSG,
+# Verwaltungsrecht -> BVerwG). Steuerrecht (BFH) und Patentrecht (BPatG) gehören nicht zum
+# Praxisportfolio und werden daher nicht mitgecrawlt.
+DEFAULT_FIRM_RECHTSGEBIETE = {"Zivilrecht", "Arbeitsrecht", "Sozialrecht", "Verwaltungsrecht"}
 
 
 class RisCrawler:
@@ -89,7 +104,6 @@ class RisCrawler:
 
     def _parse_date(self, title: str, pub_date) -> Optional[str]:
         """Extrahiert Datum aus Titel (z.B. 'BGH ..., Urteil vom 21.04.2026, ...')."""
-        import re
         m = re.search(r'vom\s+(\d{2}\.\d{2}\.\d{4})', title)
         if m:
             return m.group(1)
@@ -99,6 +113,30 @@ class RisCrawler:
         """Extrahiert Aktenzeichen (letzter Teil nach letztem Komma)."""
         parts = title.rsplit(",", 1)
         return parts[-1].strip() if len(parts) > 1 else ""
+
+    @staticmethod
+    def _split_into_chunks(text: str, size: int = 2000) -> List[str]:
+        """Gruppiert Sätze zu ~size-Zeichen-Chunks ohne Satz mittendrin zu kappen
+        (gleiche Strategie wie bei Gesetzen, M7 — _split_sentences in gesetze_crawler).
+        Nötig, weil BeautifulSoup.get_text(' ', strip=True) alle Zeilenumbrüche
+        entfernt, ein naiver split('\\n') also nie echte Absätze liefert."""
+        sentences = re.split(r'(?<=[a-zäöüA-ZÄÖÜ0-9])\.\s+', text)
+        chunks: List[str] = []
+        current = ""
+        for sent in sentences:
+            sent = sent.strip()
+            if not sent:
+                continue
+            if not sent.endswith('.'):
+                sent += '.'
+            if current and len(current) + len(sent) + 1 > size:
+                chunks.append(current.strip())
+                current = sent
+            else:
+                current = f"{current} {sent}".strip()
+        if current:
+            chunks.append(current.strip())
+        return chunks or [text]
 
     def _make_chunks(self, title: str, court: str, legal_field: str,
                      fulltext: str, link: str, pub_date) -> List[Dict]:
@@ -126,11 +164,10 @@ class RisCrawler:
         }
         chunks = [parent]
 
-        # Child-Chunks: Absätze (~500 Tokens ≈ 2000 Zeichen)
+        # Child-Chunks: Satzweise zu ~500 Tokens ≈ 2000 Zeichen gruppiert (Parent-Child
+        # Chunking wie bei Gesetzen, M7), damit kein Satz an einer Chunk-Grenze zerschnitten wird.
         CHUNK_SIZE = 2000
-        paragraphs = [p.strip() for p in fulltext.split("\n") if len(p.strip()) > 50]
-        if not paragraphs:
-            paragraphs = [fulltext[i:i+CHUNK_SIZE] for i in range(0, len(fulltext), CHUNK_SIZE)]
+        paragraphs = self._split_into_chunks(fulltext, CHUNK_SIZE)
 
         for i, para in enumerate(paragraphs):
             child_text = f"{title}\n{para}"
@@ -153,13 +190,24 @@ class RisCrawler:
 
     # ── Haupt-Methode ─────────────────────────────────────────────────────────
 
-    def crawl_decisions(self, days: int = 1, limit: Optional[int] = None) -> List[Dict]:
+    def crawl_decisions(self, days: int = 1, limit: Optional[int] = None,
+                         days_priority: int = 30,
+                         legal_fields: Optional[Set[str]] = None,
+                         priority_courts: Optional[Set[str]] = None) -> List[Dict]:
         """
         Crawlt neue Entscheidungen aller Bundesgerichte.
-        days=1 → nur Entscheidungen der letzten N Tage.
-        limit   → max. Entscheidungen insgesamt (für Tests).
+
+        days            → Zeitfenster für die regulären Gerichte.
+        days_priority   → größeres Zeitfenster für priority_courts (BVerfG/BGH per
+                           Default), damit diese beiden höchsten Gerichte deutlich
+                           besser im Index abgedeckt sind als die übrigen.
+        legal_fields    → wenn gesetzt: nur Gerichte crawlen, deren Rechtsgebiet
+                           (siehe FEEDS) darin enthalten ist — priority_courts sind
+                           davon ausgenommen und werden immer gecrawlt.
+        priority_courts → Default: PRIORITY_COURTS (BVerfG, BGH).
+        limit           → max. Entscheidungen insgesamt (für Tests).
         """
-        cutoff = datetime.now().date() - timedelta(days=days)
+        priority_courts = PRIORITY_COURTS if priority_courts is None else priority_courts
         all_chunks: List[Dict] = []
         total_decisions = 0
 
@@ -167,7 +215,19 @@ class RisCrawler:
             if limit and total_decisions >= limit:
                 break
 
-            logger.info(f"  {court}: lade Feed …")
+            is_priority = court in priority_courts
+            if legal_fields is not None and not is_priority and legal_field not in legal_fields:
+                logger.info(
+                    f"  {court}: übersprungen (Rechtsgebiet '{legal_field}' "
+                    f"gehört nicht zu den Kanzlei-Praxisgebieten)"
+                )
+                continue
+
+            court_days = days_priority if is_priority else days
+            cutoff = datetime.now().date() - timedelta(days=court_days)
+
+            logger.info(f"  {court}: lade Feed … (Zeitfenster {court_days} Tage"
+                        f"{', priorisiert' if is_priority else ''})")
             items = self._fetch_feed(feed_url)
 
             # Nur neue Einträge (oder alle wenn days groß genug)
@@ -178,7 +238,7 @@ class RisCrawler:
                 remaining = limit - total_decisions
                 recent = recent[:remaining]
 
-            logger.info(f"  {court}: {len(recent)}/{len(items)} Entscheidungen (letzte {days} Tage)")
+            logger.info(f"  {court}: {len(recent)}/{len(items)} Entscheidungen (letzte {court_days} Tage)")
 
             for item in recent:
                 fulltext = self._fetch_fulltext(item["link"])
