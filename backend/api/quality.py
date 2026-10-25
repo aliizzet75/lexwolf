@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel
 import logging
 from services.quality_verification import QualityVerificationService
+from services.feedback_service import FeedbackValidationError
 
 router = APIRouter(prefix="/quality", tags=["quality"])
 
@@ -30,6 +31,19 @@ class MetricsResponse(BaseModel):
     hallucinations_detected: int
     source_accuracy: float
     completeness_rate: float
+
+class TestsetKandidat(BaseModel):
+    id: int
+    kategorie: str
+    review_status: Optional[str] = None
+    zeitstempel: Optional[str] = None
+
+class TestsetKandidatenResponse(BaseModel):
+    kandidaten: List[TestsetKandidat]
+    anzahl: int
+
+class ReviewEntscheidungRequest(BaseModel):
+    entscheidung: str  # "angenommen" | "abgelehnt"
 
 # Initialize quality verification service
 quality_service = QualityVerificationService()
@@ -100,6 +114,39 @@ async def batch_verify_contents(requests: list[QualityCheckRequest]):
     except Exception as e:
         logger.error(f"Error in batch verification: {e}")
         raise HTTPException(status_code=500, detail=f"Batch verification error: {str(e)}")
+
+@router.get("/testset-kandidaten", response_model=TestsetKandidatenResponse)
+async def get_testset_kandidaten(status: Optional[str] = "offen"):
+    """
+    T#298: Review-Queue für Ali - Anwalt-Korrekturen aus dem M5-Feedback-Loop,
+    die eine fachliche (nicht nur stilistische) Änderung enthalten und als
+    Kandidat für das 100-Fragen-Testset markiert wurden.
+    `status=offen` (Default) zeigt nur unentschiedene Kandidaten,
+    `status=angenommen`/`abgelehnt` zeigt bereits entschiedene,
+    `status` leer/None zeigt alle.
+    """
+    try:
+        kandidaten = quality_service.get_testset_kandidaten(status=status)
+        return TestsetKandidatenResponse(kandidaten=kandidaten, anzahl=len(kandidaten))
+    except Exception as e:
+        logger.error(f"Error fetching testset candidates: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching testset candidates: {str(e)}")
+
+@router.post("/testset-kandidaten/{kandidat_id}/review")
+async def review_testset_kandidat(kandidat_id: int, request: ReviewEntscheidungRequest):
+    """
+    T#298: Ali trifft die Review-Entscheidung für einen Testset-Kandidaten.
+    Erst nach "angenommen" darf der Fall ins offizielle 100-Fragen-Testset
+    (tests/quality/test_dataset.json) übernommen werden.
+    """
+    try:
+        ergebnis = quality_service.review_testset_kandidat(kandidat_id, request.entscheidung)
+        return {"status": "gespeichert", **ergebnis}
+    except FeedbackValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error reviewing testset candidate: {e}")
+        raise HTTPException(status_code=500, detail=f"Error reviewing testset candidate: {str(e)}")
 
 @router.get("/health")
 async def health_check():

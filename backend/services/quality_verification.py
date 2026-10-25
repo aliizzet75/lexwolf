@@ -1,6 +1,7 @@
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from services.database_service import DatabaseService
+from services.feedback_service import FeedbackService
 import logging
 
 # Set up logging
@@ -11,9 +12,13 @@ class QualityVerificationService:
     """
     LLM-as-Judge service for quality testing and hallucination detection
     """
-    
+
     def __init__(self):
         self.database_service = DatabaseService()
+        # T#298: M5-Feedback-Loop (Anwalt-Korrekturen) zusätzlich für die
+        # Qualitätspipeline nutzen - fachliche Korrekturen werden als
+        # Testset-Kandidaten markiert und landen in einer Review-Queue.
+        self.feedback_service = FeedbackService()
         self.metrics = {
             "total_checks": 0,
             "passed_checks": 0,
@@ -225,6 +230,23 @@ class QualityVerificationService:
         
         return quality_score
     
+    def get_testset_kandidaten(self, status: Optional[str] = "offen") -> List[Dict]:
+        """
+        T#298: Liefert Anwalt-Korrekturen mit fachlicher (nicht nur stilistischer)
+        Änderung aus dem M5-Feedback-Loop als Kandidaten für das 100-Fragen-
+        Testset. `status` filtert nach Review-Status ("offen" = Default,
+        None = alle Stati). Review-Queue für Ali, bevor ein Kandidat offiziell
+        ins Testset übernommen wird.
+        """
+        return self.feedback_service.list_testset_kandidaten(status=status)
+
+    def review_testset_kandidat(self, kandidat_id: int, entscheidung: str) -> Dict:
+        """
+        T#298: Ali-Entscheidung (angenommen/abgelehnt) für einen Testset-
+        Kandidaten aus der Review-Queue.
+        """
+        return self.feedback_service.review_testset_kandidat(kandidat_id, entscheidung)
+
     def get_metrics(self) -> Dict:
         """
         Get current quality metrics

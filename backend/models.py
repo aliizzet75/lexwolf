@@ -103,6 +103,12 @@ class FeedbackEntry(Base):
     wortklassen_haeufigkeiten = Column(Text, nullable=True)   # JSON
     korrektur_kategorien = Column(Text, nullable=True)        # JSON
 
+    # T#298: Markiert Korrekturen mit fachlicher (nicht nur stilistischer)
+    # Änderung als Kandidat für das 100-Fragen-Testset (M3-Qualitätspipeline).
+    # Keine Rohtexte involviert - nur die bereits bestehende Kategorie-Einstufung.
+    ist_fachliche_aenderung = Column(Boolean, default=False)
+    review_status = Column(String, nullable=True)  # offen | angenommen | abgelehnt
+
     zeitstempel = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
 

@@ -25,6 +25,18 @@ GUELTIGE_KATEGORIEN = {
     KATEGORIE_LAENGE,
 }
 
+# T#298: Kategorien, die eine fachliche (nicht nur stilistische) Änderung
+# anzeigen. Nur "paragraph" (geänderte §-Referenz) signalisiert, dass der
+# Anwalt eine inhaltliche/rechtliche Korrektur vorgenommen hat - die anderen
+# Kategorien betreffen reinen Stil (Wortwahl, Satzbau, Länge).
+FACHLICHE_KATEGORIEN = {KATEGORIE_PARAGRAPH}
+
+REVIEW_STATUS_OFFEN = "offen"
+REVIEW_STATUS_ANGENOMMEN = "angenommen"
+REVIEW_STATUS_ABGELEHNT = "abgelehnt"
+
+GUELTIGE_REVIEW_ENTSCHEIDUNGEN = {REVIEW_STATUS_ANGENOMMEN, REVIEW_STATUS_ABGELEHNT}
+
 # Zweite Schutzschicht falls die Client-seitige Anonymisierung (T#82/T#89)
 # versagt hat: lehnt Feedback ab, das noch wie Klartextnamen aussieht.
 _ANREDE_NAME_PATTERN = re.compile(
@@ -68,17 +80,22 @@ class FeedbackService:
 
     def _ensure_feedback_metric_columns(self):
         """Fügt bei einer bestehenden Tabelle fehlende Metrik-Spalten idempotent hinzu."""
-        columns = [
+        text_columns = [
             "satzlaengen_verteilung",
             "wortklassen_haeufigkeiten",
             "korrektur_kategorien",
+            "review_status",
         ]
         with self.engine.begin() as conn:
-            for col in columns:
+            for col in text_columns:
                 conn.execute(text(
                     f"ALTER TABLE {FeedbackEntry.__tablename__} "
                     f"ADD COLUMN IF NOT EXISTS {col} TEXT"
                 ))
+            conn.execute(text(
+                f"ALTER TABLE {FeedbackEntry.__tablename__} "
+                f"ADD COLUMN IF NOT EXISTS ist_fachliche_aenderung BOOLEAN DEFAULT FALSE"
+            ))
 
     @staticmethod
     def kategorisiere_diff(original: str, korrigiert: str) -> str:
@@ -105,6 +122,13 @@ class FeedbackService:
 
         return KATEGORIE_FORMULIERUNG
 
+    @staticmethod
+    def ist_fachliche_aenderung(kategorie: str) -> bool:
+        """T#298: Fachliche (inhaltliche) Änderung liegt vor, wenn sich die
+        zitierte §-Referenz geändert hat - das ist eine rechtliche/fachliche
+        Korrektur, keine reine Stilkorrektur."""
+        return kategorie in FACHLICHE_KATEGORIEN
+
     def process_feedback(self, payload: dict) -> dict:
         """Validiert, kategorisiert und speichert ein Feedback-Diff. Wirft FeedbackValidationError bei Verstößen."""
         original = payload.get("original", "")
@@ -125,6 +149,7 @@ class FeedbackService:
         """Speichert ein Feedback-Diff. Die Rohtexte werden NICHT persistiert,
         sondern nur die abgeleitete Kategorie."""
         zeitstempel_dt = self._parse_zeitstempel(zeitstempel)
+        fachlich = self.ist_fachliche_aenderung(kategorie)
 
         db = self.SessionLocal()
         try:
@@ -132,6 +157,8 @@ class FeedbackService:
                 original=None,
                 korrigiert=None,
                 kategorie=kategorie,
+                ist_fachliche_aenderung=fachlich,
+                review_status=REVIEW_STATUS_OFFEN if fachlich else None,
                 zeitstempel=zeitstempel_dt or datetime.utcnow(),
             )
             db.add(eintrag)
@@ -140,6 +167,8 @@ class FeedbackService:
             return {
                 "id": eintrag.id,
                 "kategorie": eintrag.kategorie,
+                "ist_fachliche_aenderung": eintrag.ist_fachliche_aenderung,
+                "review_status": eintrag.review_status,
                 "zeitstempel": eintrag.zeitstempel.isoformat(),
             }
         finally:
@@ -165,6 +194,14 @@ class FeedbackService:
         if kategorie not in GUELTIGE_KATEGORIEN:
             raise FeedbackValidationError(f"Ungültige Korrektur-Kategorie: {kategorie}")
 
+        # T#298: Eine Metrik-Batch gilt bereits als fachlicher Kandidat, wenn
+        # mindestens EINE Korrektur der Kategorie "paragraph" enthalten ist -
+        # auch wenn sie innerhalb des Batches nicht die häufigste Kategorie ist.
+        fachlich = any(
+            kat in FACHLICHE_KATEGORIEN and (anzahl or 0) > 0
+            for kat, anzahl in kategorien.items()
+        )
+
         zeitstempel = payload.get("zeitstempel")
         db = self.SessionLocal()
         try:
@@ -172,6 +209,8 @@ class FeedbackService:
                 original=None,
                 korrigiert=None,
                 kategorie=kategorie,
+                ist_fachliche_aenderung=fachlich,
+                review_status=REVIEW_STATUS_OFFEN if fachlich else None,
                 satzlaengen_verteilung=json.dumps(payload.get("satzlaengen_verteilung", {}), ensure_ascii=False),
                 wortklassen_haeufigkeiten=json.dumps(payload.get("wortklassen_haeufigkeiten", {}), ensure_ascii=False),
                 korrektur_kategorien=json.dumps(kategorien, ensure_ascii=False),
@@ -183,7 +222,63 @@ class FeedbackService:
             return {
                 "id": eintrag.id,
                 "kategorie": eintrag.kategorie,
+                "ist_fachliche_aenderung": eintrag.ist_fachliche_aenderung,
+                "review_status": eintrag.review_status,
                 "zeitstempel": eintrag.zeitstempel.isoformat(),
+            }
+        finally:
+            db.close()
+
+    # ------------------------------------------------------------------
+    # T#298: Review-Queue für fachliche Testset-Kandidaten (M3)
+    # ------------------------------------------------------------------
+
+    def list_testset_kandidaten(self, status: Optional[str] = REVIEW_STATUS_OFFEN) -> list:
+        """Liefert als fachlich markierte Korrekturen (Kategorie 'paragraph') für
+        die Review-Queue. `status=None` liefert Kandidaten in jedem Review-Status."""
+        db = self.SessionLocal()
+        try:
+            query = db.query(FeedbackEntry).filter(FeedbackEntry.ist_fachliche_aenderung.is_(True))
+            if status:
+                query = query.filter(FeedbackEntry.review_status == status)
+            eintraege = query.order_by(FeedbackEntry.zeitstempel.desc()).all()
+            return [
+                {
+                    "id": e.id,
+                    "kategorie": e.kategorie,
+                    "review_status": e.review_status,
+                    "zeitstempel": e.zeitstempel.isoformat() if e.zeitstempel else None,
+                }
+                for e in eintraege
+            ]
+        finally:
+            db.close()
+
+    def review_testset_kandidat(self, kandidat_id: int, entscheidung: str) -> dict:
+        """Setzt die Ali-Review-Entscheidung (angenommen/abgelehnt) für einen
+        Testset-Kandidaten. Erst nach 'angenommen' darf er ins offizielle
+        100-Fragen-Testset übernommen werden."""
+        entscheidung = (entscheidung or "").strip().lower()
+        if entscheidung not in GUELTIGE_REVIEW_ENTSCHEIDUNGEN:
+            raise FeedbackValidationError(f"Ungültige Review-Entscheidung: {entscheidung}")
+
+        db = self.SessionLocal()
+        try:
+            eintrag = db.query(FeedbackEntry).filter(FeedbackEntry.id == kandidat_id).first()
+            if eintrag is None:
+                raise FeedbackValidationError(f"Testset-Kandidat {kandidat_id} nicht gefunden")
+            if not eintrag.ist_fachliche_aenderung:
+                raise FeedbackValidationError(
+                    f"Eintrag {kandidat_id} ist kein Testset-Kandidat (keine fachliche Änderung)"
+                )
+
+            eintrag.review_status = entscheidung
+            db.commit()
+            db.refresh(eintrag)
+            return {
+                "id": eintrag.id,
+                "kategorie": eintrag.kategorie,
+                "review_status": eintrag.review_status,
             }
         finally:
             db.close()
