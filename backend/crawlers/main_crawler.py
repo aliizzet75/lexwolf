@@ -1,9 +1,10 @@
 import asyncio
 import os
+from collections import Counter
 from datetime import datetime
 from typing import List, Dict, Set
 from crawlers.gesetze_crawler import GesetzeImInternetCrawler
-from crawlers.ris_crawler import RisCrawler, DEFAULT_FIRM_RECHTSGEBIETE
+from crawlers.ris_crawler import RisCrawler, DEFAULT_FIRM_RECHTSGEBIETE, FEEDS, PRIORITY_COURTS
 from crawlers.openjur_crawler import OpenJurCrawler
 from crawlers.drucksachen_crawler import DrucksachenCrawler
 from services.embedding_service import EmbeddingService, MockEmbeddingService
@@ -37,6 +38,93 @@ BGH_BACKFILL_MAX_RESULTS = int(os.getenv("LEXWOLF_BGH_BACKFILL_MAX_RESULTS", "50
 
 # Mindestanzahl §§, für die drucksachen_crawler eine Gesetzesbegründung liefern soll (T#291).
 BEGRUENDUNGEN_TOP_N = int(os.getenv("LEXWOLF_BEGRUENDUNGEN_TOP_N", "50"))
+
+# Tiefe statt Breite (T#292): wie viele der nach echter Nutzung am häufigsten
+# vorkommenden Praxisgebiete zusätzlich zu BVerfG/BGH das große Zeitfenster
+# (RIS_DAYS_PRIORITY) bekommen, statt alle Kanzlei-Rechtsgebiete gleich (RIS_DAYS)
+# zu behandeln.
+TOP_N_DEEP_FIELDS = int(os.getenv("LEXWOLF_TOP_N_DEEP_FIELDS", "1"))
+
+# Gerichts-Rechtsgebiet (ris_crawler.FEEDS) je Gericht, umgekehrt nachschlagbar.
+LEGAL_FIELD_TO_COURT = {legal_field: court for court, (_url, legal_field) in FEEDS.items()}
+
+# Die im Desktop-Client bei der Mandatsaufnahme wählbaren Rechtsgebiete
+# (desktop/Services/MandatAufnahme.cs: MandatAufnahme.Rechtsgebiete), gemappt auf die
+# Gerichts-Rechtsgebiete aus ris_crawler.FEEDS. "Familienrecht – …"-Varianten werden
+# per Präfix erkannt (wie MandatDaten.IstFamilienrecht). "Sonstiges" bleibt unmapped.
+MANDAT_RECHTSGEBIET_TO_COURT_FIELD = {
+    "Arbeitsrecht": "Arbeitsrecht",
+    "Sozialrecht": "Sozialrecht",
+    "Verwaltungsrecht": "Verwaltungsrecht",
+    "Mietrecht": "Zivilrecht",
+    "Verkehrsrecht": "Zivilrecht",
+    "Allgemeines Zivilrecht": "Zivilrecht",
+    "Erbrecht": "Zivilrecht",
+    "Strafrecht": "Zivilrecht",
+}
+
+# Grobe Stichwort-Klassifikation für die Chat-Historie (search_results.query, M16) —
+# Suchanfragen haben kein Rechtsgebiet-Feld, deshalb Keyword-Heuristik statt exaktem Match.
+CHAT_KEYWORDS_TO_COURT_FIELD = {
+    "Arbeitsrecht":     ["kündigung", "arbeitsvertrag", "abmahnung", "abfindung", "betriebsrat"],
+    "Sozialrecht":      ["sozialhilfe", "arbeitslosengeld", "alg ii", "jobcenter", "rente", "pflegegrad"],
+    "Verwaltungsrecht": ["bescheid", "behörde", "verwaltungsakt", "widerspruch", "baugenehmigung"],
+    "Zivilrecht":       ["miete", "mieter", "vermieter", "scheidung", "unterhalt", "sorgerecht",
+                          "erbe", "testament", "verkehrsunfall", "fahrerlaubnis", "kaufvertrag"],
+}
+
+
+def rank_legal_fields_by_usage(database_service: DatabaseService) -> List[str]:
+    """Rangfolge der Gerichts-Rechtsgebiete nach TATSÄCHLICHER Nutzung (M16), absteigend.
+
+    Zwei echte Nutzungsdaten-Quellen werden kombiniert:
+      - Mandanten-Akten: mandanten.rechtsgebiet (sobald das Feld serverseitig existiert,
+        siehe derive_firm_legal_fields).
+      - Chat-Historie: search_results.query — die tatsächlich gestellten Suchanfragen,
+        grob per Stichwort auf ein Gerichts-Rechtsgebiet klassifiziert.
+
+    Liefert eine leere Liste, wenn (noch) keine Nutzungsdaten vorhanden sind — dann bleibt
+    es beim Gleichbehandlungs-Fallback über DEFAULT_FIRM_RECHTSGEBIETE."""
+    from sqlalchemy import text as sqltxt
+    usage = Counter()
+
+    try:
+        db = database_service.SessionLocal()
+        try:
+            result = db.execute(sqltxt(
+                "SELECT rechtsgebiet, COUNT(*) FROM mandanten "
+                "WHERE rechtsgebiet IS NOT NULL GROUP BY rechtsgebiet"
+            ))
+            for rechtsgebiet, count in result:
+                if not rechtsgebiet:
+                    continue
+                field = ("Zivilrecht" if rechtsgebiet.startswith("Familienrecht")
+                         else MANDAT_RECHTSGEBIET_TO_COURT_FIELD.get(rechtsgebiet))
+                if field:
+                    usage[field] += count
+        finally:
+            db.close()
+    except Exception as e:
+        logger.info(f"Keine Akte-Nutzungsdaten (mandanten.rechtsgebiet): {e}")
+
+    try:
+        db = database_service.SessionLocal()
+        try:
+            result = db.execute(sqltxt("SELECT query FROM search_results WHERE query IS NOT NULL"))
+            for (query,) in result:
+                q = query.lower()
+                for field, keywords in CHAT_KEYWORDS_TO_COURT_FIELD.items():
+                    if any(kw in q for kw in keywords):
+                        usage[field] += 1
+        finally:
+            db.close()
+    except Exception as e:
+        logger.info(f"Keine Chat-Historie-Nutzungsdaten (search_results.query): {e}")
+
+    ranked = [field for field, _count in usage.most_common()]
+    if ranked:
+        logger.info(f"Rechtsgebiete nach echter Nutzung priorisiert: {usage.most_common()}")
+    return ranked
 
 
 def derive_firm_legal_fields(database_service: DatabaseService) -> Set[str]:
@@ -95,6 +183,21 @@ class LegalDatabaseCrawler:
         self.database_service = DatabaseService()
         self.firm_legal_fields = derive_firm_legal_fields(self.database_service)
 
+        # Tiefe statt Breite (T#292): die laut echter Nutzung (Akten + Chat-Historie)
+        # am häufigsten gebrauchten Rechtsgebiete bekommen zusätzlich zu BVerfG/BGH
+        # das größere Zeitfenster — statt alle Kanzlei-Rechtsgebiete gleich zu behandeln.
+        ranked_fields = rank_legal_fields_by_usage(self.database_service)
+        deep_fields = ranked_fields[:TOP_N_DEEP_FIELDS]
+        extra_priority_courts = {
+            LEGAL_FIELD_TO_COURT[f] for f in deep_fields if f in LEGAL_FIELD_TO_COURT
+        }
+        self.priority_courts = PRIORITY_COURTS | extra_priority_courts
+        if extra_priority_courts:
+            logger.info(
+                f"Nach echter Nutzung priorisierte Gerichte (zusätzlich zu "
+                f"BVerfG/BGH): {extra_priority_courts} (Rechtsgebiete: {deep_fields})"
+            )
+
     async def crawl_all_sources(self, limit_per_source: int = None) -> Dict:
         """Crawl all legal sources, store in pgvector, then update Neo4j.
         Gibt Statistik-Dict zurück (für Erfolgs-/Fehler-Benachrichtigung)."""
@@ -115,7 +218,7 @@ class LegalDatabaseCrawler:
 
         logger.info(
             f"Crawling rechtsprechung-im-internet.de "
-            f"(BVerfG/BGH priorisiert, Fenster {RIS_DAYS_PRIORITY} Tage; "
+            f"(priorisierte Gerichte {self.priority_courts}, Fenster {RIS_DAYS_PRIORITY} Tage; "
             f"übrige Gerichte {RIS_DAYS} Tage, gefiltert auf Kanzlei-Rechtsgebiete {self.firm_legal_fields})..."
         )
         try:
@@ -123,6 +226,7 @@ class LegalDatabaseCrawler:
                 days=RIS_DAYS,
                 days_priority=RIS_DAYS_PRIORITY,
                 legal_fields=self.firm_legal_fields,
+                priority_courts=self.priority_courts,
                 limit=limit_per_source,
             )
             logger.info(f"Generated {len(decision_chunks)} chunks from decisions")
