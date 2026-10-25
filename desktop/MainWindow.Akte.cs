@@ -391,28 +391,17 @@ public partial class MainWindow
 
     private async void OnGespraechClick(object sender, RoutedEventArgs e)
     {
-        if (_gespraechsRecorder is { IsAufnahme: true })
-        {
-            await BeendeGespraechsaufnahmeAsync();
-            return;
-        }
-
         if (!MandantNoetig()) return;
 
-        if (!DiktatService.WhisperExists(_settings))
-        {
-            System.Windows.MessageBox.Show(this,
-                "Kein Whisper-Modell installiert — Spracheingabe (Einstellungen → Spracheingabe) muss erst eingerichtet sein, bevor Gespräche transkribiert werden können.",
-                "Gespräch aufnehmen", MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (!DiktatService.WhisperExists(_settings) && !await WhisperJetztHerunterladenAsync())
             return;
-        }
 
         _gespraechsRecorder ??= new GespraechsRecorder();
+        bool gestartet;
         try
         {
-            var gestartet = GespraechEinwilligungDialog.StarteAufnahmeMitEinwilligung(
+            gestartet = GespraechEinwilligungDialog.StarteAufnahmeMitEinwilligung(
                 this, _db, _activeMandantId!, _activeMandantName ?? "", _gespraechsRecorder);
-            if (!gestartet) return;
         }
         catch (InvalidOperationException ex)
         {
@@ -420,20 +409,59 @@ public partial class MainWindow
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+        if (!gestartet) return;
 
-        GespraechBtn.Content = "⏹ Aufnahme beenden";
         AddReasoning("🎙", $"Gesprächsaufnahme gestartet — Mandant „{_activeMandantName}“.");
+        GespraechBtn.IsEnabled = false;
+        // Blockiert, bis der Anwalt im Dialog auf "Aufnahme beenden" klickt (oder ihn
+        // schließt — beides beendet die Aufnahme, siehe GespraechAufnahmeDialog).
+        new GespraechAufnahmeDialog { Owner = this }.ShowDialog();
+        GespraechBtn.IsEnabled = true;
+
+        await BeendeGespraechsaufnahmeAsync();
+    }
+
+    /// <summary>Bietet den einmaligen Whisper-Download an (wie DownloadDiktatModelAsync
+    /// für die Chat-Diktierfunktion, aber ohne Vosk — für Gesprächsaufnahmen reicht die
+    /// Nachkorrektur-Transkription). Liefert true, wenn das Modell danach vorhanden ist.</summary>
+    private async Task<bool> WhisperJetztHerunterladenAsync()
+    {
+        var antwort = System.Windows.MessageBox.Show(this,
+            "Für Gesprächstranskription wird einmalig das Whisper-Sprachmodell heruntergeladen " +
+            $"und unter\n{_settings.WhisperOrdner}\ngespeichert.\n\n" +
+            "Die Transkription läuft danach komplett auf diesem Rechner. Jetzt herunterladen?",
+            "Gespräch aufnehmen — Modell einrichten", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (antwort != MessageBoxResult.Yes) return false;
+
+        GespraechBtn.IsEnabled = false;
+        var ursprungsText = GespraechBtn.Content;
+        var progress = new Progress<double>(p => GespraechBtn.Content = $"{p:P0}");
+        try
+        {
+            await DiktatService.DownloadModelsAsync(_settings, whisper: true, progress);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(this, $"Download fehlgeschlagen: {ex.Message}", "Gespräch aufnehmen",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        finally
+        {
+            GespraechBtn.Content = ursprungsText;
+            GespraechBtn.IsEnabled = true;
+        }
     }
 
     /// <summary>Beendet die laufende Gesprächsaufnahme, transkribiert lokal (Whisper),
-    /// strukturiert das Transkript über das Backend (T#129) und zeigt die daraus
-    /// abgeleiteten Vorschläge für die nächsten Schritte (T#130/T#131).</summary>
+    /// strukturiert das Transkript über das Backend (T#129), zeigt eine kurze
+    /// Zusammenfassung und danach die Vorschläge für die nächsten Schritte (T#130/T#131).</summary>
     private async Task BeendeGespraechsaufnahmeAsync()
     {
         if (_gespraechsRecorder is null) return;
         var mandantId = _activeMandantId;
         GespraechBtn.IsEnabled = false;
-        GespraechBtn.Content = "🎙 Gespräch aufnehmen";
         AddReasoning("🎙", "Aufnahme beendet — transkribiere lokal...");
 
         try
@@ -450,11 +478,16 @@ public partial class MainWindow
 
             var strukturiert = await VorschlaegeService.AnalysiereTranskriptAsync(_http, BackendUrl, transkript);
             var themen = VorschlaegeService.LeseThemen(strukturiert);
-            AddReasoning("📋", themen.Count > 0 ? $"Themen: {string.Join(", ", themen)}" : "Transkript gespeichert.");
 
-            var vorschlaege = await VorschlaegeService.HoleVorschlaegeAsync(_http, BackendUrl, strukturiert);
-            if (vorschlaege.Count > 0)
-                new VorschlaegeDialog(vorschlaege, _http, BackendUrl) { Owner = this }.ShowDialog();
+            System.Windows.MessageBox.Show(this,
+                themen.Count > 0
+                    ? $"Themen: {string.Join(", ", themen)}\n\nTranskript ({transkript.Length} Zeichen) in der Akte gespeichert."
+                    : $"Transkript ({transkript.Length} Zeichen) in der Akte gespeichert.",
+                "Gespräch — Zusammenfassung", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            await VorschlaegeDialog.ZeigeNachGespraechAsync(
+                this, _http, BackendUrl, strukturiert,
+                dokumentePfad: _settings.DokumentePfad, mandantName: _activeMandantName ?? "");
         }
         catch (Exception ex)
         {

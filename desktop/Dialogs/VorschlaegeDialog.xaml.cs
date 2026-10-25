@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -23,13 +24,18 @@ public partial class VorschlaegeDialog : Window
     private readonly HttpClient _http;
     private readonly string _backendUrl;
     private readonly string _accountId;
+    private readonly string _dokumentePfad;
+    private readonly string _mandantName;
 
-    public VorschlaegeDialog(IReadOnlyList<Vorschlag> vorschlaege, HttpClient http, string backendUrl, string accountId = "default")
+    public VorschlaegeDialog(IReadOnlyList<Vorschlag> vorschlaege, HttpClient http, string backendUrl,
+        string accountId = "default", string dokumentePfad = "", string mandantName = "")
     {
         InitializeComponent();
         _http = http;
         _backendUrl = backendUrl;
         _accountId = accountId;
+        _dokumentePfad = dokumentePfad;
+        _mandantName = mandantName;
 
         foreach (var vorschlag in vorschlaege)
             VorschlaegePanel.Children.Add(ErzeugeKarte(vorschlag));
@@ -56,7 +62,31 @@ public partial class VorschlaegeDialog : Window
 
         var jaBtn = new Button { Content = "✓ Ja", Style = (Style)FindResource("LwPrimaryButton"), Margin = new Thickness(0, 0, 8, 0) };
         var neinBtn = new Button { Content = "✕ Nein", Style = (Style)FindResource("LwGefahrButton"), Margin = new Thickness(0, 0, 8, 0) };
-        var geaendertBtn = new Button { Content = "💾 Geändert übernehmen", Style = (Style)FindResource("LwSmallButton") };
+        var geaendertBtn = new Button { Content = "💾 Geändert übernehmen", Style = (Style)FindResource("LwSmallButton"), Margin = new Thickness(0, 0, 8, 0) };
+        var wordBtn = new Button { Content = "📄 Als Word speichern", Style = (Style)FindResource("LwSmallButton") };
+
+        wordBtn.Click += (_, _) =>
+        {
+            try
+            {
+                var ordner = string.IsNullOrWhiteSpace(_dokumentePfad)
+                    ? Path.GetTempPath()
+                    : Path.Combine(_dokumentePfad, _mandantName);
+                Directory.CreateDirectory(ordner);
+                var pfad = DokumentExport.FreierPfad(ordner, DokumentExport.DateinameFuerSchreiben(vorschlag.Titel, DateTime.Now));
+                DokumentExport.SchreibeDocx(pfad, textBox.Text);
+                DokumentExport.OeffneMitStandardprogramm(pfad);
+                statusText.Text = $"Gespeichert: {Path.GetFileName(pfad)}";
+                statusText.Foreground = new SolidColorBrush(Color.FromRgb(0x3f, 0xb9, 0x50));
+                statusText.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                statusText.Text = $"Speichern fehlgeschlagen: {ex.Message}";
+                statusText.Foreground = new SolidColorBrush(Color.FromRgb(0xf8, 0x51, 0x49));
+                statusText.Visibility = Visibility.Visible;
+            }
+        };
 
         async void Entscheiden(string entscheidung)
         {
@@ -87,6 +117,7 @@ public partial class VorschlaegeDialog : Window
         buttons.Children.Add(jaBtn);
         buttons.Children.Add(neinBtn);
         buttons.Children.Add(geaendertBtn);
+        buttons.Children.Add(wordBtn);
 
         var inhalt = new StackPanel();
         inhalt.Children.Add(new TextBlock
@@ -112,7 +143,8 @@ public partial class VorschlaegeDialog : Window
     /// </summary>
     public static async Task ZeigeNachGespraechAsync(
         Window owner, HttpClient http, string backendUrl, JsonElement strukturiert,
-        IReadOnlyList<string>? mandantHistory = null, string accountId = "default")
+        IReadOnlyList<string>? mandantHistory = null, string accountId = "default",
+        string dokumentePfad = "", string mandantName = "")
     {
         List<Vorschlag> vorschlaege;
         try
@@ -127,7 +159,7 @@ public partial class VorschlaegeDialog : Window
 
         if (vorschlaege.Count == 0) return;
 
-        var dialog = new VorschlaegeDialog(vorschlaege, http, backendUrl, accountId) { Owner = owner };
+        var dialog = new VorschlaegeDialog(vorschlaege, http, backendUrl, accountId, dokumentePfad, mandantName) { Owner = owner };
         dialog.ShowDialog();
     }
 }
