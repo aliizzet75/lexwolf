@@ -1345,7 +1345,7 @@ document.addEventListener('click', function (e) {{
 
         try
         {
-            var (content, suggestedAction, confidence) = await PostChatAsync();
+            var (content, suggestedAction, confidence, quellen) = await PostChatAsync();
 
             _history.Add(new ChatMessage("assistant", content));
             _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", content, confidence);
@@ -1353,7 +1353,7 @@ document.addEventListener('click', function (e) {{
             // <Mandant>\Entwürfe abgelegt); der übrige Text bleibt eine Chat-Bubble.
             // Geöffnet wird nichts von selbst — das entscheidet der Anwalt in der Karte.
             var (rest, entwurf) = ChatEntwurfParser.Zerlege(content, suggestedAction);
-            if (!string.IsNullOrWhiteSpace(rest)) AppendAiMessage(rest, confidence);
+            if (!string.IsNullOrWhiteSpace(rest)) AppendAiMessage(rest, confidence, quellen);
             if (entwurf is not null) Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf));
 
             Dispatcher.Invoke(() => KopierenBtn.Visibility = Visibility.Visible);
@@ -1391,7 +1391,7 @@ document.addEventListener('click', function (e) {{
 
     // ── Chat-Backend ─────────────────────────────────────────────────────────
 
-    private async Task<(string content, string suggestedAction, double confidence)> PostChatAsync()
+    private async Task<(string content, string suggestedAction, double confidence, List<(string Zitat, int ChunkId)> quellen)> PostChatAsync()
     {
         // Früher standen hier zusätzlich "Suche in Rechtsdatenbank..." und
         // "Generiere juristische Antwort..." als eigene Schritte — beides pauschale
@@ -1467,7 +1467,23 @@ document.addEventListener('click', function (e) {{
         if (root.TryGetProperty("intent", out var ip))
             AddReasoning("🎯", $"Intent: {ip.GetString()}");
 
-        return (content, suggestedAction, confidence);
+        // Task #297: quellen_check (inkl. chunk_id aus T#296) bisher clientseitig nirgends
+        // konsumiert — ohne chunk_id kein Sprung zur exakten Stelle möglich, deshalb nur
+        // Einträge mit chunk_id übernehmen.
+        var quellen = new List<(string Zitat, int ChunkId)>();
+        if (root.TryGetProperty("quellen_check", out var qc) && qc.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in qc.EnumerateArray())
+            {
+                if (item.TryGetProperty("chunk_id", out var cid) && cid.ValueKind == JsonValueKind.Number &&
+                    item.TryGetProperty("zitat", out var z) && z.GetString() is string zitatText)
+                {
+                    quellen.Add((zitatText, cid.GetInt32()));
+                }
+            }
+        }
+
+        return (content, suggestedAction, confidence, quellen);
     }
 
     // ── UI Rendering ──────────────────────────────────────────────────────────
@@ -1567,13 +1583,14 @@ document.addEventListener('click', function (e) {{
         });
     }
 
-    private void AppendAiMessage(string text, double? confidence = null)
+    private void AppendAiMessage(string text, double? confidence = null,
+        IReadOnlyList<(string Zitat, int ChunkId)>? quellen = null)
     {
         Dispatcher.Invoke(() =>
         {
             if (_webViewInitialized)
             {
-                AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(text), confidence));
+                AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(text), confidence, quellen));
                 RefreshChatWebView();
                 ScrollToBottom();
                 return;
@@ -1633,6 +1650,16 @@ document.addEventListener('click', function (e) {{
             var action = root.TryGetProperty("action", out var a) ? a.GetString() : null;
             var id = root.TryGetProperty("msg", out var m) && int.TryParse(m.GetString(), out var i) ? i : -1;
             var value = root.TryGetProperty("value", out var v) ? v.GetString() ?? "" : "";
+
+            // Task #297: "quelle" ist keine Entwurfskarten-Aktion (id ist hier die
+            // chunk_id aus quellen_check/T#296, nicht ein Karten-Index) -> vor dem
+            // _karten-Lookup abfangen.
+            if (action == "quelle")
+            {
+                _ = QuelleOeffnenAsync(id, value);
+                return;
+            }
+
             if (!_karten.TryGetValue(id, out var karte)) return;
 
             switch (action)
@@ -1647,6 +1674,38 @@ document.addEventListener('click', function (e) {{
         catch (Exception ex)
         {
             AppendSystemMessage($"Aktion fehlgeschlagen: {ex.Message}");
+        }
+    }
+
+    /// <summary>Task #297: Klick auf einen Quellen-Link (siehe ChatHtmlRenderer.
+    /// WrapAiBubble/QuellenListeHtml) lädt den Chunk per chunk_id (T#296) vom Backend
+    /// und zeigt ihn im QuelleDialog — der dort direkt zur exakten Passage springt
+    /// (ChatHtmlRenderer.FindeZitatPosition), statt nur den Dokumentanfang zu zeigen.</summary>
+    private async Task QuelleOeffnenAsync(int chunkId, string zitat)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"{BackendUrl}/legal-db/chunks/{chunkId}");
+            if (!response.IsSuccessStatusCode)
+            {
+                AppendSystemMessage($"Quelle konnte nicht geladen werden (HTTP {(int)response.StatusCode}).");
+                return;
+            }
+            var body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var text = root.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
+            var title = root.TryGetProperty("title", out var ti) ? ti.GetString() ?? zitat : zitat;
+
+            Dispatcher.Invoke(() =>
+            {
+                var dialog = new QuelleDialog(title, text, zitat) { Owner = this };
+                dialog.Show();
+            });
+        }
+        catch (Exception ex)
+        {
+            AppendSystemMessage($"Quelle konnte nicht geladen werden: {ex.Message}");
         }
     }
 

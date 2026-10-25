@@ -159,14 +159,6 @@ class DatabaseService:
             chunk = db.query(LegalChunk).filter(LegalChunk.id == chunk_id).first()
             
             if chunk:
-                # Parse vector JSON if it exists
-                vector_data = None
-                if chunk.vector:
-                    try:
-                        vector_data = json.loads(chunk.vector)
-                    except:
-                        vector_data = None
-                
                 return {
                     "id": chunk.id,
                     "document_id": chunk.document_id,

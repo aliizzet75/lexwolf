@@ -210,8 +210,12 @@ public static class ChatHtmlRenderer
     /// E-Mails) stehen nicht hier, sondern in einer eigenen Karte (WrapEntwurfKarte).
     /// <paramref name="confidence"/> ist der confidence_score der /chat-Antwort (0..1);
     /// null (z.B. historische Nachrichten ohne gespeicherten Score) zeigt kein Badge.
+    /// <paramref name="quellen"/> (Task #297): geprüfte Zitate mit chunk_id (T#296) aus
+    /// quellen_check der /chat-Antwort — als klickbare Links, die in MainWindow per
+    /// OnChatWebMessage zur exakten Stelle im Quellentext springen.
     /// </summary>
-    public static string WrapAiBubble(string html, double? confidence = null)
+    public static string WrapAiBubble(string html, double? confidence = null,
+        IReadOnlyList<(string Zitat, int ChunkId)>? quellen = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("<div class='ai-message'>");
@@ -219,9 +223,61 @@ public static class ChatHtmlRenderer
         if (confidence.HasValue)
             sb.AppendLine(ConfidenceBadgeHtml(confidence.Value));
         sb.AppendLine(html);
+        if (quellen is { Count: > 0 })
+            sb.AppendLine(QuellenListeHtml(quellen));
         sb.AppendLine("  </div>");
         sb.AppendLine("</div>");
         return sb.ToString();
+    }
+
+    /// <summary>Klickbare Quellen-Links unter einer Chat-Antwort (Task #297). Nutzt die
+    /// bestehende data-action-Bridge (siehe GetChatBaseHtml-Skript -> OnChatWebMessage):
+    /// data-msg trägt hier die chunk_id, data-value das Zitat (für die Positionssuche
+    /// im Quellentext per ChatHtmlRenderer.FindeZitatPosition).</summary>
+    private static string QuellenListeHtml(IReadOnlyList<(string Zitat, int ChunkId)> quellen)
+    {
+        static string H(string s) => WebUtility.HtmlEncode(s);
+        var sb = new StringBuilder();
+        sb.Append("<div class='quellen-liste'>");
+        foreach (var (zitat, chunkId) in quellen)
+            sb.Append($"<button class='quelle-link' data-action='quelle' data-msg='{chunkId}' data-value='{H(zitat)}'>🔗 {H(zitat)} — zur Stelle</button>");
+        sb.Append("</div>");
+        return sb.ToString();
+    }
+
+    /// <summary>Position (Start, Länge) der zum Zitat gehörenden Passage in einem
+    /// Quellen-Chunk-Text (Task #297, baut auf chunk_id aus T#296 auf). Sucht zunächst
+    /// das volle Zitat ("§ 433 BGB"), dann nur §/Art.-Nummer (der Gesetzestext selbst
+    /// nennt die Abkürzung oft nicht direkt daneben), erweitert den Treffer auf die
+    /// umgebende Satzgrenze (., Zeilenumbruch) und markiert damit mehr als nur die
+    /// Zitat-Zeichenfolge. (0, 0) wenn nichts gefunden wird -> Aufrufer zeigt dann den
+    /// Dokumentanfang, was dem Verhalten vor #297 entspricht.</summary>
+    public static (int Start, int Length) FindeZitatPosition(string text, string zitat)
+    {
+        if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(zitat)) return (0, 0);
+
+        var idx = text.IndexOf(zitat, StringComparison.OrdinalIgnoreCase);
+        var gesucht = zitat;
+        if (idx < 0)
+        {
+            var m = Regex.Match(zitat, @"^(§|Art\.)\s*\d+");
+            if (m.Success)
+            {
+                gesucht = m.Value;
+                idx = text.IndexOf(gesucht, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        if (idx < 0) return (0, 0);
+
+        var satzStart = idx;
+        while (satzStart > 0 && text[satzStart - 1] != '.' && text[satzStart - 1] != '\n') satzStart--;
+        while (satzStart < text.Length && char.IsWhiteSpace(text[satzStart])) satzStart++;
+
+        var satzEnde = idx + gesucht.Length;
+        while (satzEnde < text.Length && text[satzEnde] != '.' && text[satzEnde] != '\n') satzEnde++;
+        if (satzEnde < text.Length) satzEnde++; // Satzzeichen mit einschließen
+
+        return (satzStart, Math.Max(satzEnde - satzStart, gesucht.Length));
     }
 
     public static string WrapUserBubble(string html)
@@ -342,6 +398,10 @@ public static class ChatHtmlRenderer
             .chat-action-button {{ display: inline-block; margin-top: 8px; padding: 8px 14px; border: 1px solid #30363d; border-radius: 6px; background: #21262d; color: #c9d1d9; font-size: {Math.Max(10, _outputFontSize - 1)}px; cursor: pointer; }}
             .chat-action-button.primary {{ color: #e8a838; }}
             .chat-action-button:hover {{ background: #30363d; }}
+
+            .quellen-liste {{ margin-top: 10px; padding-top: 8px; border-top: 1px solid #30363d; display: flex; flex-wrap: wrap; gap: 6px; }}
+            .quelle-link {{ border: 1px solid #30363d; border-radius: 6px; background: transparent; color: #79c0ff; padding: 4px 9px; font-size: {Math.Max(10, _outputFontSize - 2)}px; cursor: pointer; }}
+            .quelle-link:hover {{ background: #30363d; text-decoration: underline; }}
 
             .entwurf-karte {{ background: #161b22; border: 1px solid #30363d; border-left: 3px solid #e8a838; border-radius: 8px; padding: 12px 14px; margin: 8px 60px 12px 8px; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
             .entwurf-karte.inaktiv {{ border-left-color: #30363d; opacity: 0.75; }}
