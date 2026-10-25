@@ -77,6 +77,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.61.0",
         "Aufnahme-Dialog mit Timer, Wolf-Animation und großem Stop-Knopf statt Button-Toggle. Whisper-Modell laedt sich jetzt direkt ueber den Gespraech-Button herunter. Kurze Zusammenfassung vor den Vorschlae",
     ),
+    (
+        "0.62.0",
+        "Nutzer-Feedback zur Gespräch-Aufnahme: Dialog verschwand ohne Hinweis waehrend Transkription/Strukturierung (jetzt bitte-warten-Zustand). Gespraechsprotokoll und angenommene Vorschlaege (Fristennotiz/",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
