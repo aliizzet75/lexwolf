@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 namespace LexWolf.Services;
 
 /// <summary>Ein einzelner Post-Gespräch-Vorschlag (Task #131, Pilot-Scope: Fristennotiz
-/// und E-Mail-Entwurf), wie er vom Backend (POST /conversation/suggestions) geliefert wird.</summary>
-public sealed record Vorschlag(string Typ, string Titel, string Text);
+/// und E-Mail-Entwurf), wie er vom Backend (POST /conversation/suggestions) geliefert wird.
+/// Typ ist "fristennotiz" oder "email_entwurf" (siehe ConversationAssistant.VORSCHLAG_TYP_*);
+/// Metadata enthält je Typ unterschiedliche Felder (z.B. "datum" bei Fristennotiz).</summary>
+public sealed record Vorschlag(string Typ, string Titel, string Text, JsonElement Metadata);
 
 /// <summary>
 /// Ruft nach einem Mandantengespräch über das Backend Vorschläge für die nächsten
@@ -75,7 +77,10 @@ public static class VorschlaegeService
         {
             string S(string key) => item.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String
                 ? (v.GetString() ?? "") : "";
-            ergebnis.Add(new Vorschlag(S("typ"), S("titel"), S("text")));
+            // .Clone(): das umschliessende JsonDocument wird am Ende dieser Methode disposed,
+            // die Metadata muss den Dialog aber ueberleben.
+            var metadata = item.TryGetProperty("metadata", out var m) ? m.Clone() : default;
+            ergebnis.Add(new Vorschlag(S("typ"), S("titel"), S("text"), metadata));
         }
         return ergebnis;
     }

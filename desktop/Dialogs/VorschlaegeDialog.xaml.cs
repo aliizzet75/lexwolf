@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using LexWolf.Database;
 using LexWolf.Services;
 
 namespace LexWolf.Dialogs;
@@ -15,9 +16,10 @@ namespace LexWolf.Dialogs;
 /// Zeigt nach einem Mandantengespräch die vom Backend erzeugten Vorschläge für die
 /// nächsten Schritte (Task #131, Pilot-Scope: Fristennotiz + E-Mail-Entwurf) und lässt
 /// den Anwalt je Vorschlag mit Ja / Nein / Geändert entscheiden. Jede Entscheidung wird
-/// sofort über <see cref="VorschlaegeService.SendeEntscheidungAsync"/> an das Backend
-/// gemeldet, das sie in die BESTEHENDE Lernschleife (style_learner/feedback_service)
-/// einspeist — dieser Dialog speichert selbst nichts lokal.
+/// über <see cref="VorschlaegeService.SendeEntscheidungAsync"/> an das Backend gemeldet
+/// (fließt in die Lernschleife ein) — UND bei "Ja"/"Geändert" wird zusätzlich ein echtes
+/// Artefakt erzeugt (Fristen-Vorschlag in der Akte bzw. E-Mail-Entwurf-Datei), nicht nur
+/// ein Lernsignal ohne sichtbares Ergebnis.
 /// </summary>
 public partial class VorschlaegeDialog : Window
 {
@@ -26,9 +28,13 @@ public partial class VorschlaegeDialog : Window
     private readonly string _accountId;
     private readonly string _dokumentePfad;
     private readonly string _mandantName;
+    private readonly LocalDb? _db;
+    private readonly Func<AppSettings>? _settings;
+    private readonly string _mandantId;
 
     public VorschlaegeDialog(IReadOnlyList<Vorschlag> vorschlaege, HttpClient http, string backendUrl,
-        string accountId = "default", string dokumentePfad = "", string mandantName = "")
+        string accountId = "default", string dokumentePfad = "", string mandantName = "",
+        LocalDb? db = null, Func<AppSettings>? settings = null, string mandantId = "")
     {
         InitializeComponent();
         _http = http;
@@ -36,6 +42,9 @@ public partial class VorschlaegeDialog : Window
         _accountId = accountId;
         _dokumentePfad = dokumentePfad;
         _mandantName = mandantName;
+        _db = db;
+        _settings = settings;
+        _mandantId = mandantId;
 
         foreach (var vorschlag in vorschlaege)
             VorschlaegePanel.Children.Add(ErzeugeKarte(vorschlag));
@@ -60,6 +69,15 @@ public partial class VorschlaegeDialog : Window
             Visibility = Visibility.Collapsed,
         };
 
+        void ZeigeStatus(string text, bool erfolg)
+        {
+            statusText.Text = text;
+            statusText.Foreground = erfolg
+                ? new SolidColorBrush(Color.FromRgb(0x3f, 0xb9, 0x50))
+                : new SolidColorBrush(Color.FromRgb(0xf8, 0x51, 0x49));
+            statusText.Visibility = Visibility.Visible;
+        }
+
         var jaBtn = new Button { Content = "✓ Ja", Style = (Style)FindResource("LwPrimaryButton"), Margin = new Thickness(0, 0, 8, 0) };
         var neinBtn = new Button { Content = "✕ Nein", Style = (Style)FindResource("LwGefahrButton"), Margin = new Thickness(0, 0, 8, 0) };
         var geaendertBtn = new Button { Content = "💾 Geändert übernehmen", Style = (Style)FindResource("LwSmallButton"), Margin = new Thickness(0, 0, 8, 0) };
@@ -69,22 +87,14 @@ public partial class VorschlaegeDialog : Window
         {
             try
             {
-                var ordner = string.IsNullOrWhiteSpace(_dokumentePfad)
-                    ? Path.GetTempPath()
-                    : Path.Combine(_dokumentePfad, _mandantName);
-                Directory.CreateDirectory(ordner);
-                var pfad = DokumentExport.FreierPfad(ordner, DokumentExport.DateinameFuerSchreiben(vorschlag.Titel, DateTime.Now));
+                var pfad = DokumentExport.FreierPfad(ZielOrdner(), DokumentExport.DateinameFuerSchreiben(vorschlag.Titel, DateTime.Now));
                 DokumentExport.SchreibeDocx(pfad, textBox.Text);
                 DokumentExport.OeffneMitStandardprogramm(pfad);
-                statusText.Text = $"Gespeichert: {Path.GetFileName(pfad)}";
-                statusText.Foreground = new SolidColorBrush(Color.FromRgb(0x3f, 0xb9, 0x50));
-                statusText.Visibility = Visibility.Visible;
+                ZeigeStatus($"Gespeichert: {Path.GetFileName(pfad)}", erfolg: true);
             }
             catch (Exception ex)
             {
-                statusText.Text = $"Speichern fehlgeschlagen: {ex.Message}";
-                statusText.Foreground = new SolidColorBrush(Color.FromRgb(0xf8, 0x51, 0x49));
-                statusText.Visibility = Visibility.Visible;
+                ZeigeStatus($"Speichern fehlgeschlagen: {ex.Message}", erfolg: false);
             }
         };
 
@@ -100,13 +110,15 @@ public partial class VorschlaegeDialog : Window
                 _http, _backendUrl, vorschlag.Typ, vorschlag.Text, entscheidung, geaenderterText, _accountId)
                 .ConfigureAwait(true);
 
-            statusText.Text = erfolg
-                ? "Übernommen — fließt in die Lernschleife ein."
-                : "Konnte nicht an den Server gemeldet werden (Entscheidung lokal verworfen).";
-            statusText.Foreground = erfolg
-                ? new SolidColorBrush(Color.FromRgb(0x3f, 0xb9, 0x50))
-                : new SolidColorBrush(Color.FromRgb(0xf8, 0x51, 0x49));
-            statusText.Visibility = Visibility.Visible;
+            string? artefaktFehler = null;
+            if (entscheidung is "ja" or "geaendert")
+                artefaktFehler = ErzeugeArtefakt(vorschlag, textBox.Text);
+
+            ZeigeStatus(
+                artefaktFehler ?? (erfolg
+                    ? "Übernommen — fließt in die Lernschleife ein."
+                    : "Übernommen, aber Entscheidung konnte nicht an den Server gemeldet werden."),
+                erfolg: artefaktFehler is null);
         }
 
         jaBtn.Click += (_, _) => Entscheiden("ja");
@@ -133,6 +145,72 @@ public partial class VorschlaegeDialog : Window
         return new Border { Style = (Style)FindResource("VorschlagKarte"), Child = inhalt };
     }
 
+    private string ZielOrdner()
+    {
+        if (string.IsNullOrWhiteSpace(_dokumentePfad)) return Path.GetTempPath();
+        var ordner = Path.Combine(_dokumentePfad, _mandantName);
+        Directory.CreateDirectory(ordner);
+        return ordner;
+    }
+
+    /// <summary>Erzeugt bei "Ja"/"Geändert" das eigentliche, sichtbare Ergebnis in der Akte —
+    /// nicht nur das Lernsignal an den Server. "fristennotiz" -> Fristen-Vorschlag (Status
+    /// "vorschlag", der Anwalt bestätigt ihn wie jeden anderen KI-Fristvorschlag im
+    /// Fristen-Panel — Datum kommt aus der KI-Analyse, die eigentliche Berechnung macht wie
+    /// immer FristRechner, nie die KI direkt). "email_entwurf" -> .eml-Datei in der Akte,
+    /// sofort geöffnet. Gibt eine Fehlermeldung zurück, oder null bei Erfolg.</summary>
+    private string? ErzeugeArtefakt(Vorschlag vorschlag, string text)
+    {
+        try
+        {
+            switch (vorschlag.Typ)
+            {
+                case "fristennotiz":
+                    return ErzeugeFristenvorschlag(vorschlag, text);
+                case "email_entwurf":
+                    return ErzeugeEmailEntwurf(vorschlag, text);
+                default:
+                    return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"Übernommen, aber Artefakt konnte nicht erzeugt werden: {ex.Message}";
+        }
+    }
+
+    private string? ErzeugeFristenvorschlag(Vorschlag vorschlag, string text)
+    {
+        if (_db is null || _settings is null || string.IsNullOrWhiteSpace(_mandantId))
+            return "Übernommen (kein Akte-Zugriff — Fristvorschlag konnte nicht angelegt werden).";
+
+        string? datumRoh = vorschlag.Metadata.ValueKind == JsonValueKind.Object &&
+                           vorschlag.Metadata.TryGetProperty("datum", out var d) ? d.GetString() : null;
+
+        if (string.IsNullOrWhiteSpace(datumRoh) ||
+            !DateTime.TryParse(datumRoh, System.Globalization.CultureInfo.GetCultureInfo("de-DE"),
+                System.Globalization.DateTimeStyles.None, out var datum))
+        {
+            return "Übernommen — Datum aus dem Gespräch war nicht eindeutig, bitte Frist manuell im Fristen-Panel anlegen.";
+        }
+
+        var ergebnis = FristRechner.GesetzteFrist(datum, _settings().Bundesland);
+        _db.UpsertFrist(new FristEintrag(
+            Guid.NewGuid().ToString("N"), _mandantId, text, null, "",
+            DateTime.Now, ergebnis.Ende, ergebnis.Vorfrist, false, "vorschlag", null,
+            ergebnis.Rechenweg, "Aus Gesprächs-Vorschlag übernommen — bitte prüfen.", false));
+
+        return null;
+    }
+
+    private string? ErzeugeEmailEntwurf(Vorschlag vorschlag, string text)
+    {
+        var entwurf = new EmailEntwurf("", vorschlag.Titel.TrimEnd('?'), text.Replace("[Mandant]", _mandantName));
+        var pfad = DokumentExport.SchreibeEml(entwurf, ZielOrdner());
+        DokumentExport.OeffneMitStandardprogramm(pfad);
+        return null;
+    }
+
     private void OnFertig(object sender, RoutedEventArgs e) => DialogResult = true;
 
     /// <summary>
@@ -143,6 +221,7 @@ public partial class VorschlaegeDialog : Window
     /// </summary>
     public static async Task ZeigeNachGespraechAsync(
         Window owner, HttpClient http, string backendUrl, JsonElement strukturiert,
+        LocalDb? db = null, Func<AppSettings>? settings = null, string mandantId = "",
         IReadOnlyList<string>? mandantHistory = null, string accountId = "default",
         string dokumentePfad = "", string mandantName = "")
     {
@@ -159,7 +238,8 @@ public partial class VorschlaegeDialog : Window
 
         if (vorschlaege.Count == 0) return;
 
-        var dialog = new VorschlaegeDialog(vorschlaege, http, backendUrl, accountId, dokumentePfad, mandantName) { Owner = owner };
+        var dialog = new VorschlaegeDialog(vorschlaege, http, backendUrl, accountId, dokumentePfad, mandantName,
+            db, settings, mandantId) { Owner = owner };
         dialog.ShowDialog();
     }
 }

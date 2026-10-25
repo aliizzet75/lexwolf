@@ -4,6 +4,7 @@
         Title="LexWolf — Schriftsatz"
         Icon="/Assets/lexwolf.ico"
         Width="1280" Height="820" MinWidth="980" MinHeight="580"
+        WindowState="Maximized"
         Background="#0d1117"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"

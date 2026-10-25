@@ -283,6 +283,8 @@ _SCHRIFTSATZ_PROMPT = """Du bist erfahrene Rechtsanwältin/erfahrener Rechtsanwa
 Mandant: {mandant}
 {stammdaten}
 
+WICHTIG: "{mandant}" ist der tatsächliche, bereits bekannte Name — verwende diesen Namen direkt im Rubrum und im Fließtext. Schreibe NICHT das Platzhalterwort "Mandant" oder "[Ergänzung erforderlich: Name]" an Stellen, an denen der Name bereits oben angegeben ist.
+
 Anweisung der Anwältin/des Anwalts: {anweisung}
 
 Die Akte besteht aus folgenden Dokumenten, nummeriert als [D1], [D2], ...:

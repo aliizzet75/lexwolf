@@ -413,12 +413,15 @@ public partial class MainWindow
 
         AddReasoning("🎙", $"Gesprächsaufnahme gestartet — Mandant „{_activeMandantName}“.");
         GespraechBtn.IsEnabled = false;
-        // Blockiert, bis der Anwalt im Dialog auf "Aufnahme beenden" klickt (oder ihn
-        // schließt — beides beendet die Aufnahme, siehe GespraechAufnahmeDialog).
-        new GespraechAufnahmeDialog { Owner = this }.ShowDialog();
+
+        // Blockiert, bis der Anwalt auf "Aufnahme beenden" klickt (oder den Dialog
+        // schließt — beides beendet die Aufnahme) UND Transkription+Strukturierung
+        // fertig sind — der Dialog zeigt "bitte warten" statt einfach zu verschwinden.
+        var aufnahmeDialog = new GespraechAufnahmeDialog(_gespraechsRecorder, DiktatService.WhisperPath(_settings), _http, BackendUrl) { Owner = this };
+        aufnahmeDialog.ShowDialog();
         GespraechBtn.IsEnabled = true;
 
-        await BeendeGespraechsaufnahmeAsync();
+        await VerarbeiteGespraechAsync(aufnahmeDialog);
     }
 
     /// <summary>Bietet den einmaligen Whisper-Download an (wie DownloadDiktatModelAsync
@@ -454,49 +457,104 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Beendet die laufende Gesprächsaufnahme, transkribiert lokal (Whisper),
-    /// strukturiert das Transkript über das Backend (T#129), zeigt eine kurze
-    /// Zusammenfassung und danach die Vorschläge für die nächsten Schritte (T#130/T#131).</summary>
-    private async Task BeendeGespraechsaufnahmeAsync()
+    /// <summary>Speichert das vom bereits geschlossenen GespraechAufnahmeDialog gelieferte
+    /// Transkript in der Akte, zeigt eine kurze Zusammenfassung und danach die Vorschläge
+    /// für die nächsten Schritte (T#130/T#131). Transkription und Strukturierung sind beim
+    /// Aufruf hier schon fertig — der Dialog hat während dessen "bitte warten" gezeigt.</summary>
+    private async Task VerarbeiteGespraechAsync(GespraechAufnahmeDialog aufnahmeDialog)
     {
-        if (_gespraechsRecorder is null) return;
-        var mandantId = _activeMandantId;
-        GespraechBtn.IsEnabled = false;
-        AddReasoning("🎙", "Aufnahme beendet — transkribiere lokal...");
-
-        try
+        if (aufnahmeDialog.Fehler is { } fehler)
         {
-            var transkript = await _gespraechsRecorder.StoppAufnahmeAsync(DiktatService.WhisperPath(_settings));
-            if (string.IsNullOrWhiteSpace(transkript))
+            AddReasoning("⚠️", $"Gespräch konnte nicht verarbeitet werden: {fehler}");
+            return;
+        }
+
+        var transkript = aufnahmeDialog.Transkript;
+        if (string.IsNullOrWhiteSpace(transkript))
+        {
+            AddReasoning("🎙", "Kein Text erkannt — nichts gespeichert.");
+            return;
+        }
+
+        if (_activeMandantId is not null)
+            _db.InsertGespraech(_activeMandantId, DateTime.Now, JsonSerializer.Serialize(new { transkript }));
+
+        if (aufnahmeDialog.Strukturiert is not { } strukturiert)
+        {
+            AddReasoning("🎙", $"Transkript ({transkript.Length} Zeichen) gespeichert — Strukturierung fehlgeschlagen.");
+            return;
+        }
+
+        var zusammenfassung = BaueGespraechZusammenfassung(strukturiert);
+        string? protokollPfad = null;
+        if (!string.IsNullOrWhiteSpace(_activeMandantName))
+        {
+            try
             {
-                AddReasoning("🎙", "Kein Text erkannt — nichts gespeichert.");
-                return;
+                var ordner = Path.Combine(_settings.DokumentePfad, _activeMandantName);
+                Directory.CreateDirectory(ordner);
+                protokollPfad = DokumentExport.FreierPfad(ordner,
+                    $"LexWolf_Gespraechsprotokoll_{DateTime.Now:yyyy-MM-dd_HHmmss}.docx");
+                var protokollText = $"# Gesprächsprotokoll vom {DateTime.Now:dd.MM.yyyy HH:mm}\n\n" +
+                                     $"**Mandant:** {_activeMandantName}\n\n{zusammenfassung}\n\n" +
+                                     $"## Transkript\n\n{transkript}";
+                DokumentExport.SchreibeDocx(protokollPfad, protokollText);
+            }
+            catch (Exception ex)
+            {
+                AddReasoning("⚠️", $"Gesprächsprotokoll konnte nicht in der Akte gespeichert werden: {ex.Message}");
+            }
+        }
+
+        System.Windows.MessageBox.Show(this,
+            zusammenfassung +
+            (protokollPfad is not null
+                ? $"\n\nVollständiges Protokoll gespeichert: {Path.GetFileName(protokollPfad)}"
+                : $"\n\nTranskript ({transkript.Length} Zeichen)."),
+            "Gespräch — Zusammenfassung", MessageBoxButton.OK, MessageBoxImage.Information);
+
+        await VorschlaegeDialog.ZeigeNachGespraechAsync(
+            this, _http, BackendUrl, strukturiert, _db, () => _settings, _activeMandantId ?? "",
+            dokumentePfad: _settings.DokumentePfad, mandantName: _activeMandantName ?? "");
+    }
+
+    /// <summary>Baut aus dem Ergebnis von POST /conversation/analyze (T#129) eine kurze,
+    /// aber vollständige Zusammenfassung — Themen, erkannte Fristen, Aufgaben und nächste
+    /// Schritte — für die Anzeige und für das Gesprächsprotokoll in der Akte.</summary>
+    private static string BaueGespraechZusammenfassung(JsonElement strukturiert)
+    {
+        static List<string> Liste(JsonElement e, string key) =>
+            e.TryGetProperty(key, out var arr) && arr.ValueKind == JsonValueKind.Array
+                ? arr.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() ?? "" : "").Where(s => s.Length > 0).ToList()
+                : new List<string>();
+
+        var themen = Liste(strukturiert, "themen");
+        var schritte = Liste(strukturiert, "naechste_schritte");
+
+        var fristen = new List<string>();
+        if (strukturiert.TryGetProperty("fristen", out var fArr) && fArr.ValueKind == JsonValueKind.Array)
+            foreach (var f in fArr.EnumerateArray())
+            {
+                var datum = f.TryGetProperty("datum", out var d) ? d.GetString() : null;
+                var besch = f.TryGetProperty("beschreibung", out var b) ? b.GetString() : null;
+                if (!string.IsNullOrWhiteSpace(datum) || !string.IsNullOrWhiteSpace(besch))
+                    fristen.Add($"{datum ?? "(Datum offen)"}: {besch ?? ""}".Trim());
             }
 
-            if (mandantId is not null)
-                _db.InsertGespraech(mandantId, DateTime.Now, JsonSerializer.Serialize(new { transkript }));
+        var aufgaben = new List<string>();
+        if (strukturiert.TryGetProperty("aufgaben", out var aArr) && aArr.ValueKind == JsonValueKind.Array)
+            foreach (var a in aArr.EnumerateArray())
+            {
+                var was = a.TryGetProperty("was", out var w) ? w.GetString() : null;
+                if (!string.IsNullOrWhiteSpace(was)) aufgaben.Add(was!);
+            }
 
-            var strukturiert = await VorschlaegeService.AnalysiereTranskriptAsync(_http, BackendUrl, transkript);
-            var themen = VorschlaegeService.LeseThemen(strukturiert);
-
-            System.Windows.MessageBox.Show(this,
-                themen.Count > 0
-                    ? $"Themen: {string.Join(", ", themen)}\n\nTranskript ({transkript.Length} Zeichen) in der Akte gespeichert."
-                    : $"Transkript ({transkript.Length} Zeichen) in der Akte gespeichert.",
-                "Gespräch — Zusammenfassung", MessageBoxButton.OK, MessageBoxImage.Information);
-
-            await VorschlaegeDialog.ZeigeNachGespraechAsync(
-                this, _http, BackendUrl, strukturiert,
-                dokumentePfad: _settings.DokumentePfad, mandantName: _activeMandantName ?? "");
-        }
-        catch (Exception ex)
-        {
-            AddReasoning("⚠️", $"Gespräch konnte nicht verarbeitet werden: {ex.Message}");
-        }
-        finally
-        {
-            GespraechBtn.IsEnabled = true;
-        }
+        var teile = new List<string>();
+        if (themen.Count > 0) teile.Add("## Themen\n" + string.Join("\n", themen.Select(t => $"- {t}")));
+        if (fristen.Count > 0) teile.Add("## Fristen\n" + string.Join("\n", fristen.Select(f => $"- {f}")));
+        if (aufgaben.Count > 0) teile.Add("## Aufgaben\n" + string.Join("\n", aufgaben.Select(a => $"- {a}")));
+        if (schritte.Count > 0) teile.Add("## Nächste Schritte\n" + string.Join("\n", schritte.Select(s => $"- {s}")));
+        return teile.Count > 0 ? string.Join("\n\n", teile) : "Keine strukturierten Angaben erkannt.";
     }
 
     private void OnRechnerClick(object sender, RoutedEventArgs e)

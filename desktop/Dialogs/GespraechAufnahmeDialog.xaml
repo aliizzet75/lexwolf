@@ -83,10 +83,18 @@
                    FontSize="36" FontWeight="Bold" FontFamily="Consolas"
                    HorizontalAlignment="Center" Margin="0,4,0,4"/>
 
-        <TextBlock Grid.Row="3" Text="Audio verlässt nie diesen Rechner." Foreground="#8b949e"
+        <TextBlock Grid.Row="3" x:Name="HinweisText" Text="Audio verlässt nie diesen Rechner." Foreground="#8b949e"
                    FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,18"/>
 
-        <Button Grid.Row="4" Content="⏹ Aufnahme beenden" Style="{StaticResource StopBtn}"
-                Click="OnStop" HorizontalAlignment="Center"/>
+        <StackPanel Grid.Row="4">
+            <Button x:Name="StopBtn" Content="⏹ Aufnahme beenden" Style="{StaticResource StopBtn}"
+                    Click="OnStop" HorizontalAlignment="Center"/>
+
+            <StackPanel x:Name="WartePanel" Visibility="Collapsed" HorizontalAlignment="Center">
+                <TextBlock x:Name="WarteText" Text="Wird transkribiert — bitte warten..." Foreground="#e8a838"
+                           FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                <ProgressBar IsIndeterminate="True" Width="220" Height="6"/>
+            </StackPanel>
+        </StackPanel>
     </Grid>
 </Window>
