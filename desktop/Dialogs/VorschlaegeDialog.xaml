@@ -4,6 +4,7 @@
         Title="LexWolf — Vorschläge nach dem Gespräch"
         Icon="/Assets/lexwolf.ico"
         Width="620" Height="560" MinWidth="520" MinHeight="420"
+        WindowState="Maximized"
         Background="#0d1117"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"

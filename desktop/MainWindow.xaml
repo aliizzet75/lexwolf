@@ -291,6 +291,8 @@
                                 Margin="0,0,8,8" ToolTip="Schriftsatz aus der Akte entwerfen — mit Belegen und geprüften Zitaten"/>
                         <Button x:Name="GespraechBtn" Content="🎙 Gespräch aufnehmen" Style="{StaticResource LwButton}" Padding="12,6" Click="OnGespraechClick"
                                 Margin="0,0,8,8" ToolTip="Mandantengespräch lokal aufnehmen und transkribieren (Whisper) — Audio verlässt nie den PC"/>
+                        <Button Content="📋 Gespräche" Style="{StaticResource LwButton}" Padding="12,6" Click="OnGespraecheAnzeigenClick"
+                                Margin="0,0,8,8" ToolTip="Aufgezeichnete Gespräche vollständig ansehen oder löschen"/>
                         <Button Content="🧮 Rechner" Style="{StaticResource LwButton}" Padding="12,6" Click="OnRechnerClick"
                                 Margin="0,0,8,8" ToolTip="Unterhalt, Zugewinn, Verfahrenswert, RVG — mit Rechenweg"/>
                         <Button Content="✉ Sachstand" Style="{StaticResource LwButton}" Padding="12,6" Click="OnSachstandClick"

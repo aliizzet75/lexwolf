@@ -58,8 +58,7 @@ public partial class VorschlaegeDialog : Window
         {
             Text = vorschlag.Text,
             Style = (Style)FindResource("LwEditor"),
-            MinHeight = 70,
-            MaxHeight = 160,
+            MinHeight = 200,
         };
 
         var statusText = new TextBlock
@@ -110,15 +109,15 @@ public partial class VorschlaegeDialog : Window
                 _http, _backendUrl, vorschlag.Typ, vorschlag.Text, entscheidung, geaenderterText, _accountId)
                 .ConfigureAwait(true);
 
-            string? artefaktFehler = null;
+            (bool Erfolg, string Meldung)? artefakt = null;
             if (entscheidung is "ja" or "geaendert")
-                artefaktFehler = ErzeugeArtefakt(vorschlag, textBox.Text);
+                artefakt = ErzeugeArtefakt(vorschlag, textBox.Text);
 
             ZeigeStatus(
-                artefaktFehler ?? (erfolg
+                artefakt?.Meldung ?? (erfolg
                     ? "Übernommen — fließt in die Lernschleife ein."
                     : "Übernommen, aber Entscheidung konnte nicht an den Server gemeldet werden."),
-                erfolg: artefaktFehler is null);
+                erfolg: artefakt?.Erfolg ?? erfolg);
         }
 
         jaBtn.Click += (_, _) => Entscheiden("ja");
@@ -148,6 +147,10 @@ public partial class VorschlaegeDialog : Window
     private string ZielOrdner()
     {
         if (string.IsNullOrWhiteSpace(_dokumentePfad)) return Path.GetTempPath();
+        // Fehlt der Mandantenname, landet sonst stillschweigend direkt im Dokumente-Wurzelordner
+        // statt in einem erkennbaren Mandantenordner — lieber laut scheitern.
+        if (string.IsNullOrWhiteSpace(_mandantName))
+            throw new InvalidOperationException("Kein Mandantenname aktiv.");
         var ordner = Path.Combine(_dokumentePfad, _mandantName);
         Directory.CreateDirectory(ordner);
         return ordner;
@@ -158,31 +161,29 @@ public partial class VorschlaegeDialog : Window
     /// "vorschlag", der Anwalt bestätigt ihn wie jeden anderen KI-Fristvorschlag im
     /// Fristen-Panel — Datum kommt aus der KI-Analyse, die eigentliche Berechnung macht wie
     /// immer FristRechner, nie die KI direkt). "email_entwurf" -> .eml-Datei in der Akte,
-    /// sofort geöffnet. Gibt eine Fehlermeldung zurück, oder null bei Erfolg.</summary>
-    private string? ErzeugeArtefakt(Vorschlag vorschlag, string text)
+    /// sofort geöffnet. Die Meldung nennt IMMER den vollen Pfad, nicht nur den Dateinamen —
+    /// "gespeichert, aber wo?" war genau das Problem vorher.</summary>
+    private (bool Erfolg, string Meldung) ErzeugeArtefakt(Vorschlag vorschlag, string text)
     {
         try
         {
-            switch (vorschlag.Typ)
+            return vorschlag.Typ switch
             {
-                case "fristennotiz":
-                    return ErzeugeFristenvorschlag(vorschlag, text);
-                case "email_entwurf":
-                    return ErzeugeEmailEntwurf(vorschlag, text);
-                default:
-                    return null;
-            }
+                "fristennotiz" => ErzeugeFristenvorschlag(vorschlag, text),
+                "email_entwurf" => ErzeugeEmailEntwurf(vorschlag, text),
+                _ => (true, "Übernommen — fließt in die Lernschleife ein."),
+            };
         }
         catch (Exception ex)
         {
-            return $"Übernommen, aber Artefakt konnte nicht erzeugt werden: {ex.Message}";
+            return (false, $"Übernommen, aber Artefakt konnte nicht erzeugt werden: {ex.Message}");
         }
     }
 
-    private string? ErzeugeFristenvorschlag(Vorschlag vorschlag, string text)
+    private (bool Erfolg, string Meldung) ErzeugeFristenvorschlag(Vorschlag vorschlag, string text)
     {
         if (_db is null || _settings is null || string.IsNullOrWhiteSpace(_mandantId))
-            return "Übernommen (kein Akte-Zugriff — Fristvorschlag konnte nicht angelegt werden).";
+            return (false, "Übernommen (kein Akte-Zugriff — Fristvorschlag konnte nicht angelegt werden).");
 
         string? datumRoh = vorschlag.Metadata.ValueKind == JsonValueKind.Object &&
                            vorschlag.Metadata.TryGetProperty("datum", out var d) ? d.GetString() : null;
@@ -191,7 +192,7 @@ public partial class VorschlaegeDialog : Window
             !DateTime.TryParse(datumRoh, System.Globalization.CultureInfo.GetCultureInfo("de-DE"),
                 System.Globalization.DateTimeStyles.None, out var datum))
         {
-            return "Übernommen — Datum aus dem Gespräch war nicht eindeutig, bitte Frist manuell im Fristen-Panel anlegen.";
+            return (false, "Übernommen — Datum aus dem Gespräch war nicht eindeutig, bitte Frist manuell im Fristen-Panel anlegen.");
         }
 
         var ergebnis = FristRechner.GesetzteFrist(datum, _settings().Bundesland);
@@ -200,15 +201,18 @@ public partial class VorschlaegeDialog : Window
             DateTime.Now, ergebnis.Ende, ergebnis.Vorfrist, false, "vorschlag", null,
             ergebnis.Rechenweg, "Aus Gesprächs-Vorschlag übernommen — bitte prüfen.", false));
 
-        return null;
+        return (true, $"Fristen-Vorschlag angelegt: {ergebnis.Ende:dd.MM.yyyy} — bitte im Fristen-Panel bestätigen.");
     }
 
-    private string? ErzeugeEmailEntwurf(Vorschlag vorschlag, string text)
+    private (bool Erfolg, string Meldung) ErzeugeEmailEntwurf(Vorschlag vorschlag, string text)
     {
+        if (string.IsNullOrWhiteSpace(_mandantName))
+            return (false, "Kein Mandantenname aktiv — E-Mail-Entwurf konnte keinem Mandantenordner zugeordnet werden.");
+
         var entwurf = new EmailEntwurf("", vorschlag.Titel.TrimEnd('?'), text.Replace("[Mandant]", _mandantName));
         var pfad = DokumentExport.SchreibeEml(entwurf, ZielOrdner());
         DokumentExport.OeffneMitStandardprogramm(pfad);
-        return null;
+        return (true, "E-Mail-Entwurf im Mandantenordner gespeichert und geöffnet.");
     }
 
     private void OnFertig(object sender, RoutedEventArgs e) => DialogResult = true;

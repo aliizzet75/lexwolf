@@ -531,6 +531,16 @@ namespace LexWolf.Database
             return result;
         }
 
+        /// <summary>Löscht ein einzelnes Gespräch endgültig (z.B. Fehlaufnahme oder Test).</summary>
+        public void DeleteGespraech(string id)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM gespraeche WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$id", id);
+            cmd.ExecuteNonQuery();
+        }
+
         // --- Mandant-Zusammenfassung (Task #219) ---
 
         public void UpsertMandantZusammenfassung(string mandantId, string text, string quellenHash)

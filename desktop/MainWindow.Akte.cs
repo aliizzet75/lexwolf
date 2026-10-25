@@ -389,6 +389,12 @@ public partial class MainWindow
         new SchriftsatzDialog(_db, BackendUrl, _activeMandantId!, _activeMandantName ?? "", _settings) { Owner = this }.ShowDialog();
     }
 
+    private void OnGespraecheAnzeigenClick(object sender, RoutedEventArgs e)
+    {
+        if (!MandantNoetig()) return;
+        new GespraecheDialog(_db, _activeMandantId!, _activeMandantName ?? "") { Owner = this }.ShowDialog();
+    }
+
     private async void OnGespraechClick(object sender, RoutedEventArgs e)
     {
         if (!MandantNoetig()) return;
@@ -486,31 +492,41 @@ public partial class MainWindow
         }
 
         var zusammenfassung = BaueGespraechZusammenfassung(strukturiert);
-        string? protokollPfad = null;
-        if (!string.IsNullOrWhiteSpace(_activeMandantName))
+        string? protokollFehler = null;
+        var protokollGespeichert = false;
+
+        if (string.IsNullOrWhiteSpace(_activeMandantName))
+        {
+            protokollFehler = "Kein Mandantenname aktiv — Protokoll konnte keinem Mandantenordner zugeordnet werden.";
+        }
+        else
         {
             try
             {
                 var ordner = Path.Combine(_settings.DokumentePfad, _activeMandantName);
                 Directory.CreateDirectory(ordner);
-                protokollPfad = DokumentExport.FreierPfad(ordner,
+                var protokollPfad = DokumentExport.FreierPfad(ordner,
                     $"LexWolf_Gespraechsprotokoll_{DateTime.Now:yyyy-MM-dd_HHmmss}.docx");
                 var protokollText = $"# Gesprächsprotokoll vom {DateTime.Now:dd.MM.yyyy HH:mm}\n\n" +
                                      $"**Mandant:** {_activeMandantName}\n\n{zusammenfassung}\n\n" +
                                      $"## Transkript\n\n{transkript}";
                 DokumentExport.SchreibeDocx(protokollPfad, protokollText);
+                protokollGespeichert = true;
             }
             catch (Exception ex)
             {
-                AddReasoning("⚠️", $"Gesprächsprotokoll konnte nicht in der Akte gespeichert werden: {ex.Message}");
+                protokollFehler = $"Protokoll konnte nicht gespeichert werden: {ex.Message}";
             }
         }
 
+        if (protokollFehler is not null)
+            System.Windows.MessageBox.Show(this, protokollFehler, "Gesprächsprotokoll — Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+
         System.Windows.MessageBox.Show(this,
-            zusammenfassung +
-            (protokollPfad is not null
-                ? $"\n\nVollständiges Protokoll gespeichert: {Path.GetFileName(protokollPfad)}"
-                : $"\n\nTranskript ({transkript.Length} Zeichen)."),
+            zusammenfassung + (protokollGespeichert
+                ? "\n\nVollständiges Protokoll im Mandantenordner gespeichert."
+                : $"\n\nTranskript ({transkript.Length} Zeichen) — Protokoll NICHT im Mandantenordner gespeichert, siehe vorherige Meldung."),
             "Gespräch — Zusammenfassung", MessageBoxButton.OK, MessageBoxImage.Information);
 
         await VorschlaegeDialog.ZeigeNachGespraechAsync(
