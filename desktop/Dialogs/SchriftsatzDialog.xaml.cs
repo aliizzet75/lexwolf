@@ -6,9 +6,12 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using LexWolf.Database;
+using LexWolf.Models;
 using LexWolf.Services;
 
 namespace LexWolf.Dialogs;
@@ -62,6 +65,12 @@ public partial class SchriftsatzDialog : Window
 
     private readonly AppSettings _settings;
 
+    // T#310: eigener HttpClient ohne Timeout für die Rechtsrecherche vor dem Entwurf —
+    // der Tief-Modus durchläuft mehrere Runden und kann länger dauern als ein normaler
+    // Request (gleicher Grund wie ReActDialog._streamHttp / MainWindow._reactHttp).
+    private readonly HttpClient _reactHttp = new() { Timeout = Timeout.InfiniteTimeSpan };
+    private readonly ReActStreamClient _reactClient;
+
     public SchriftsatzDialog(LocalDb db, string backendUrl, string mandantId, string mandantName, AppSettings settings)
     {
         InitializeComponent();
@@ -72,6 +81,7 @@ public partial class SchriftsatzDialog : Window
         _mandantName = mandantName;
         _settings = settings;
         _dokumentePfad = settings.DokumentePfad;
+        _reactClient = new ReActStreamClient(_reactHttp, backendUrl);
         UntertitelText.Text = mandantName;
         ArtBox.ItemsSource = Arten;
         ArtBox.SelectedIndex = 0;
@@ -85,7 +95,7 @@ public partial class SchriftsatzDialog : Window
         DokumenteLeer.Visibility = _dokumente.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         DokumenteZaehlen();
         StatusText.Text = "Der Entwurf dauert je nach Umfang 1–3 Minuten.";
-        Closed += (_, _) => _cts?.Cancel();
+        Closed += (_, _) => { _cts?.Cancel(); _reactHttp.Dispose(); };
     }
 
     private void DokumenteZaehlen() =>
@@ -125,20 +135,62 @@ public partial class SchriftsatzDialog : Window
             stamm.Gegner.Length > 0 ? $"Gegner: {stamm.Gegner}" : "",
             stamm.Gegnervertreter.Length > 0 ? $"Gegnervertreter: {stamm.Gegnervertreter}" : "",
         }.Where(s => s.Length > 0));
+        var art = (string)ArtBox.SelectedItem;
+
+        // Datenschutz (Task #308): Anweisung + Akte-Dokumenteninhalte gehen nur anonymisiert
+        // an den Server/die KI. Die Zuordnung (Alias -> Original) gilt nur für diese eine
+        // Anfrage und wird genutzt, um den Entwurf unten wieder zurückzuübersetzen, bevor
+        // der Anwalt ihn sieht.
+        var aliasToOriginal = new Dictionary<string, string>();
+        var anweisungAnonym = AnonymizerEngine.AnonymizeText(AnweisungBox.Text.Trim(), aliasToOriginal);
+
+        ErstellenBtn.IsEnabled = false;
+        _cts = new CancellationTokenSource(TimeSpan.FromMinutes(8));
+
+        // T#310: vor dem eigentlichen Entwurf Normen/Rechtsprechung zum Streitgegenstand
+        // (Art + Anweisung) über die Agentic-RAG-Suche recherchieren — live im Panel
+        // oben im mittleren Bereich sichtbar. Wie bei der Chat-Anbindung (T#309) ist das
+        // eine Ergänzung vor der Antwort, kein Blocker: schlägt sie fehl, entwirft die KI
+        // wie bisher primär aus den Akte-Dokumenten.
+        string? rechercheKontext = null;
+        var query = RechercheQueryBuilder.Build(art, anweisungAnonym);
+        if (query.Length > 0)
+        {
+            StatusText.Text = "🔎 Rechtsrecherche läuft (Normen/Rechtsprechung zum Streitgegenstand) …";
+            try
+            {
+                rechercheKontext = await RunLiveSearchAsync(query, SelectedSuchModus, _cts.Token);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RunLiveSearchAsync] {ex.Message}");
+            }
+        }
+
+        // Task #311: vor dem Serialisieren materialisieren (statt lazy in der Payload),
+        // damit genau dieser anonymisierte Text auch im Live-Panel angezeigt werden kann —
+        // dieselbe Zuordnung (aliasToOriginal) wie bei anweisungAnonym.
+        var dokumenteAnonym = auswahl
+            .Select(d => (Titel: d.Titel, Text: AnonymizerEngine.AnonymizeText(d.Text, aliasToOriginal)))
+            .ToList();
 
         var payload = JsonSerializer.Serialize(new
         {
-            art = (string)ArtBox.SelectedItem,
-            anweisung = AnweisungBox.Text.Trim(),
+            art,
+            anweisung = anweisungAnonym,
             mandant = _mandantName,
             stammdaten = stammText,
-            dokumente = auswahl.Select(d => new { titel = d.Titel, text = d.Text }),
+            dokumente = dokumenteAnonym.Select(d => new { titel = d.Titel, text = d.Text }),
             stil_vorlage = StilvorlageText(),
+            recherche_kontext = rechercheKontext ?? "",
         });
 
-        ErstellenBtn.IsEnabled = false;
+        // Task #311: denselben Abschnitt wie im Chat — zeigt im RecherchePanel (demselben
+        // Live-Panel wie die Suchschritte), was tatsächlich anonymisiert an den Server geht,
+        // nicht die Original-Eingabe aus AnweisungBox/den Akte-Dokumenten.
+        ZeigeAnonymisiertGesendet(AnonymisiertGesendetBuilder.BuildFuerSchriftsatz(anweisungAnonym, dokumenteAnonym));
+
         StatusText.Text = "⏳ LexWolf liest die Akte und entwirft den Schriftsatz …";
-        _cts = new CancellationTokenSource(TimeSpan.FromMinutes(8));
         try
         {
             using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
@@ -146,10 +198,13 @@ public partial class SchriftsatzDialog : Window
             var response = await http.PostAsync($"{_backendUrl}/akte/schriftsatz", content, _cts.Token);
             response.EnsureSuccessStatusCode();
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(_cts.Token));
-            EntwurfBox.Text = doc.RootElement.GetProperty("text").GetString() ?? "";
+            var rohEntwurf = doc.RootElement.GetProperty("text").GetString() ?? "";
+            EntwurfBox.Text = AnonymizerEngine.DeAnonymizeText(rohEntwurf, aliasToOriginal);
             var belege = doc.RootElement.TryGetProperty("belege", out var b) && b.ValueKind == JsonValueKind.Array
-                ? b.EnumerateArray().Select(x => new Beleg(x.GetProperty("zitat").GetString() ?? "", x.GetProperty("status").GetString() ?? "",
-                    x.TryGetProperty("hinweis", out var h) ? h.GetString() ?? "" : "")).ToList()
+                ? b.EnumerateArray().Select(x => new Beleg(
+                    AnonymizerEngine.DeAnonymizeText(x.GetProperty("zitat").GetString() ?? "", aliasToOriginal),
+                    x.GetProperty("status").GetString() ?? "",
+                    x.TryGetProperty("hinweis", out var h) ? AnonymizerEngine.DeAnonymizeText(h.GetString() ?? "", aliasToOriginal) : "")).ToList()
                 : new List<Beleg>();
             // Fehlerhaftes zuerst, dann zu Prüfendes, Geprüftes zuletzt
             BelegeListe.ItemsSource = belege
@@ -181,6 +236,132 @@ public partial class SchriftsatzDialog : Window
         {
             ErstellenBtn.IsEnabled = true;
         }
+    }
+
+    // ── Rechtsrecherche vor dem Entwurf (T#310) ─────────────────────────────────
+
+    private string SelectedSuchModus =>
+        (SuchModusBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "schnell";
+
+    /// <summary>
+    /// Ruft GET /api/search/stream (ReActStreamClient, bisher nur im separaten ReActDialog
+    /// bzw. im Chat über T#309 genutzt) für den aus Art+Anweisung gebildeten Streitgegenstand
+    /// auf und zeigt die Live-Suchschritte im RecherchePanel, während der Entwurf entsteht.
+    /// Gibt den aus den gefundenen Quellen gebauten Kontext zurück (oder null), der anschließend
+    /// als recherche_kontext an /akte/schriftsatz geht, damit der Entwurf nachweislich aus der
+    /// echten Recherche zitiert statt nur aus dem Trainingswissen der KI.
+    /// </summary>
+    private async Task<string?> RunLiveSearchAsync(string query, string modus, CancellationToken ct)
+    {
+        var events = new List<ReActStepEvent>();
+
+        RechercheListe.Items.Clear();
+        RechercheStatusText.Text = $"🔎 Recherche läuft … (Modus: {modus})";
+        RecherchePanel.Visibility = Visibility.Visible;
+
+        try
+        {
+            await foreach (var evt in _reactClient.StreamAsync(query, modus, ct).ConfigureAwait(true))
+            {
+                // antwort_chunk ist die vom ReAct-Engine selbst generierte Freitextantwort —
+                // nicht relevant hier, der Entwurf entsteht separat über /akte/schriftsatz
+                // mit dem aus den Suchergebnissen gebauten Kontext.
+                if (evt.Step == "antwort_chunk")
+                    continue;
+
+                events.Add(evt);
+                RechercheListe.Items.Add(BuildRechercheRow(evt));
+                RechercheScroll.ScrollToEnd();
+            }
+        }
+        catch (ReActStreamNotReachableException ex)
+        {
+            RechercheListe.Items.Add(BuildRechercheRow(null, ex.Message));
+        }
+
+        var gefundenCount = events.Count(ev => ev.Step == "suchergebnis" && !ev.IstVerworfen);
+        RechercheStatusText.Text = gefundenCount > 0
+            ? $"🔎 Recherche abgeschlossen (Modus: {modus}) — {gefundenCount} Quelle(n) gefunden"
+            : $"🔎 Recherche abgeschlossen (Modus: {modus}) — keine Quellen gefunden";
+
+        return AgenticSearchContext.BuildKontext(events, modus);
+    }
+
+    /// <summary>Task #311: Abschnitt "Anonymisiert gesendet" im selben RecherchePanel, das die
+    /// Suchschritte zeigt — macht das Panel sichtbar, auch wenn (z.B. ohne Art+Anweisung) keine
+    /// Recherche gelaufen ist, damit der Anwalt immer sieht, was den PC wirklich verlässt.</summary>
+    private void ZeigeAnonymisiertGesendet(string anonymisiertGesendet)
+    {
+        if (anonymisiertGesendet.Length == 0) return;
+        RecherchePanel.Visibility = Visibility.Visible;
+        RechercheListe.Items.Add(BuildAnonymisiertRow(anonymisiertGesendet));
+        RechercheScroll.ScrollToEnd();
+    }
+
+    /// <summary>Pendant zu BuildRechercheRow, nur für den anonymisierten Sende-Text (Task #311) —
+    /// eigene Farbe (Amber statt Grün/Rot), damit sie sich klar von den Suchschritten abhebt.</summary>
+    private UIElement BuildAnonymisiertRow(string text)
+    {
+        var amber = new SolidColorBrush(Color.FromRgb(0xe8, 0xa8, 0x38));
+
+        var header = new StackPanel { Orientation = Orientation.Horizontal };
+        header.Children.Add(new TextBlock { Text = "🔒", Foreground = amber, FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
+        header.Children.Add(new TextBlock { Text = "Anonymisiert gesendet:", Foreground = amber, FontSize = 11, FontWeight = FontWeights.SemiBold });
+
+        var body = new StackPanel();
+        body.Children.Add(header);
+        body.Children.Add(new TextBlock { Text = text, Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e)), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(18, 2, 0, 0) });
+
+        return new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(0x0d, 0x11, 0x17)),
+            BorderBrush = amber,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(8, 5, 8, 5),
+            Margin = new Thickness(0, 0, 0, 5),
+            Child = body,
+        };
+    }
+
+    /// <summary>Eine Zeile im RecherchePanel — Pendant zu ReActDialog.BuildRow, nur ohne
+    /// eigenes Fenster, damit der Live-Suchweg direkt neben dem entstehenden Entwurf steht.</summary>
+    private UIElement BuildRechercheRow(ReActStepEvent? evt, string? fehlerText = null)
+    {
+        var (icon, colorHex, quelle, text, confidence) = evt switch
+        {
+            null => ("⚠️", "#f85149", "Live-Suche", fehlerText ?? "nicht erreichbar", (double?)null),
+            { Step: "suche_start" } => ("🔎", "#8b949e", evt.Quelle ?? evt.Step, evt.Text, evt.Confidence),
+            { Step: "bewertung" } => ("📊", "#8b949e", evt.Quelle ?? evt.Step, evt.Text, evt.Confidence),
+            { Step: "fertig" } => ("✅", "#3fb950", evt.Quelle ?? evt.Step, evt.Text, evt.Confidence),
+            { Step: "suchergebnis", IstVerworfen: true } => ("✗", "#f85149", evt.Quelle ?? evt.Step, evt.Text, evt.Confidence),
+            { Step: "suchergebnis" } => ("✓", "#3fb950", evt.Quelle ?? evt.Step, evt.Text, evt.Confidence),
+            _ => ("•", "#8b949e", evt.Quelle ?? evt.Step, evt.Text, evt.Confidence),
+        };
+
+        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex));
+
+        var header = new StackPanel { Orientation = Orientation.Horizontal };
+        header.Children.Add(new TextBlock { Text = icon, Foreground = brush, FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
+        header.Children.Add(new TextBlock { Text = quelle, Foreground = System.Windows.Media.Brushes.White, FontSize = 11, FontWeight = FontWeights.SemiBold });
+        if (confidence.HasValue)
+            header.Children.Add(new TextBlock { Text = $"  {confidence.Value * 100:F0}%", Foreground = brush, FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) });
+
+        var body = new StackPanel();
+        body.Children.Add(header);
+        if (!string.IsNullOrWhiteSpace(text))
+            body.Children.Add(new TextBlock { Text = text, Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e)), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(18, 2, 0, 0) });
+
+        return new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(0x0d, 0x11, 0x17)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0x30, 0x36, 0x3d)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(8, 5, 8, 5),
+            Margin = new Thickness(0, 0, 0, 5),
+            Child = body,
+        };
     }
 
     /// <summary>Beim Wechsel der Schriftsatz-Art die für diese Art zuletzt gewählte

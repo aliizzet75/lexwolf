@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using LexWolf.Models;
 
@@ -9,12 +10,15 @@ namespace LexWolf.Services
     public static class AnonymizerEngine
     {
         // Regex-Muster für die Erkennung von Entitäten
+        // [A-Z][a-z] allein würde deutsche Namen/Straßen mit Umlauten (Müller,
+        // Musterstraße) nicht erkennen — ohne ÄÖÜäöüß bliebe die Anonymisierung für
+        // die meisten echten deutschen Namen wirkungslos.
         private static readonly Regex RegexGroßschreibungsNamen = new Regex(
-            @"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b",
+            @"\b([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)\b",
             RegexOptions.Compiled);
 
         private static readonly Regex RegexAdresse = new Regex(
-            @"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(\d{1,3})\b",
+            @"\b([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)*)\s+(\d{1,3})\b",
             RegexOptions.Compiled);
 
         private static readonly Regex RegexAktenzeichen = new Regex(
@@ -137,6 +141,47 @@ namespace LexWolf.Services
                 }
             }
 
+            return result;
+        }
+
+        // Anonymisiert Text vor dem Versand an den Server/die KI und ergänzt eine über
+        // mehrere Aufrufe hinweg gemeinsame Alias-Zuordnung (Alias ohne Klammern -> Original).
+        // So bekommt derselbe Name innerhalb einer Anfrage (z.B. Chat-Nachricht + Mandant-Kontext,
+        // oder Schriftsatz-Anweisung + mehrere Akte-Dokumente) überall denselben Alias, und die
+        // Antwort lässt sich mit genau dieser Zuordnung per DeAnonymizeText zurückübersetzen,
+        // bevor der Anwalt sie sieht.
+        public static string AnonymizeText(string text, Dictionary<string, string> aliasToOriginal)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+
+            var originalToAlias = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var kvp in aliasToOriginal) originalToAlias[kvp.Value] = kvp.Key;
+
+            var result = text;
+            result = AnonymizeCategory(result, RegexGroßschreibungsNamen, "PERSON", aliasToOriginal, originalToAlias);
+            result = AnonymizeCategory(result, RegexAdresse, "ADRESSE", aliasToOriginal, originalToAlias);
+            result = AnonymizeCategory(result, RegexAktenzeichen, "AKTENZEICHEN", aliasToOriginal, originalToAlias);
+            result = AnonymizeCategory(result, RegexBetrag, "BETRAG", aliasToOriginal, originalToAlias);
+            return result;
+        }
+
+        private static string AnonymizeCategory(string text, Regex regex, string typeName,
+            Dictionary<string, string> aliasToOriginal, Dictionary<string, string> originalToAlias)
+        {
+            var result = text;
+            var counter = aliasToOriginal.Keys.Count(k => k.StartsWith(typeName + "_", StringComparison.Ordinal)) + 1;
+            foreach (Match match in regex.Matches(result))
+            {
+                var original = match.Value;
+                if (IsAlreadyAnonymized(original)) continue;
+                if (!originalToAlias.TryGetValue(original, out var aliasKey))
+                {
+                    aliasKey = $"{typeName}_{counter++}";
+                    originalToAlias[original] = aliasKey;
+                    aliasToOriginal[aliasKey] = original;
+                }
+                result = result.Replace(original, $"[{aliasKey}]");
+            }
             return result;
         }
 

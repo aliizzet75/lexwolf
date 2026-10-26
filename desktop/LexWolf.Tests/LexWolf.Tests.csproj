@@ -27,6 +27,9 @@
 
   <ItemGroup>
     <Compile Include="../Services/PdfTextExtractor.cs" Link="PdfTextExtractor.cs" />
+    <Compile Include="../Services/AnonymizerEngine.cs" Link="AnonymizerEngine.cs" />
+    <Compile Include="../Services/ComicAliasPool.cs" Link="ComicAliasPool.cs" />
+    <Compile Include="../Models/FileEntry.cs" Link="FileEntry.cs" />
     <Compile Include="../Database/LocalDb.cs" Link="LocalDb.cs" />
     <Compile Include="../Database/LocalDb.Akte.cs" Link="LocalDb.Akte.cs" />
     <Compile Include="../Database/LocalDb.Einwilligung.cs" Link="LocalDb.Einwilligung.cs" />
@@ -58,6 +61,9 @@
     <Compile Include="../Services/VorschlaegeService.cs" Link="VorschlaegeService.cs" />
     <Compile Include="../Services/ReActStreamClient.cs" Link="ReActStreamClient.cs" />
     <Compile Include="../Models/ReActStepEvent.cs" Link="ReActStepEvent.cs" />
+    <Compile Include="../Services/AgenticSearchContext.cs" Link="AgenticSearchContext.cs" />
+    <Compile Include="../Services/RechercheQueryBuilder.cs" Link="RechercheQueryBuilder.cs" />
+    <Compile Include="../Services/AnonymisiertGesendetBuilder.cs" Link="AnonymisiertGesendetBuilder.cs" />
     <Compile Include="../Services/DateiVerwaltung.cs" Link="DateiVerwaltung.cs" />
   </ItemGroup>
 
