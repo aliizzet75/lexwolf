@@ -97,6 +97,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.66.0",
         "Nutzer-Feedback (echter Entwurf): Text war abgehackt (Stakkato-Kurzsaetze), und [D1]/[D2]-Belegverweise landeten im an die Gegenseite versendeten Dokument. Backend-Prompt verlangt jetzt fluessige verb",
     ),
+    (
+        "0.67.0",
+        "BUENDEL-RELEASE (2026-10-26): M27 Qualitaetsanzeige-Bugfixes (Konfidenz-Fehlberechnung repariert, 404 bei Quellen-Klick gefixt, Schriftsatz-Konfidenz+Quellen-Anbindung) + M28 Vorlagen-Verwaltung (Date",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
