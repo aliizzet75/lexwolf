@@ -199,5 +199,27 @@ namespace LexWolf.Tests
 
             Assert.DoesNotContain("quellen-liste", html);
         }
+
+        /// <summary>Task #307: "Als Vorlage speichern" steht als Aktion an der aktiven
+        /// Entwurfskarte zur Verfügung (siehe MainWindow.KarteAlsVorlageSpeichern).</summary>
+        [Fact]
+        public void Karte_Aktiv_ZeigtAlsVorlageSpeichernAktion()
+        {
+            var e = new ChatEntwurf("brief", "Kündigung", "RA Klein", "", "Text");
+            var html = ChatHtmlRenderer.WrapEntwurfKarte(new EntwurfKarteAnsicht(
+                8, e, "", Aktiv: true, ArtUmschaltbar: true, AblegenMoeglich: false, OeffnenLabel: "📄 In Word öffnen"));
+
+            Assert.Contains("data-action='vorlage' data-msg='8'", html);
+        }
+
+        [Fact]
+        public void Karte_Inaktiv_ZeigtKeineAlsVorlageSpeichernAktion()
+        {
+            var e = new ChatEntwurf("brief", "Kündigung", "RA Klein", "", "Text");
+            var html = ChatHtmlRenderer.WrapEntwurfKarte(new EntwurfKarteAnsicht(
+                9, e, "Durch eine neuere Fassung ersetzt.", Aktiv: false, ArtUmschaltbar: false, AblegenMoeglich: false, OeffnenLabel: null));
+
+            Assert.DoesNotContain("data-action='vorlage'", html);
+        }
     }
 }

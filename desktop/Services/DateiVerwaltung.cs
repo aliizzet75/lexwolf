@@ -38,8 +38,10 @@ namespace LexWolf.Services
         }
 
         /// <summary>True, wenn der neue Zielpfad auf denselben Eintrag zeigt wie der aktuelle
-        /// (Windows-Dateisystem ist case-insensitive — „Foo.docx“ -> „foo.docx“ ist kein Konflikt).</summary>
+        /// (Windows-Dateisystem ist case-insensitive — „Foo.docx“ -> „foo.docx“ ist kein Konflikt).
+        /// Ohne aktuellen Pfad (neue Datei, kein Umbenennen) ist "unverändert" nicht möglich.</summary>
         public static bool NameUnveraendert(string zielPfad, string aktuellerPfad) =>
+            aktuellerPfad.Length > 0 &&
             string.Equals(Path.GetFullPath(zielPfad), Path.GetFullPath(aktuellerPfad), StringComparison.OrdinalIgnoreCase);
     }
 }

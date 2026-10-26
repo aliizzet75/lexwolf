@@ -62,6 +62,25 @@ public static class VorlagenOrdner
             .FirstOrDefault();
     }
 
+    /// <summary>Prüft einen vorgeschlagenen Namen (ohne Endung) für eine neue Vorlagen-Datei im
+    /// Typ-Unterordner von [schriftsatzTyp] — Kollisionsprüfung für "Als Vorlage speichern"
+    /// (Task #307). Gibt null zurück, wenn der Name gültig ist, sonst eine Fehlermeldung.</summary>
+    public static string? PruefeVorlagenName(string name, string dokumentePfad, string schriftsatzTyp)
+    {
+        var getrimmt = (name ?? "").Trim();
+        if (getrimmt.Length == 0) return "Der Name darf nicht leer sein.";
+        var ordner = Path.Combine(dokumentePfad, Ordnername, OrdnerName(schriftsatzTyp));
+        return DateiVerwaltung.PruefeNeuenNamen(getrimmt + ".txt", ordner, "");
+    }
+
+    /// <summary>Zielpfad für eine neue Vorlagen-Datei im Typ-Unterordner von [schriftsatzTyp]
+    /// (Task #307) — legt Vorlagen- und Typ-Unterordner bei Bedarf an.</summary>
+    public static string VorlagenDateiPfad(string dokumentePfad, string schriftsatzTyp, string name)
+    {
+        var vorlagenOrdner = SicherstellenUnterordner(dokumentePfad, new[] { schriftsatzTyp });
+        return Path.Combine(vorlagenOrdner, OrdnerName(schriftsatzTyp), name.Trim() + ".txt");
+    }
+
     /// <summary>Lade-Fallback-Kette (Task #305) für die Vorlage, die beim Erstellen eines
     /// Schriftsatzes vom Typ [schriftsatzTyp] automatisch geladen wird:
     /// 1) [letzteVorlagePfad] (die für diesen Typ zuletzt bewusst gewählte Vorlage,

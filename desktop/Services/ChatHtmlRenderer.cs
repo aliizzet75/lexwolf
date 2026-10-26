@@ -372,6 +372,7 @@ public static class ChatHtmlRenderer
             if (k.AblegenMoeglich)
                 sb.Append($"<button class='chat-action-button' data-action='uebernehmen' data-msg='{k.Id}'>📁 In Akte ablegen</button>");
             sb.Append($"<button class='chat-action-button' data-action='kopieren' data-msg='{k.Id}'>Text kopieren</button>");
+            sb.Append($"<button class='chat-action-button' data-action='vorlage' data-msg='{k.Id}'>💾 Als Vorlage speichern</button>");
             sb.Append("</div>");
         }
 

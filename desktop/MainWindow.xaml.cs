@@ -1817,6 +1817,7 @@ document.addEventListener('click', function (e) {{
                 case "kopieren": KarteKopieren(karte); break;
                 case "art": KarteArtWechseln(karte, value); break;
                 case "zuordnen": KarteZuordnen(karte, value); break;
+                case "vorlage": KarteAlsVorlageSpeichern(karte); break;
             }
         }
         catch (Exception ex)
@@ -2019,6 +2020,8 @@ document.addEventListener('click', function (e) {{
                 ChatPanel.Children.Add(CreateAktionsButton(ansicht.OeffnenLabel, () => KarteOeffnen(k)));
             if (ansicht.AblegenMoeglich)
                 ChatPanel.Children.Add(CreateAktionsButton("📁 In Akte ablegen", () => KarteInAkteAblegen(k)));
+            if (ansicht.Aktiv)
+                ChatPanel.Children.Add(CreateAktionsButton("💾 Als Vorlage speichern", () => KarteAlsVorlageSpeichern(k)));
             ScrollToBottom();
             return;
         }
@@ -2196,6 +2199,31 @@ document.addEventListener('click', function (e) {{
             : DokumentExport.OhneMarkdown(k.Daten.Text).Replace("\r\n", "\n").Replace("\n", "\r\n");
         Clipboard.SetText(text);
         AddReasoning("📋", "Entwurfstext in die Zwischenablage kopiert.");
+    }
+
+    /// <summary>Task #307: aktuellen Entwurfstext als wiederverwendbare Vorlage für einen
+    /// Schriftsatz-Typ ablegen (Vorlagen/&lt;Typ&gt;/&lt;Name&gt;.txt) — und sofort als
+    /// „zuletzt gewählt“ für diesen Typ setzen (letzte_vorlage_pro_typ, siehe Task #304),
+    /// damit der nächste Schriftsatz dieses Typs sie automatisch vorschlägt (Task #305).</summary>
+    private void KarteAlsVorlageSpeichern(EntwurfKarte k)
+    {
+        var vorschlag = VorlagenOrdner.OrdnerName(k.Daten.Titel);
+        if (vorschlag.Length == 0) vorschlag = $"Vorlage {DateTime.Now:yyyy-MM-dd}";
+
+        var dlg = new VorlageSpeichernDialog(_settings.DokumentePfad, VorlagenOrdner.Arten[^1], vorschlag) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var pfad = VorlagenOrdner.VorlagenDateiPfad(_settings.DokumentePfad, dlg.GewaehlterTyp, dlg.Name);
+            DokumentExport.SchreibeText(pfad, k.Daten.Text);
+            _db.UpsertLetzteVorlage(dlg.GewaehlterTyp, pfad);
+            AddReasoning("💾", $"Als Vorlage für „{dlg.GewaehlterTyp}“ gespeichert: {Path.GetFileName(pfad)}");
+        }
+        catch (Exception ex)
+        {
+            AppendSystemMessage($"Vorlage konnte nicht gespeichert werden: {ex.Message}");
+        }
     }
 
     private string AktenPfad(string pfad) =>
