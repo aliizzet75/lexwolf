@@ -248,7 +248,7 @@ public partial class SchriftsatzDialog : Window
 
     private void OnKopieren(object sender, RoutedEventArgs e)
     {
-        Clipboard.SetText(DokumentExport.OhneMarkdown(DokumentExport.OhneTestHinweis(EntwurfBox.Text)));
+        Clipboard.SetText(DokumentExport.OhneFundstellen(DokumentExport.OhneMarkdown(DokumentExport.OhneTestHinweis(EntwurfBox.Text))));
         StatusText.Text = "In die Zwischenablage kopiert.";
     }
 
@@ -262,7 +262,7 @@ public partial class SchriftsatzDialog : Window
             var inhalt = InhaltsKurzform(EntwurfBox.Text);
             var namensteil = inhalt.Length > 0 ? inhalt : DateTime.Now.ToString("yyyy-MM-dd");
             var pfad = DokumentExport.FreierPfad(ordner, $"LexWolf_{art}_{namensteil}.docx");
-            DokumentExport.SchreibeDocx(pfad, EntwurfBox.Text);
+            DokumentExport.SchreibeDocx(pfad, DokumentExport.OhneFundstellen(EntwurfBox.Text));
             StatusText.Text = $"Gespeichert: {Path.GetFileName(pfad)}";
             DokumentExport.OeffneMitStandardprogramm(pfad);
         }

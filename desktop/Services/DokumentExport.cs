@@ -53,6 +53,12 @@ public static class DokumentExport
     private static readonly Regex Ueberschrift = new(@"^(#{1,6})\s+(.*)$");
     private static readonly Regex Aufzaehlung = new(@"^\s*[-*•]\s+(.*)$");
     private static readonly Regex Steuerzeichen = new(@"[\x00-\x08\x0B\x0C\x0E-\x1F]");
+    // Fundstellen-Verweise wie [D2] oder [D2, S. 3], auch mehrere direkt hintereinander
+    // ("[D1], [D2]") — für die Belegprüfung im Editor gedacht, dürfen aber nicht im
+    // Dokument stehen, das an einen Dritten geht (sonst z.B. "Sie schlugen [D1], [D2].").
+    private static readonly Regex Fundstellen = new(@"\s*(?:\[D\d+(?:,\s*S\.\s*\d+)?\]\s*,?\s*)+");
+    private static readonly Regex LeerzeichenVorSatzzeichen = new(@" +([.,;:!?])");
+    private static readonly Regex MehrfachesLeerzeichen = new(@" {2,}");
 
     public static string OhneTestHinweis(string text)
     {
@@ -83,6 +89,18 @@ public static class DokumentExport
             return Fett.Replace(u.Success ? u.Groups[2].Value : z, "$1");
         });
         return string.Join("\n", zeilen);
+    }
+
+    /// <summary>Entfernt Fundstellen-Verweise wie [D2] oder [D2, S. 3] — für die
+    /// Belegprüfung im Editor gedacht (3-Farben-System), dürfen aber nicht im Dokument
+    /// stehen, das an einen Mandanten, Gericht oder Dritte geht. Räumt dabei entstehende
+    /// doppelte Leerzeichen und Leerzeichen vor Satzzeichen auf ("Faust , ." -> "Faust.").</summary>
+    public static string OhneFundstellen(string text)
+    {
+        var ohne = Fundstellen.Replace(text, " ");
+        ohne = LeerzeichenVorSatzzeichen.Replace(ohne, "$1");
+        ohne = MehrfachesLeerzeichen.Replace(ohne, " ");
+        return string.Join("\n", ohne.Split('\n').Select(z => z.TrimEnd()));
     }
 
     /// <summary>Liest führende "An:"/"Betreff:"-Zeilen (Format laut System-Prompt in

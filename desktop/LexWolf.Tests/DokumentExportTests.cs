@@ -209,5 +209,32 @@ namespace LexWolf.Tests
                 File.Delete(pfad);
             }
         }
+
+        [Fact]
+        public void OhneFundstellen_entfernt_Dn_Verweise_und_raeumt_Satzzeichen_auf()
+        {
+            Assert.Equal(
+                "Sie nutzten die Faust.",
+                DokumentExport.OhneFundstellen("Sie nutzten die Faust [D1], [D2]."));
+        }
+
+        [Fact]
+        public void OhneFundstellen_entfernt_Verweis_mit_Seitenangabe_und_am_Zeilenende()
+        {
+            Assert.Equal(
+                "Vollmacht liegt vor.",
+                DokumentExport.OhneFundstellen("Vollmacht liegt vor [D2, S. 3]."));
+            Assert.Equal(
+                "K2: Zeugenbericht",
+                DokumentExport.OhneFundstellen("K2: Zeugenbericht [D1]"));
+        }
+
+        [Fact]
+        public void OhneFundstellen_laesst_Text_ohne_Verweise_unveraendert()
+        {
+            Assert.Equal(
+                "Ganz normaler Satz ohne Fundstelle.",
+                DokumentExport.OhneFundstellen("Ganz normaler Satz ohne Fundstelle."));
+        }
     }
 }

@@ -297,8 +297,8 @@ Die Akte besteht aus folgenden Dokumenten, nummeriert als [D1], [D2], ...:
 {dokumente}
 
 Anforderungen an den Entwurf:
-- Vollständig ausformuliert, {aufbau}, Deutsch.
-- JEDE Tatsachenbehauptung aus der Akte mit Fundstelle belegen, z.B. [D2] oder [D2, S. 3]. Seitenzahlen nur angeben, wenn das Dokument [Seite N]-Marken enthält — sonst nur [D2]. Was nicht in der Akte steht, als [Ergänzung erforderlich: ...] markieren — nichts erfinden.
+- Vollständig ausformuliert, {aufbau}, Deutsch, in flüssigem professionellem Anwaltsdeutsch mit vollständigen, verbundenen Sätzen (Haupt- und Nebensätze, Konjunktionen wie "da", "wodurch", "sodass") — KEINE Aneinanderreihung kurzer Einzelsätze im Stakkato-Stil ("Ein Vorfall ereignete sich. Datum: X. Ort: Y."). Mehrere zusammengehörige Tatsachen aus derselben Fundstelle gehören in EINEN zusammenhängenden Satz, nicht in mehrere Kurzsätze mit je eigener Klammer.
+- JEDE Tatsachenbehauptung aus der Akte mit Fundstelle belegen, z.B. [D2] oder [D2, S. 3]. Seitenzahlen nur angeben, wenn das Dokument [Seite N]-Marken enthält — sonst nur [D2]. Die Klammer steht am Satzende, nicht nach jedem Teilsatz. Was nicht in der Akte steht, als [Ergänzung erforderlich: ...] markieren — nichts erfinden.
 - Anlagen als K1/B1 usw. bezeichnen und am Ende ein Anlagenverzeichnis mit Zuordnung zu [Dn] anfügen.
 - Normen genau zitieren (z.B. § 1361 Abs. 1 BGB). Rechtsprechung nur zitieren, wenn du dir des Aktenzeichens sicher bist, sonst weglassen.
 - Keine Vorrede, keine Meta-Kommentare — nur der Schriftsatz.{stil}"""
