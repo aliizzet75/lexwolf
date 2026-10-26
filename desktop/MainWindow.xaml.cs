@@ -1652,28 +1652,17 @@ document.addEventListener('click', function (e) {{
             var action = root.TryGetProperty("action", out var a) ? a.GetString() : null;
             var value = root.TryGetProperty("value", out var v) ? v.GetString() ?? "" : "";
 
-<<<<<<< HEAD
-            // Task #80: Klick auf eine Inline-Quellenangabe (§23 KSchG, Art. 3 GG, ...) —
-            // hat keine Entwurfskarte dahinter (data-msg fehlt), deshalb vor dem
-            // Karten-Lookup behandeln, sonst würde der frühe Return unten greifen.
-            if (action == "quelle")
-            {
-                _ = ZeigeQuellenPopupAsync(value);
-                return;
-            }
-
             var id = root.TryGetProperty("msg", out var m) && int.TryParse(m.GetString(), out var i) ? i : -1;
-=======
-            // Task #297: "quelle" ist keine Entwurfskarten-Aktion (id ist hier die
-            // chunk_id aus quellen_check/T#296, nicht ein Karten-Index) -> vor dem
-            // _karten-Lookup abfangen.
+
+            // Task #297 (ersetzt die ältere Task #80-Variante ZeigeQuellenPopupAsync):
+            // "quelle" ist keine Entwurfskarten-Aktion (id ist hier die chunk_id aus
+            // quellen_check/T#296, nicht ein Karten-Index) -> vor dem _karten-Lookup abfangen.
             if (action == "quelle")
             {
                 _ = QuelleOeffnenAsync(id, value);
                 return;
             }
 
->>>>>>> feature/milestone-95
             if (!_karten.TryGetValue(id, out var karte)) return;
 
             switch (action)
@@ -1691,30 +1680,8 @@ document.addEventListener('click', function (e) {{
         }
     }
 
-<<<<<<< HEAD
-    /// <summary>Task #80: löst eine im Chat angeklickte Quellenangabe (z.B. "§ 23 KSchG")
-    /// über das Backend auf und zeigt sie im GesetzestextPopup — auch bei Fehlern (kein
-    /// Treffer, Backend nicht erreichbar) öffnet sich das Popup mit einem Hinweis, statt
-    /// den Klick wirkungslos zu lassen.</summary>
-    private async Task ZeigeQuellenPopupAsync(string referenz)
-    {
-        GesetzesChunk? chunk = null;
-        try
-        {
-            chunk = await _quellenangabeService.LadeChunkFuerReferenzAsync(referenz);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ZeigeQuellenPopupAsync] {ex.Message}");
-        }
-
-        Dispatcher.Invoke(() =>
-        {
-            var popup = new LexWolf.Dialogs.GesetzestextPopup(referenz, chunk) { Owner = this };
-            popup.ShowDialog();
-        });
-=======
-    /// <summary>Task #297: Klick auf einen Quellen-Link (siehe ChatHtmlRenderer.
+    /// <summary>Task #297 (ersetzt die ältere Task #80-Variante ZeigeQuellenPopupAsync):
+    /// Klick auf einen Quellen-Link (siehe ChatHtmlRenderer.
     /// WrapAiBubble/QuellenListeHtml) lädt den Chunk per chunk_id (T#296) vom Backend
     /// und zeigt ihn im QuelleDialog — der dort direkt zur exakten Passage springt
     /// (ChatHtmlRenderer.FindeZitatPosition), statt nur den Dokumentanfang zu zeigen.</summary>
@@ -1744,7 +1711,6 @@ document.addEventListener('click', function (e) {{
         {
             AppendSystemMessage($"Quelle konnte nicht geladen werden: {ex.Message}");
         }
->>>>>>> feature/milestone-95
     }
 
     // ── Entwurfskarten ──────────────────────────────────────────────────────
