@@ -31,6 +31,19 @@ namespace LexWolf.Models
         public System.Windows.Visibility MandantMenuSichtbar =>
             IsMandantOrdner ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
 
+        /// <summary>Umbenennen/Löschen gelten für Dateien und Unterordner, aber nicht für den
+        /// Mandantenordner selbst — der hängt an der Mandanten-ID (siehe DokumentScanner.MandantIdFuer)
+        /// und wird ausschließlich über den eigenen „Mandant löschen“-Dialog entfernt.</summary>
+        public System.Windows.Visibility NormalMenuSichtbar =>
+            IsMandantOrdner ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+
+        /// <summary>Datei liegt im Vorlagen-Ordner und ist dort direkt im eingebauten Editor
+        /// bearbeitbar (.docx/.txt, siehe VorlagenEditor.IstBearbeitbar) — Task #306.
+        /// Steuert sowohl den „Bearbeiten“-Menüpunkt als auch den Doppelklick im Dateibaum.</summary>
+        public bool IsVorlagenDatei { get; set; }
+        public System.Windows.Visibility BearbeitenMenuSichtbar =>
+            !IsFolder && IsVorlagenDatei ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
         private bool _isExpanded;
         public bool IsExpanded
         {

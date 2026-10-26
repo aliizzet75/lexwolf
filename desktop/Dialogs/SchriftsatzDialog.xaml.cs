@@ -49,13 +49,8 @@ public partial class SchriftsatzDialog : Window
         };
     }
 
-    private static readonly string[] Arten =
-    {
-        "Klageerwiderung", "Klageschrift", "Antragsschrift (Familiensache)", "Antragserwiderung (Familiensache)",
-        "Stellungnahme an das Gericht", "Berufungsbegründung", "Beschwerdebegründung",
-        "Außergerichtliches Schreiben an die Gegenseite", "Gutachten / Erfolgsaussichten",
-        "Freier Entwurf (siehe Anweisung)",
-    };
+    // Einzige Quelle für die Liste: VorlagenOrdner.Arten (auch für die Vorlagen-Unterordner je Typ).
+    private static readonly string[] Arten = VorlagenOrdner.Arten;
 
     private readonly LocalDb _db;
     private readonly string _backendUrl;
@@ -81,6 +76,7 @@ public partial class SchriftsatzDialog : Window
         UntertitelText.Text = mandantName;
         ArtBox.ItemsSource = Arten;
         ArtBox.SelectedIndex = 0;
+        ZeigeVorlage();
 
         _dokumente = db.GetDokumenteForMandant(mandantId, maxDokumente: 60)
             .Where(d => d.Text.Length > 0 && !Path.GetFileName(d.Pfad).StartsWith("LexWolf_", StringComparison.OrdinalIgnoreCase))
@@ -186,6 +182,39 @@ public partial class SchriftsatzDialog : Window
         {
             ErstellenBtn.IsEnabled = true;
         }
+    }
+
+    /// <summary>Beim Wechsel der Schriftsatz-Art die für diese Art zuletzt gewählte
+    /// Vorlage anzeigen (Task #304) — jede Art hat ihre eigene gemerkte Vorlage.</summary>
+    private void OnArtGeaendert(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => ZeigeVorlage();
+
+    private void ZeigeVorlage()
+    {
+        if (ArtBox.SelectedItem is not string art) { VorlageText.Text = "keine"; return; }
+        var gewaehlt = _db.GetLetzteVorlage(art);
+        VorlageText.Text = gewaehlt is null ? "keine"
+            : File.Exists(gewaehlt.Value.VorlagePfad) ? Path.GetFileName(gewaehlt.Value.VorlagePfad)
+            : $"{Path.GetFileName(gewaehlt.Value.VorlagePfad)} (nicht gefunden)";
+        VorlageText.ToolTip = gewaehlt?.VorlagePfad;
+    }
+
+    /// <summary>Explizite Auswahl der Vorlagen-Datei für die aktuell gewählte Schriftsatz-Art —
+    /// nur dieser bewusste Klick speichert die Auswahl, nicht ein bloßer Lesezugriff auf
+    /// die Datei (siehe LocalDb.UpsertLetzteVorlage / MainWindow.GetLatestTemplateContext).</summary>
+    private void OnVorlageWaehlen(object sender, RoutedEventArgs e)
+    {
+        if (ArtBox.SelectedItem is not string art) return;
+        var vorlagenOrdner = VorlagenOrdner.SicherstellenUnterordner(_dokumentePfad);
+        var artOrdner = Path.Combine(vorlagenOrdner, VorlagenOrdner.OrdnerName(art));
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = $"Vorlage für „{art}“ wählen",
+            Filter = "Schriftsätze (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt",
+            InitialDirectory = Directory.Exists(artOrdner) ? artOrdner : vorlagenOrdner,
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        _db.UpsertLetzteVorlage(art, dlg.FileName);
+        ZeigeVorlage();
     }
 
     private void ZeigeStil()

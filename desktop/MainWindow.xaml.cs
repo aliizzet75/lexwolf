@@ -273,6 +273,9 @@ document.addEventListener('click', function (e) {{
             _scanner?.Dispose();
             _scanner = null;
             Directory.CreateDirectory(path);
+            // Vorlagen/<Schriftsatz-Art>-Unterordner anlegen, falls noch nicht vorhanden
+            // (keine Migration bestehender Root-Vorlagen, siehe VorlagenOrdner).
+            VorlagenOrdner.SicherstellenUnterordner(path);
             _scanner = new DokumentScanner(path, _db);
             _scanner.OnDateiIndexiert = (mandantId, pfad) => _akte?.DateiIndexiert(mandantId, pfad);
             _scanner.ScanAll();
@@ -953,7 +956,11 @@ document.addEventListener('click', function (e) {{
             foreach (var file in Directory.EnumerateFiles(dirPath)
                          .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase))
             {
-                var fileNode = new Models.FileTreeNode(file) { IsPrioritized = _prioritizedPaths.Contains(file) };
+                var fileNode = new Models.FileTreeNode(file)
+                {
+                    IsPrioritized = _prioritizedPaths.Contains(file),
+                    IsVorlagenDatei = IstVorlagenDatei(file),
+                };
                 parent.AddChild(fileNode);
             }
         }
@@ -1059,12 +1066,19 @@ document.addEventListener('click', function (e) {{
         catch { return null; }
     }
 
-    /// <summary>Doppelklick öffnet die Datei im Standardprogramm. Einfacher Klick
-    /// wählt den Mandanten mit aus — Priorisieren läuft über Rechtsklick.</summary>
+    /// <summary>Doppelklick öffnet Vorlagen-Dateien im eingebauten Editor (Task #306),
+    /// alle anderen Dateien im Standardprogramm. Einfacher Klick wählt den Mandanten mit aus —
+    /// Priorisieren läuft über Rechtsklick.</summary>
     private void OnFileTreeDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (FileTree.SelectedItem is not Models.FileTreeNode selectedNode) return;
         if (selectedNode.IsFolder || string.IsNullOrEmpty(selectedNode.Path) || !File.Exists(selectedNode.Path)) return;
+
+        if (selectedNode.IsVorlagenDatei)
+        {
+            VorlageBearbeiten(selectedNode.Path);
+            return;
+        }
 
         try
         {
@@ -1075,6 +1089,28 @@ document.addEventListener('click', function (e) {{
             AddReasoning("⚠️", $"Datei konnte nicht geöffnet werden: {ex.Message}");
         }
     }
+
+    /// <summary>true, wenn pfad im Vorlagen-Wurzelordner (oder einem Typ-Unterordner davon,
+    /// siehe VorlagenOrdner) liegt und eine im eingebauten Editor unterstützte Endung hat
+    /// (Task #306) — steuert den "Bearbeiten"-Menüpunkt und den Doppelklick im Dateibaum.</summary>
+    private bool IstVorlagenDatei(string pfad)
+    {
+        if (!VorlagenEditor.IstBearbeitbar(pfad)) return false;
+        var vorlagenOrdner = Path.Combine(_settings.DokumentePfad, VorlagenOrdner.Ordnername);
+        var praefix = Path.GetFullPath(vorlagenOrdner) + Path.DirectorySeparatorChar;
+        return Path.GetFullPath(pfad).StartsWith(praefix, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Rechtsklick-Menüpunkt "📝 Bearbeiten" — nur für Vorlagen-Dateien sichtbar
+    /// (siehe FileTreeNode.BearbeitenMenuSichtbar).</summary>
+    private void OnVorlageBearbeiten(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        if (node.IsFolder || string.IsNullOrEmpty(node.Path)) return;
+        VorlageBearbeiten(node.Path);
+    }
+
+    private void VorlageBearbeiten(string pfad) => new VorlageEditorDialog(pfad) { Owner = this }.ShowDialog();
 
     /// <summary>Rechtsklick-Menüpunkt: Dokument im Chat-Kontext hervorheben (oder
     /// Hervorhebung aufheben). Betrifft nur Dateien, keine Ordner.</summary>
@@ -1092,6 +1128,109 @@ document.addEventListener('click', function (e) {{
         {
             _prioritizedPaths.Add(node.Path);
             node.IsPrioritized = true;
+        }
+    }
+
+    /// <summary>Rechtsklick-Menüpunkt: Datei/Unterordner umbenennen (nicht für den
+    /// Mandantenordner selbst — dessen Name hängt an der Mandanten-ID, siehe NormalMenuSichtbar).</summary>
+    private void OnDateiUmbenennen(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        if (node.IsMandantOrdner || string.IsNullOrEmpty(node.Path)) return;
+
+        var dlg = new UmbenennenDialog(node.Path, node.Name, node.IsFolder) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+
+        var ordner = Path.GetDirectoryName(node.Path)!;
+        var zielPfad = Path.Combine(ordner, dlg.NeuerName);
+        try
+        {
+            if (node.IsFolder)
+            {
+                Directory.Move(node.Path, zielPfad);
+            }
+            else
+            {
+                File.Move(node.Path, zielPfad);
+                _db.DeleteDokumentChunks(node.Path); // der Scanner liest die Datei unter dem neuen Pfad neu ein
+            }
+
+            if (_prioritizedPaths.Remove(node.Path))
+                _prioritizedPaths.Add(zielPfad);
+
+            BuildFileTree(_activeMandantName);
+            AddReasoning("✏️", $"„{node.Name}“ umbenannt in „{dlg.NeuerName}“.");
+        }
+        catch (IOException ex)
+        {
+            MessageBox.Show(this, $"„{node.Name}“ konnte nicht umbenannt werden — ist die Datei noch geöffnet?\n\n{ex.Message}",
+                "Umbenennen", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            MessageBox.Show(this, $"„{node.Name}“ konnte nicht umbenannt werden.\n\n{ex.Message}",
+                "Umbenennen", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Rechtsklick-Menüpunkt: Datei/Unterordner nach Sicherheitsabfrage löschen
+    /// (Papierkorb, wenn das Laufwerk einen hat — wie bei „Mandant löschen“).</summary>
+    private void OnDateiLoeschen(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        if (node.IsMandantOrdner || string.IsNullOrEmpty(node.Path)) return;
+
+        var art = node.IsFolder ? "den Ordner" : "die Datei";
+        if (MessageBox.Show(this, $"{art} „{node.Name}“ wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden, " +
+                                   "falls das Laufwerk keinen Papierkorb hat.", "Löschen",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            var papierkorb = MandantLoeschenDialog.HatPapierkorb(node.Path);
+            if (node.IsFolder)
+            {
+                foreach (var datei in Directory.EnumerateFiles(node.Path, "*", SearchOption.AllDirectories))
+                    _db.DeleteDokumentChunks(datei);
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(node.Path,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    papierkorb ? Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin
+                               : Microsoft.VisualBasic.FileIO.RecycleOption.DeletePermanently);
+            }
+            else
+            {
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(node.Path,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    papierkorb ? Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin
+                               : Microsoft.VisualBasic.FileIO.RecycleOption.DeletePermanently);
+                _db.DeleteDokumentChunks(node.Path);
+            }
+
+            _prioritizedPaths.Remove(node.Path);
+            BuildFileTree(_activeMandantName);
+            AddReasoning("🗑", $"„{node.Name}“ gelöscht" + (papierkorb ? " — liegt im Papierkorb." : " — endgültig (kein Papierkorb)."));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"„{node.Name}“ konnte nicht gelöscht werden — ist noch eine Datei daraus geöffnet?\n\n{ex.Message}",
+                "Löschen", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Rechtsklick-Menüpunkt: Datei im Standardprogramm bzw. Ordner im Explorer anzeigen.</summary>
+    private void OnDateiAnzeigen(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        if (string.IsNullOrEmpty(node.Path)) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(node.Path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            AddReasoning("⚠️", $"„{node.Name}“ konnte nicht angezeigt werden: {ex.Message}");
         }
     }
 
@@ -1678,6 +1817,7 @@ document.addEventListener('click', function (e) {{
                 case "kopieren": KarteKopieren(karte); break;
                 case "art": KarteArtWechseln(karte, value); break;
                 case "zuordnen": KarteZuordnen(karte, value); break;
+                case "vorlage": KarteAlsVorlageSpeichern(karte); break;
             }
         }
         catch (Exception ex)
@@ -1880,6 +2020,8 @@ document.addEventListener('click', function (e) {{
                 ChatPanel.Children.Add(CreateAktionsButton(ansicht.OeffnenLabel, () => KarteOeffnen(k)));
             if (ansicht.AblegenMoeglich)
                 ChatPanel.Children.Add(CreateAktionsButton("📁 In Akte ablegen", () => KarteInAkteAblegen(k)));
+            if (ansicht.Aktiv)
+                ChatPanel.Children.Add(CreateAktionsButton("💾 Als Vorlage speichern", () => KarteAlsVorlageSpeichern(k)));
             ScrollToBottom();
             return;
         }
@@ -2059,6 +2201,31 @@ document.addEventListener('click', function (e) {{
         AddReasoning("📋", "Entwurfstext in die Zwischenablage kopiert.");
     }
 
+    /// <summary>Task #307: aktuellen Entwurfstext als wiederverwendbare Vorlage für einen
+    /// Schriftsatz-Typ ablegen (Vorlagen/&lt;Typ&gt;/&lt;Name&gt;.txt) — und sofort als
+    /// „zuletzt gewählt“ für diesen Typ setzen (letzte_vorlage_pro_typ, siehe Task #304),
+    /// damit der nächste Schriftsatz dieses Typs sie automatisch vorschlägt (Task #305).</summary>
+    private void KarteAlsVorlageSpeichern(EntwurfKarte k)
+    {
+        var vorschlag = VorlagenOrdner.OrdnerName(k.Daten.Titel);
+        if (vorschlag.Length == 0) vorschlag = $"Vorlage {DateTime.Now:yyyy-MM-dd}";
+
+        var dlg = new VorlageSpeichernDialog(_settings.DokumentePfad, VorlagenOrdner.Arten[^1], vorschlag) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var pfad = VorlagenOrdner.VorlagenDateiPfad(_settings.DokumentePfad, dlg.GewaehlterTyp, dlg.Name);
+            DokumentExport.SchreibeText(pfad, k.Daten.Text);
+            _db.UpsertLetzteVorlage(dlg.GewaehlterTyp, pfad);
+            AddReasoning("💾", $"Als Vorlage für „{dlg.GewaehlterTyp}“ gespeichert: {Path.GetFileName(pfad)}");
+        }
+        catch (Exception ex)
+        {
+            AppendSystemMessage($"Vorlage konnte nicht gespeichert werden: {ex.Message}");
+        }
+    }
+
     private string AktenPfad(string pfad) =>
         Directory.Exists(_settings.DokumentePfad) ? Path.GetRelativePath(_settings.DokumentePfad, pfad) : pfad;
 
@@ -2147,22 +2314,23 @@ document.addEventListener('click', function (e) {{
         return parts.Count > 0 ? string.Join("\n\n", parts) : null;
     }
 
+    // Task #304/#305: Da der allgemeine Chat hier keinen konkreten Schriftsatz-Typ kennt,
+    // wird der Typ aus der über alle Typen hinweg zuletzt bewusst gewählten Vorlage
+    // übernommen (GetLetzteVorlageGlobal). Existiert deren Datei nicht mehr (verschoben/
+    // gelöscht), greift die Lade-Fallback-Kette aus VorlagenOrdner.FindeVorlagenPfad:
+    // erste Datei im Typ-Unterordner -> erste Datei im Vorlagen-Wurzelordner -> kein Kontext.
+    // Wurde noch nie bewusst eine Vorlage gewählt (kein Typ bekannt), geht es direkt auf
+    // Stufe 3 (Vorlagen-Wurzelordner).
     private string? GetLatestTemplateContext()
     {
-        var baseDir = Directory.Exists(_settings.DokumentePfad)
-            ? _settings.DokumentePfad
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LexWolf", "Vorlagen");
-        var templateDir = Path.Combine(baseDir, "Vorlagen");
-        if (!Directory.Exists(templateDir)) return null;
+        var gewaehlt = _db.GetLetzteVorlageGlobal();
+        var vorlagenOrdner = Path.Combine(_settings.DokumentePfad, VorlagenOrdner.Ordnername);
+        var pfad = gewaehlt is null
+            ? VorlagenOrdner.ErsteDateiAlphabetisch(vorlagenOrdner)
+            : VorlagenOrdner.FindeVorlagenPfad(_settings.DokumentePfad, gewaehlt.Value.SchriftsatzTyp, gewaehlt.Value.VorlagePfad);
+        if (pfad is null) return null;
 
-        var latestFile = Directory.EnumerateFiles(templateDir, "*", SearchOption.TopDirectoryOnly)
-            .Where(path => File.Exists(path))
-            .OrderByDescending(path => new FileInfo(path).LastWriteTimeUtc)
-            .FirstOrDefault();
-
-        if (latestFile is null) return null;
-
-        var content = File.ReadAllText(latestFile, Encoding.UTF8);
+        var content = File.ReadAllText(pfad, Encoding.UTF8);
         return string.IsNullOrWhiteSpace(content) ? null : $"Aktuelle Vorlage auf dem Rechner:\n{content}";
     }
 
