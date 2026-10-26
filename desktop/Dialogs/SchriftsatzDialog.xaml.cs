@@ -21,6 +21,7 @@ public partial class SchriftsatzDialog : Window
     {
         public required string Titel { get; init; }
         public required string Text { get; init; }
+        public required string Pfad { get; init; }
         public bool Ausgewaehlt { get; set; } = true;
     }
 
@@ -83,7 +84,7 @@ public partial class SchriftsatzDialog : Window
 
         _dokumente = db.GetDokumenteForMandant(mandantId, maxDokumente: 60)
             .Where(d => d.Text.Length > 0 && !Path.GetFileName(d.Pfad).StartsWith("LexWolf_", StringComparison.OrdinalIgnoreCase))
-            .Select(d => new DokumentAuswahl { Titel = d.Titel, Text = d.Text })
+            .Select(d => new DokumentAuswahl { Titel = d.Titel, Text = d.Text, Pfad = d.Pfad })
             .ToList();
         DokumenteListe.ItemsSource = _dokumente;
         DokumenteLeer.Visibility = _dokumente.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -96,6 +97,15 @@ public partial class SchriftsatzDialog : Window
         DokumenteZahl.Text = $"{_dokumente.Count(d => d.Ausgewaehlt)} von {_dokumente.Count}";
 
     private void OnDokumentGeaendert(object sender, RoutedEventArgs e) => DokumenteZaehlen();
+
+    /// <summary>Öffnet das Dokument mit dem Standardprogramm — zur Prüfung, bevor der Anwalt
+    /// entscheidet, ob es in den Entwurf einbezogen werden soll.</summary>
+    private void OnDokumentOeffnen(object sender, RoutedEventArgs e)
+    {
+        if (((System.Windows.Controls.Button)sender).DataContext is not DokumentAuswahl d) return;
+        try { DokumentExport.OeffneMitStandardprogramm(d.Pfad); }
+        catch (Exception ex) { StatusText.Text = $"Konnte Dokument nicht öffnen: {ex.Message}"; }
+    }
 
     private void OnEntwurfGeaendert(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
         LeerHinweis.Visibility = EntwurfBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -249,7 +259,9 @@ public partial class SchriftsatzDialog : Window
             var ordner = Path.Combine(_dokumentePfad, _mandantName);
             Directory.CreateDirectory(ordner);
             var art = ((string)ArtBox.SelectedItem).Split(' ')[0];
-            var pfad = DokumentExport.FreierPfad(ordner, $"LexWolf_{art}_{DateTime.Now:yyyy-MM-dd}.docx");
+            var inhalt = InhaltsKurzform(EntwurfBox.Text);
+            var namensteil = inhalt.Length > 0 ? inhalt : DateTime.Now.ToString("yyyy-MM-dd");
+            var pfad = DokumentExport.FreierPfad(ordner, $"LexWolf_{art}_{namensteil}.docx");
             DokumentExport.SchreibeDocx(pfad, EntwurfBox.Text);
             StatusText.Text = $"Gespeichert: {Path.GetFileName(pfad)}";
             DokumentExport.OeffneMitStandardprogramm(pfad);
@@ -258,6 +270,28 @@ public partial class SchriftsatzDialog : Window
         {
             StatusText.Text = $"Speichern fehlgeschlagen: {ex.Message}";
         }
+    }
+
+    /// <summary>Kurzer, dateinamentauglicher Auszug aus der "wegen:"-Zeile (Streitgegenstand),
+    /// die der Entwurf laut Backend-Prompt (_SCHRIFTSATZ_PROMPT) praktisch immer enthält —
+    /// statt nur eines Datums, sonst sind mehrere Entwürfe desselben Typs im Dateinamen nicht
+    /// unterscheidbar. Leer, wenn keine brauchbare Zeile gefunden wird (Aufrufer nutzt dann
+    /// weiterhin das Datum als Namensteil).</summary>
+    private static string InhaltsKurzform(string entwurf)
+    {
+        var zeile = entwurf.Split('\n')
+            .Select(z => z.Trim())
+            .FirstOrDefault(z => z.StartsWith("wegen:", StringComparison.OrdinalIgnoreCase));
+        if (zeile is null) return "";
+
+        var inhalt = zeile[(zeile.IndexOf(':') + 1)..].Trim().TrimEnd('.', ' ');
+        if (inhalt.Length == 0 || inhalt.StartsWith("[Ergänzung erforderlich", StringComparison.OrdinalIgnoreCase))
+            return "";
+
+        const string ungueltig = "\\/:*?\"<>|";
+        var bereinigt = string.Concat(inhalt.Select(c => ungueltig.Contains(c) || char.IsControl(c) ? ' ' : c));
+        bereinigt = string.Join(" ", bereinigt.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return bereinigt.Length > 40 ? bereinigt[..40].TrimEnd() : bereinigt;
     }
 
     private void OnSchliessen(object sender, RoutedEventArgs e) => Close();

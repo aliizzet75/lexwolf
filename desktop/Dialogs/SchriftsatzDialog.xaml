@@ -112,10 +112,15 @@
                             <ItemsControl x:Name="DokumenteListe">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <CheckBox IsChecked="{Binding Ausgewaehlt}" Style="{StaticResource LwCheckBox}"
-                                                  VerticalContentAlignment="Top" Click="OnDokumentGeaendert" Margin="0,3">
-                                            <TextBlock Text="{Binding Titel}" Style="{StaticResource LwFliesstext}" Margin="4,0,0,0"/>
-                                        </CheckBox>
+                                        <DockPanel Margin="0,3">
+                                            <Button DockPanel.Dock="Right" Content="👁" Style="{StaticResource LwSmallButton}"
+                                                    Padding="6,2" Margin="6,0,0,0" Click="OnDokumentOeffnen"
+                                                    ToolTip="Dokument öffnen, um zu prüfen, ob es einbezogen werden soll"/>
+                                            <CheckBox IsChecked="{Binding Ausgewaehlt}" Style="{StaticResource LwCheckBox}"
+                                                      VerticalContentAlignment="Top" Click="OnDokumentGeaendert">
+                                                <TextBlock Text="{Binding Titel}" Style="{StaticResource LwFliesstext}" Margin="4,0,0,0"/>
+                                            </CheckBox>
+                                        </DockPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
