@@ -105,6 +105,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.68.0",
         "Nutzer-Feedback: Umbenennen eines Dokuments stuerzte die App ab. Ursache: DeleteDokumentChunks nach File.Move kann SqliteException werfen (Scanner greift evtl. gleichzeitig auf DB zu), nicht von IOExc",
     ),
+    (
+        "0.69.0",
+        "Nutzer-Feedback: falsch zugeordnete E-Mails verfaelschen die Zeitleiste im Aktenstamm, es gab keine Moeglichkeit sie zu entfernen. Posteingang bekommt Entfernen-Button (nutzt bereits vorhandene, nie a",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
