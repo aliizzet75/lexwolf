@@ -1171,6 +1171,15 @@ document.addEventListener('click', function (e) {{
             MessageBox.Show(this, $"„{node.Name}“ konnte nicht umbenannt werden.\n\n{ex.Message}",
                 "Umbenennen", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+        catch (Exception ex)
+        {
+            // Datei kann bereits umbenannt sein (File.Move/Directory.Move liefen durch) — nur
+            // DeleteDokumentChunks/BuildFileTree danach ist fehlgeschlagen (z.B. SqliteException,
+            // weil der Datei-Scanner gerade gleichzeitig auf die DB zugreift). Ohne diesen Fang
+            // riss das die ganze App ab, statt nur diese eine Aktion fehlschlagen zu lassen.
+            MessageBox.Show(this, $"„{node.Name}“ umbenennen schlug fehl.\n\n{ex.Message}",
+                "Umbenennen", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     /// <summary>Rechtsklick-Menüpunkt: Datei/Unterordner nach Sicherheitsabfrage löschen

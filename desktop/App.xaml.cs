@@ -18,6 +18,18 @@ public partial class App : WpfApplication
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
+        // Ohne diesen Handler beendet JEDE nicht abgefangene Ausnahme auf dem UI-Thread
+        // sofort die komplette App (WPF-Standardverhalten) — z.B. beobachtet beim
+        // Umbenennen einer Datei, wenn der Datei-Scanner gleichzeitig auf die lokale DB
+        // zugreift. Zeigt den Fehler stattdessen an und lässt LexWolf weiterlaufen.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            System.Windows.MessageBox.Show(
+                $"Unerwarteter Fehler — LexWolf läuft weiter, bitte die letzte Aktion prüfen:\n\n{args.Exception.Message}",
+                "Unerwarteter Fehler", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            args.Handled = true;
+        };
+
         try
         {
             var version = CoreWebView2Environment.GetAvailableBrowserVersionString();
