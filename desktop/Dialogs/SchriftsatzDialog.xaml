@@ -70,8 +70,10 @@
                               SelectionChanged="OnArtGeaendert"/>
                     <Border Style="{StaticResource LwEintrag}" Margin="0,8,0,0">
                         <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource LwSmallButton}" Click="OnVorlageEntfernen"
+                                    Margin="6,0,0,0" ToolTip="Keine Vorlage für diese Art verwenden"/>
                             <Button DockPanel.Dock="Right" Content="Wählen …" Style="{StaticResource LwSmallButton}" Click="OnVorlageWaehlen"
-                                    ToolTip="Vorlagen-Datei für diese Schriftsatz-Art auswählen — wird für künftige Schriftsätze dieser Art gemerkt"/>
+                                    ToolTip="Eigenen guten Schriftsatz dieser Art wählen — wird für künftige Schriftsätze dieser Art gemerkt und als Stilvorlage verwendet (Aufbau, Ton, Formulierungen, keine Inhalte)"/>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="Vorlage für diese Art" Style="{StaticResource LwZaehlerText}"/>
                                 <TextBlock x:Name="VorlageText" Style="{StaticResource LwFliesstext}" TextWrapping="NoWrap"
@@ -86,7 +88,7 @@
                     </StackPanel>
                     <TextBlock Style="{StaticResource LwHinweis}" Margin="34,2,0,6" Text="Ziel, Argumente, Besonderheiten."/>
                     <TextBox x:Name="AnweisungBox" Style="{StaticResource LwTextBox}" TextWrapping="Wrap" AcceptsReturn="True"
-                             MinHeight="110" MaxHeight="220" VerticalScrollBarVisibility="Auto"
+                             MinHeight="220" MaxHeight="440" VerticalScrollBarVisibility="Auto"
                              ToolTip="z. B. „Antrag auf Abweisung; Einkommen der Antragstellerin ist höher als behauptet, siehe Gehaltsabrechnungen“"/>
 
                     <DockPanel Margin="0,20,0,8">
@@ -101,19 +103,6 @@
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom">
-                    <Border Style="{StaticResource LwEintrag}" Margin="0,10,0,0">
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource LwSmallButton}" Click="OnStilEntfernen"
-                                    Margin="6,0,0,0" ToolTip="Keine Stilvorlage verwenden"/>
-                            <Button DockPanel.Dock="Right" Content="Wählen …" Style="{StaticResource LwSmallButton}" Click="OnStilWaehlen"
-                                    ToolTip="Eigenen guten Schriftsatz wählen — LexWolf übernimmt Aufbau, Ton und Formulierungen, keine Inhalte"/>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Stilvorlage" Style="{StaticResource LwZaehlerText}"/>
-                                <TextBlock x:Name="StilText" Style="{StaticResource LwFliesstext}" TextWrapping="NoWrap"
-                                           TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
-                        </DockPanel>
-                    </Border>
                     <Button x:Name="ErstellenBtn" Content="✨ Entwurf erstellen" Style="{StaticResource LwPrimaryButton}"
                             Padding="14,10" Margin="0,12,0,0" Click="OnErstellen"/>
                 </StackPanel>

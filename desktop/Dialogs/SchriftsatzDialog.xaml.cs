@@ -72,7 +72,6 @@ public partial class SchriftsatzDialog : Window
         _mandantName = mandantName;
         _settings = settings;
         _dokumentePfad = settings.DokumentePfad;
-        ZeigeStil();
         UntertitelText.Text = mandantName;
         ArtBox.ItemsSource = Arten;
         ArtBox.SelectedIndex = 0;
@@ -188,14 +187,20 @@ public partial class SchriftsatzDialog : Window
     /// Vorlage anzeigen (Task #304) — jede Art hat ihre eigene gemerkte Vorlage.</summary>
     private void OnArtGeaendert(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => ZeigeVorlage();
 
+    /// <summary>"Vorlage für diese Art" ist die einzige Vorlagen-Auswahl im Dialog — sie wird
+    /// sowohl gemerkt (pro Art, siehe LocalDb.UpsertLetzteVorlage) als auch direkt als
+    /// Stilvorlage an das Backend gesendet (StilvorlageText). Vorher gab es dafür zwei
+    /// getrennte, verwirrend ähnliche Felder ("Vorlage für diese Art" + "Stilvorlage"), wobei
+    /// nur die Stilvorlage tatsächlich in den Entwurf einfloss — die Art-Vorlage wirkte sich
+    /// nur auf den allgemeinen Chat aus (MainWindow.GetLatestTemplateContext), nicht hier.</summary>
     private void ZeigeVorlage()
     {
         if (ArtBox.SelectedItem is not string art) { VorlageText.Text = "keine"; return; }
         var gewaehlt = _db.GetLetzteVorlage(art);
-        VorlageText.Text = gewaehlt is null ? "keine"
-            : File.Exists(gewaehlt.Value.VorlagePfad) ? Path.GetFileName(gewaehlt.Value.VorlagePfad)
-            : $"{Path.GetFileName(gewaehlt.Value.VorlagePfad)} (nicht gefunden)";
-        VorlageText.ToolTip = gewaehlt?.VorlagePfad;
+        var pfad = gewaehlt?.VorlagePfad ?? "";
+        VorlageText.Text = pfad.Length == 0 ? "keine — Standardstil"
+            : File.Exists(pfad) ? Path.GetFileName(pfad) : $"{Path.GetFileName(pfad)} (nicht gefunden)";
+        VorlageText.ToolTip = pfad.Length > 0 ? pfad : null;
     }
 
     /// <summary>Explizite Auswahl der Vorlagen-Datei für die aktuell gewählte Schriftsatz-Art —
@@ -217,40 +222,21 @@ public partial class SchriftsatzDialog : Window
         ZeigeVorlage();
     }
 
-    private void ZeigeStil()
+    private void OnVorlageEntfernen(object sender, RoutedEventArgs e)
     {
-        var pfad = _settings.StilvorlagePfad;
-        StilText.Text = pfad.Length == 0 ? "keine — Standardstil"
-            : File.Exists(pfad) ? Path.GetFileName(pfad) : $"{Path.GetFileName(pfad)} (nicht gefunden)";
-        StilText.ToolTip = pfad.Length > 0 ? pfad : null;
+        if (ArtBox.SelectedItem is not string art) return;
+        _db.UpsertLetzteVorlage(art, "");
+        ZeigeVorlage();
     }
 
+    /// <summary>Inhalt der für die aktuell gewählte Art gemerkten Vorlage — wird dem Backend
+    /// als stil_vorlage übergeben (Aufbau, Ton, Formulierungen, keine Inhalte).</summary>
     private string StilvorlageText()
     {
-        var pfad = _settings.StilvorlagePfad;
+        if (ArtBox.SelectedItem is not string art) return "";
+        var pfad = _db.GetLetzteVorlage(art)?.VorlagePfad ?? "";
         if (pfad.Length == 0 || !File.Exists(pfad)) return "";
         try { return DokumentScanner.LeseText(pfad); } catch { return ""; }
-    }
-
-    private void OnStilWaehlen(object sender, RoutedEventArgs e)
-    {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "Musterschriftsatz als Stilvorlage wählen",
-            Filter = "Schriftsätze (*.docx;*.pdf;*.txt)|*.docx;*.pdf;*.txt",
-            InitialDirectory = Directory.Exists(_dokumentePfad) ? _dokumentePfad : "",
-        };
-        if (dlg.ShowDialog(this) != true) return;
-        _settings.StilvorlagePfad = dlg.FileName;
-        try { _settings.Save(); } catch { }
-        ZeigeStil();
-    }
-
-    private void OnStilEntfernen(object sender, RoutedEventArgs e)
-    {
-        _settings.StilvorlagePfad = "";
-        try { _settings.Save(); } catch { }
-        ZeigeStil();
     }
 
     /// <summary>Rechner öffnen (vorbelegt aus dem Fragebogen) und den Rechenweg übernehmen:
