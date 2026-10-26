@@ -12,7 +12,7 @@ import json
 import logging
 import re
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -160,31 +160,35 @@ _PARAGRAPH_ZITAT = re.compile(
 _AZ_ZITAT = re.compile(r"\b(?:[IVX]+|\d{1,2})\s?[A-Z][A-Za-z]{0,3}\s?\d{1,5}[/.]\d{2}\b")
 
 
-def _entscheidung_in_db(az: str) -> str:
-    """'gefunden: BGH, 10.06.2026' | 'nicht in Datenbank' | 'nicht prüfbar'. Die Datenbank enthält nur
-    die vom Crawler geladenen Entscheidungen der Bundesgerichte — nicht gefunden heißt nicht falsch."""
+def _entscheidung_in_db(az: str) -> Tuple[str, Optional[int]]:
+    """('gefunden: BGH, 10.06.2026', chunk_id) | ('nicht in Datenbank', None) | ('nicht prüfbar', None).
+    Die Datenbank enthält nur die vom Crawler geladenen Entscheidungen der
+    Bundesgerichte — nicht gefunden heißt nicht falsch. chunk_id (T#296) ist die
+    id des gefundenen legal_chunks-Eintrags, für die exakte Positionsangabe der Quelle."""
     try:
         from sqlalchemy import text as sqltxt
         from api.chat import _get_search
         db = _get_search().database_service.SessionLocal()
         try:
             row = db.execute(sqltxt(
-                "SELECT court, date FROM legal_chunks WHERE regexp_replace(case_number, '\\s', '', 'g') ILIKE :az LIMIT 1"),
+                "SELECT id, court, date FROM legal_chunks WHERE regexp_replace(case_number, '\\s', '', 'g') ILIKE :az LIMIT 1"),
                 {"az": re.sub(r"\s", "", az)}).first()
             if not row:
-                return "nicht in Datenbank"
+                return "nicht in Datenbank", None
             datum = f", {row.date:%d.%m.%Y}" if row.date else ""
-            return f"gefunden: {row.court}{datum}"
+            return f"gefunden: {row.court}{datum}", row.id
         finally:
             db.close()
     except Exception as e:
         logger.warning(f"Rechtsprechungsprüfung nicht möglich: {e}")
-        return "nicht prüfbar"
+        return "nicht prüfbar", None
 _DOK_VERWEIS = re.compile(r"\[D(\d+)(?:[^\]]*)\]")
 
 
-def _paragraph_in_db(nr: str, gesetz: str) -> str:
-    """'geprüft' | 'nicht gefunden' | 'nicht in Datenbank' (Gesetz dort nicht vorhanden)."""
+def _paragraph_in_db(nr: str, gesetz: str) -> Tuple[str, Optional[int]]:
+    """('geprüft', chunk_id) | ('nicht gefunden', None) | ('nicht in Datenbank', None).
+    chunk_id (T#296) ist die id des gefundenen legal_chunks-Eintrags, für die
+    exakte Positionsangabe der Quelle in der Response."""
     try:
         from sqlalchemy import text as sqltxt
         from api.chat import _get_search
@@ -194,17 +198,17 @@ def _paragraph_in_db(nr: str, gesetz: str) -> str:
             gesetz_da = db.execute(sqltxt(
                 "SELECT 1 FROM legal_chunks WHERE tags ILIKE :t LIMIT 1"), {"t": f"{tag}%"}).first()
             if not gesetz_da:
-                return "nicht in Datenbank"
+                return "nicht in Datenbank", None
             # Titel kommen in zwei Formaten vor: "§ 115 Kosten …" und "FAMFG - § 115 Kosten …"
             treffer = db.execute(sqltxt(
-                "SELECT 1 FROM legal_chunks WHERE tags ILIKE :t AND (title ILIKE :p1 OR title ILIKE :p2) LIMIT 1"),
+                "SELECT id FROM legal_chunks WHERE tags ILIKE :t AND (title ILIKE :p1 OR title ILIKE :p2) LIMIT 1"),
                 {"t": f"{tag}%", "p1": f"§ {nr} %", "p2": f"% § {nr} %"}).first()
-            return "geprüft" if treffer else "nicht gefunden"
+            return ("geprüft", treffer.id) if treffer else ("nicht gefunden", None)
         finally:
             db.close()
     except Exception as e:
         logger.warning(f"Belegprüfung nicht möglich: {e}")
-        return "nicht prüfbar"
+        return "nicht prüfbar", None
 
 
 def pruefe_belege(text: str, anzahl_dokumente: int) -> list:
@@ -217,17 +221,18 @@ def pruefe_belege(text: str, anzahl_dokumente: int) -> list:
         gesehen.add((nr, gesetz))
         if m.group(1) == "Art.":
             # Artikel (GG, EGBGB, DSGVO …) stehen nicht unter "§" in der Datenbank
-            belege.append({"zitat": f"Art. {nr} {gesetz}", "art": "Norm", "status": "bitte prüfen"})
+            belege.append({"zitat": f"Art. {nr} {gesetz}", "art": "Norm", "status": "bitte prüfen", "chunk_id": None})
         else:
-            belege.append({"zitat": f"§ {nr} {gesetz}", "art": "Norm", "status": _paragraph_in_db(nr, gesetz)})
+            status, chunk_id = _paragraph_in_db(nr, gesetz)
+            belege.append({"zitat": f"§ {nr} {gesetz}", "art": "Norm", "status": status, "chunk_id": chunk_id})
     for m in _AZ_ZITAT.finditer(text):
         if m.group(0) in gesehen:
             continue
         gesehen.add(m.group(0))
-        status = _entscheidung_in_db(m.group(0))
+        status, chunk_id = _entscheidung_in_db(m.group(0))
         belege.append({"zitat": m.group(0), "art": "Rechtsprechung",
                        "status": "geprüft" if status.startswith("gefunden") else "bitte prüfen",
-                       "hinweis": status})
+                       "hinweis": status, "chunk_id": chunk_id})
     for m in _DOK_VERWEIS.finditer(text):
         nr = int(m.group(1))
         key = f"D{nr}"
@@ -235,7 +240,8 @@ def pruefe_belege(text: str, anzahl_dokumente: int) -> list:
             continue
         gesehen.add(key)
         belege.append({"zitat": m.group(0), "art": "Akte",
-                       "status": "geprüft" if 1 <= nr <= anzahl_dokumente else "Dokument existiert nicht"})
+                       "status": "geprüft" if 1 <= nr <= anzahl_dokumente else "Dokument existiert nicht",
+                       "chunk_id": None})
     return belege
 
 
