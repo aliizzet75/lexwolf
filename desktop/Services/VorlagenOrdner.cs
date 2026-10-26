@@ -48,4 +48,34 @@ public static class VorlagenOrdner
         var ungueltig = Path.GetInvalidFileNameChars();
         return new string(ersetzt.Where(c => !ungueltig.Contains(c)).ToArray()).Trim();
     }
+
+    /// <summary>Erste Datei (alphabetisch nach Dateiname) direkt in [ordner], oder null wenn
+    /// der Ordner nicht existiert oder keine Dateien enthält. Durchsucht bewusst nur
+    /// [ordner] selbst (TopDirectoryOnly) — beim Root-Fallback (Stufe 3 der Lade-Fallback-Kette,
+    /// Task #305) sollen keine Dateien aus den Typ-Unterordnern anderer Schriftsatz-Arten
+    /// einfließen.</summary>
+    public static string? ErsteDateiAlphabetisch(string ordner)
+    {
+        if (!Directory.Exists(ordner)) return null;
+        return Directory.GetFiles(ordner, "*", SearchOption.TopDirectoryOnly)
+            .OrderBy(f => Path.GetFileName(f), System.StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+    }
+
+    /// <summary>Lade-Fallback-Kette (Task #305) für die Vorlage, die beim Erstellen eines
+    /// Schriftsatzes vom Typ [schriftsatzTyp] automatisch geladen wird:
+    /// 1) [letzteVorlagePfad] (die für diesen Typ zuletzt bewusst gewählte Vorlage,
+    ///    siehe LocalDb.GetLetzteVorlage), falls die Datei noch existiert;
+    /// 2) sonst die erste Datei (alphabetisch) im Typ-Unterordner Vorlagen/[Typ]/;
+    /// 3) sonst die erste Datei (alphabetisch) im übergeordneten Vorlagen-Wurzelordner;
+    /// 4) sonst null — kein Vorlagen-Kontext, wie bisher bei leerem Ordner.</summary>
+    public static string? FindeVorlagenPfad(string dokumentePfad, string schriftsatzTyp, string? letzteVorlagePfad)
+    {
+        if (letzteVorlagePfad is not null && File.Exists(letzteVorlagePfad))
+            return letzteVorlagePfad;
+
+        var vorlagenOrdner = Path.Combine(dokumentePfad, Ordnername);
+        var typOrdner = Path.Combine(vorlagenOrdner, OrdnerName(schriftsatzTyp));
+        return ErsteDateiAlphabetisch(typOrdner) ?? ErsteDateiAlphabetisch(vorlagenOrdner);
+    }
 }

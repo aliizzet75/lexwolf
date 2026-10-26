@@ -2253,18 +2253,23 @@ document.addEventListener('click', function (e) {{
         return parts.Count > 0 ? string.Join("\n\n", parts) : null;
     }
 
-    // Task #304: vorher wurde hier die Datei mit der jüngsten LastWriteTimeUtc im
-    // Vorlagen-Ordner genommen — das ist "zuletzt geändert", nicht "zuletzt bewusst
-    // gewählt". Jetzt wird die vom Anwalt im Schriftsatz-Dialog explizit ausgewählte
-    // Vorlage genutzt (LocalDb.letzte_vorlage_pro_typ). Da der allgemeine Chat hier
-    // keinen konkreten Schriftsatz-Typ kennt, wird die über alle Typen hinweg zuletzt
-    // gewählte Vorlage verwendet.
+    // Task #304/#305: Da der allgemeine Chat hier keinen konkreten Schriftsatz-Typ kennt,
+    // wird der Typ aus der über alle Typen hinweg zuletzt bewusst gewählten Vorlage
+    // übernommen (GetLetzteVorlageGlobal). Existiert deren Datei nicht mehr (verschoben/
+    // gelöscht), greift die Lade-Fallback-Kette aus VorlagenOrdner.FindeVorlagenPfad:
+    // erste Datei im Typ-Unterordner -> erste Datei im Vorlagen-Wurzelordner -> kein Kontext.
+    // Wurde noch nie bewusst eine Vorlage gewählt (kein Typ bekannt), geht es direkt auf
+    // Stufe 3 (Vorlagen-Wurzelordner).
     private string? GetLatestTemplateContext()
     {
         var gewaehlt = _db.GetLetzteVorlageGlobal();
-        if (gewaehlt is null || !File.Exists(gewaehlt.Value.VorlagePfad)) return null;
+        var vorlagenOrdner = Path.Combine(_settings.DokumentePfad, VorlagenOrdner.Ordnername);
+        var pfad = gewaehlt is null
+            ? VorlagenOrdner.ErsteDateiAlphabetisch(vorlagenOrdner)
+            : VorlagenOrdner.FindeVorlagenPfad(_settings.DokumentePfad, gewaehlt.Value.SchriftsatzTyp, gewaehlt.Value.VorlagePfad);
+        if (pfad is null) return null;
 
-        var content = File.ReadAllText(gewaehlt.Value.VorlagePfad, Encoding.UTF8);
+        var content = File.ReadAllText(pfad, Encoding.UTF8);
         return string.IsNullOrWhiteSpace(content) ? null : $"Aktuelle Vorlage auf dem Rechner:\n{content}";
     }
 
