@@ -145,6 +145,10 @@
                                             <MenuItem Header="⭐ Priorisierung umschalten"
                                                       Click="OnTogglePrioritize"
                                                       CommandParameter="{Binding}"/>
+                                            <MenuItem Header="📝 Bearbeiten"
+                                                      Click="OnVorlageBearbeiten"
+                                                      CommandParameter="{Binding}"
+                                                      Visibility="{Binding BearbeitenMenuSichtbar}"/>
                                             <MenuItem Header="✏️ Umbenennen"
                                                       Click="OnDateiUmbenennen"
                                                       CommandParameter="{Binding}"

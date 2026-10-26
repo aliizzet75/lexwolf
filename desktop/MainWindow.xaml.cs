@@ -956,7 +956,11 @@ document.addEventListener('click', function (e) {{
             foreach (var file in Directory.EnumerateFiles(dirPath)
                          .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase))
             {
-                var fileNode = new Models.FileTreeNode(file) { IsPrioritized = _prioritizedPaths.Contains(file) };
+                var fileNode = new Models.FileTreeNode(file)
+                {
+                    IsPrioritized = _prioritizedPaths.Contains(file),
+                    IsVorlagenDatei = IstVorlagenDatei(file),
+                };
                 parent.AddChild(fileNode);
             }
         }
@@ -1062,12 +1066,19 @@ document.addEventListener('click', function (e) {{
         catch { return null; }
     }
 
-    /// <summary>Doppelklick öffnet die Datei im Standardprogramm. Einfacher Klick
-    /// wählt den Mandanten mit aus — Priorisieren läuft über Rechtsklick.</summary>
+    /// <summary>Doppelklick öffnet Vorlagen-Dateien im eingebauten Editor (Task #306),
+    /// alle anderen Dateien im Standardprogramm. Einfacher Klick wählt den Mandanten mit aus —
+    /// Priorisieren läuft über Rechtsklick.</summary>
     private void OnFileTreeDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (FileTree.SelectedItem is not Models.FileTreeNode selectedNode) return;
         if (selectedNode.IsFolder || string.IsNullOrEmpty(selectedNode.Path) || !File.Exists(selectedNode.Path)) return;
+
+        if (selectedNode.IsVorlagenDatei)
+        {
+            VorlageBearbeiten(selectedNode.Path);
+            return;
+        }
 
         try
         {
@@ -1078,6 +1089,28 @@ document.addEventListener('click', function (e) {{
             AddReasoning("⚠️", $"Datei konnte nicht geöffnet werden: {ex.Message}");
         }
     }
+
+    /// <summary>true, wenn pfad im Vorlagen-Wurzelordner (oder einem Typ-Unterordner davon,
+    /// siehe VorlagenOrdner) liegt und eine im eingebauten Editor unterstützte Endung hat
+    /// (Task #306) — steuert den "Bearbeiten"-Menüpunkt und den Doppelklick im Dateibaum.</summary>
+    private bool IstVorlagenDatei(string pfad)
+    {
+        if (!VorlagenEditor.IstBearbeitbar(pfad)) return false;
+        var vorlagenOrdner = Path.Combine(_settings.DokumentePfad, VorlagenOrdner.Ordnername);
+        var praefix = Path.GetFullPath(vorlagenOrdner) + Path.DirectorySeparatorChar;
+        return Path.GetFullPath(pfad).StartsWith(praefix, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Rechtsklick-Menüpunkt "📝 Bearbeiten" — nur für Vorlagen-Dateien sichtbar
+    /// (siehe FileTreeNode.BearbeitenMenuSichtbar).</summary>
+    private void OnVorlageBearbeiten(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        if (node.IsFolder || string.IsNullOrEmpty(node.Path)) return;
+        VorlageBearbeiten(node.Path);
+    }
+
+    private void VorlageBearbeiten(string pfad) => new VorlageEditorDialog(pfad) { Owner = this }.ShowDialog();
 
     /// <summary>Rechtsklick-Menüpunkt: Dokument im Chat-Kontext hervorheben (oder
     /// Hervorhebung aufheben). Betrifft nur Dateien, keine Ordner.</summary>
