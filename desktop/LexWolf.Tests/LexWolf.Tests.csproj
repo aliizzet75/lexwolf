@@ -30,6 +30,7 @@
     <Compile Include="../Database/LocalDb.cs" Link="LocalDb.cs" />
     <Compile Include="../Database/LocalDb.Akte.cs" Link="LocalDb.Akte.cs" />
     <Compile Include="../Database/LocalDb.Einwilligung.cs" Link="LocalDb.Einwilligung.cs" />
+    <Compile Include="../Database/LocalDb.LetzteVorlage.cs" Link="LocalDb.LetzteVorlage.cs" />
     <Compile Include="../Services/ChatHtmlRenderer.cs" Link="ChatHtmlRenderer.cs" />
     <Compile Include="../Services/QuellenangabeService.cs" Link="QuellenangabeService.cs" />
     <Compile Include="../Services/ScreenshotValidator.cs" Link="ScreenshotValidator.cs" />

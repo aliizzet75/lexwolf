@@ -2253,22 +2253,18 @@ document.addEventListener('click', function (e) {{
         return parts.Count > 0 ? string.Join("\n\n", parts) : null;
     }
 
+    // Task #304: vorher wurde hier die Datei mit der jüngsten LastWriteTimeUtc im
+    // Vorlagen-Ordner genommen — das ist "zuletzt geändert", nicht "zuletzt bewusst
+    // gewählt". Jetzt wird die vom Anwalt im Schriftsatz-Dialog explizit ausgewählte
+    // Vorlage genutzt (LocalDb.letzte_vorlage_pro_typ). Da der allgemeine Chat hier
+    // keinen konkreten Schriftsatz-Typ kennt, wird die über alle Typen hinweg zuletzt
+    // gewählte Vorlage verwendet.
     private string? GetLatestTemplateContext()
     {
-        var baseDir = Directory.Exists(_settings.DokumentePfad)
-            ? _settings.DokumentePfad
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LexWolf", "Vorlagen");
-        var templateDir = Path.Combine(baseDir, "Vorlagen");
-        if (!Directory.Exists(templateDir)) return null;
+        var gewaehlt = _db.GetLetzteVorlageGlobal();
+        if (gewaehlt is null || !File.Exists(gewaehlt.Value.VorlagePfad)) return null;
 
-        var latestFile = Directory.EnumerateFiles(templateDir, "*", SearchOption.TopDirectoryOnly)
-            .Where(path => File.Exists(path))
-            .OrderByDescending(path => new FileInfo(path).LastWriteTimeUtc)
-            .FirstOrDefault();
-
-        if (latestFile is null) return null;
-
-        var content = File.ReadAllText(latestFile, Encoding.UTF8);
+        var content = File.ReadAllText(gewaehlt.Value.VorlagePfad, Encoding.UTF8);
         return string.IsNullOrWhiteSpace(content) ? null : $"Aktuelle Vorlage auf dem Rechner:\n{content}";
     }
 

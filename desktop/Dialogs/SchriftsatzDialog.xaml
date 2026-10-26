@@ -66,7 +66,19 @@
                         <Border Style="{StaticResource LwSchritt}"><TextBlock Text="1" Style="{StaticResource LwSchrittText}"/></Border>
                         <TextBlock Text="Was soll entstehen?" Style="{StaticResource LwAbschnitt}"/>
                     </StackPanel>
-                    <ComboBox x:Name="ArtBox" Style="{StaticResource DarkComboBoxStyle}" Margin="0,10,0,0"/>
+                    <ComboBox x:Name="ArtBox" Style="{StaticResource DarkComboBoxStyle}" Margin="0,10,0,0"
+                              SelectionChanged="OnArtGeaendert"/>
+                    <Border Style="{StaticResource LwEintrag}" Margin="0,8,0,0">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Wählen …" Style="{StaticResource LwSmallButton}" Click="OnVorlageWaehlen"
+                                    ToolTip="Vorlagen-Datei für diese Schriftsatz-Art auswählen — wird für künftige Schriftsätze dieser Art gemerkt"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Vorlage für diese Art" Style="{StaticResource LwZaehlerText}"/>
+                                <TextBlock x:Name="VorlageText" Style="{StaticResource LwFliesstext}" TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
 
                     <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
                         <Border Style="{StaticResource LwSchritt}"><TextBlock Text="2" Style="{StaticResource LwSchrittText}"/></Border>

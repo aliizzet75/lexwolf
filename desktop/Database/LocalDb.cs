@@ -114,6 +114,7 @@ namespace LexWolf.Database
             MigriereSpalteFallsFehlt(conn, "chat_history", "confidence_score", "REAL");
             InitializeAkte(conn);
             InitializeEinwilligung(conn);
+            InitializeLetzteVorlage(conn);
         }
 
         private static void MigriereSpalteFallsFehlt(SqliteConnection conn, string tabelle, string spalte, string spaltenTyp)
