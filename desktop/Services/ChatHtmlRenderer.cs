@@ -306,6 +306,63 @@ public static class ChatHtmlRenderer
         return $"<div class='user-message'><div class='user-bubble'>{html}</div></div>";
     }
 
+    /// <summary>T#309: eine Zeile im Live-Suche-Panel — Pendant zu
+    /// ReActDialog.AddStepRow/BuildRow, nur als HTML statt WPF-Controls, damit
+    /// der Live-Denkprozess der Agentic-Suche inline im Chat erscheint statt nur
+    /// im separaten Fenster.</summary>
+    public static string SearchStepRowHtml(string step, string? quelle, string text, double? confidence, string? status)
+    {
+        static string H(string s) => WebUtility.HtmlEncode(s);
+        var verworfen = string.Equals(status, "verworfen", System.StringComparison.OrdinalIgnoreCase);
+        var (icon, cls) = step switch
+        {
+            "suche_start" => ("🔎", "info"),
+            "bewertung" => ("📊", "info"),
+            "fertig" => ("✅", "done"),
+            "suchergebnis" when verworfen => ("✗", "verworfen"),
+            "suchergebnis" => ("✓", "gefunden"),
+            "fehler" => ("⚠️", "fehler"),
+            _ => ("•", "info"),
+        };
+
+        var konfidenzHtml = confidence.HasValue
+            ? $"<span class='such-konfidenz'>{(int)System.Math.Round(confidence.Value * 100)}%</span>"
+            : "";
+
+        var sb = new StringBuilder();
+        sb.Append($"<div class='such-schritt such-{cls}'>");
+        sb.Append("<div class='such-kopf'>");
+        sb.Append($"<span class='such-icon'>{icon}</span>");
+        sb.Append($"<span class='such-quelle'>{H(quelle ?? step)}</span>");
+        sb.Append(konfidenzHtml);
+        sb.Append("</div>");
+        if (!string.IsNullOrWhiteSpace(text))
+            sb.Append($"<div class='such-text'>{H(text)}</div>");
+        sb.Append("</div>");
+        return sb.ToString();
+    }
+
+    /// <summary>T#309: eingeklappter/aufklappbarer Bereich über der Antwort, der live
+    /// die Schritte der Agentic-Suche (/api/search/stream) zeigt — bleibt während des
+    /// Laufs offen, klappt beim ersten Rendern danach zu (Anwalt kann bei Bedarf
+    /// wieder aufklappen), damit der eigentliche Chat nicht durch den Suchweg
+    /// zugemüllt wird, sobald die Antwort da ist.</summary>
+    public static string WrapSearchPanel(string stepsHtml, bool laufend, string modus, int gefundenCount)
+    {
+        var modusLabel = modus == "tief" ? "tief" : "schnell";
+        string summary;
+        if (laufend)
+            summary = $"🔎 Live-Suche läuft … (Modus: {modusLabel})";
+        else if (gefundenCount > 0)
+            summary = $"🔎 Suche abgeschlossen (Modus: {modusLabel}) — {gefundenCount} Quelle(n) gefunden";
+        else
+            summary = $"🔎 Suche abgeschlossen (Modus: {modusLabel}) — keine Quellen gefunden";
+
+        var openAttr = laufend ? " open" : "";
+        return $"<details class='such-panel'{openAttr}><summary>{WebUtility.HtmlEncode(summary)}</summary>" +
+               $"<div class='such-liste'>{stepsHtml}</div></details>";
+    }
+
     public static string WrapSystemMessage(string text)
     {
         return $"<div class='system-message'>{WebUtility.HtmlEncode(text)}</div>";
@@ -461,6 +518,22 @@ public static class ChatHtmlRenderer
             .confidence-badge.confidence-green {{ background: #2ea04326; color: #3fb950; }}
             .confidence-badge.confidence-yellow {{ background: #d2992226; color: #e8a838; }}
             .confidence-badge.confidence-red {{ background: #f8514926; color: #ff7b72; }}
+
+            .such-panel {{ margin: 8px 8px 12px 8px; border: 1px solid #30363d; border-radius: 8px; background: #161b22; }}
+            .such-panel summary {{ cursor: pointer; padding: 8px 12px; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 1)}px; list-style: none; }}
+            .such-panel summary::-webkit-details-marker {{ display: none; }}
+            .such-panel[open] summary {{ border-bottom: 1px solid #30363d; }}
+            .such-liste {{ padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }}
+            .such-schritt {{ border: 1px solid #30363d; border-radius: 6px; padding: 6px 9px; background: #0d1117; }}
+            .such-kopf {{ display: flex; align-items: center; gap: 6px; }}
+            .such-icon {{ font-size: 13px; }}
+            .such-quelle {{ color: #c9d1d9; font-weight: 600; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
+            .such-konfidenz {{ margin-left: auto; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
+            .such-text {{ margin-top: 3px; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
+            .such-schritt.such-gefunden .such-quelle {{ color: #3fb950; }}
+            .such-schritt.such-verworfen .such-quelle {{ color: #f85149; }}
+            .such-schritt.such-fehler .such-quelle {{ color: #f85149; }}
+            .such-schritt.such-done .such-quelle {{ color: #3fb950; }}
         </style>";
     }
 }

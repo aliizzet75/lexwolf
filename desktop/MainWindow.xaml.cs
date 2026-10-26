@@ -17,6 +17,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using Forms = System.Windows.Forms;
 using LexWolf.Database;
+using LexWolf.Models;
 using LexWolf.Services;
 using LexWolf.Dialogs;
 using Microsoft.Web.WebView2.Core;
@@ -36,6 +37,11 @@ public partial class MainWindow : Window
 
     private AppSettings _settings = AppSettings.Load();
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(120) };
+    // T#309: eigener HttpClient ohne Timeout für die Agentic-Suche vor der Antwort —
+    // der Tief-Modus durchläuft mehrere Runden und kann länger dauern als die 120s
+    // des normalen Chat-Clients (gleicher Grund wie bei ReActDialog._streamHttp).
+    private readonly HttpClient _reactHttp = new() { Timeout = Timeout.InfiniteTimeSpan };
+    private readonly ReActStreamClient _reactClient;
     private readonly List<ChatMessage> _history = new();
     private readonly LocalDb _db = new();
     private readonly ChatSummaryService _chatSummaryService;
@@ -98,6 +104,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _reactClient = new ReActStreamClient(_reactHttp, BackendUrl);
         _chatSummaryService = new ChatSummaryService(_db, _http, BackendUrl);
         _quellenangabeService = new QuellenangabeService(BackendUrl, _http);
         _mandantAnalyseService = new MandantAnalyseService(_db, _http, BackendUrl);
@@ -1497,11 +1504,30 @@ document.addEventListener('click', function (e) {{
         _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "user", text);
 
         ReasoningPanel.Children.Clear();
-        ZeigeWolfLoading("Anfrage wird verarbeitet...");
+        ZeigeWolfLoading("Agentic-Suche läuft...");
 
         try
         {
-            var (content, suggestedAction, confidence, quellen) = await PostChatAsync();
+            var suchModus = SelectedSuchModus;
+            string? suchKontext = null;
+            try
+            {
+                suchKontext = await RunLiveSearchAsync(text, suchModus);
+            }
+            catch (Exception ex)
+            {
+                // Live-Suche ist eine Ergänzung vor der Antwort, kein Blocker — /chat
+                // führt intern ohnehin eine eigene Suche aus (_search_chunks), daher
+                // bei Fehlern hier einfach ohne zusätzlichen Suchkontext weitermachen.
+                System.Diagnostics.Debug.WriteLine($"[RunLiveSearchAsync] {ex.Message}");
+            }
+
+            // Direkt den Text setzen statt erneut ZeigeWolfLoading: das zählt einen
+            // zweiten "aktiv"-Eintrag, der unten in finally nur einmal (VerbergeWolfLoading)
+            // wieder abgebaut wird — die Wolf-Animation bliebe sonst nach dieser Nachricht
+            // dauerhaft sichtbar.
+            Dispatcher.Invoke(() => WolfLoadingText.Text = "Anfrage wird verarbeitet...");
+            var (content, suggestedAction, confidence, quellen) = await PostChatAsync(suchKontext);
 
             _history.Add(new ChatMessage("assistant", content));
             _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", content, confidence);
@@ -1545,9 +1571,94 @@ document.addEventListener('click', function (e) {{
         ((Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"]).Stop(WolfLoadingPanel);
     }
 
+    // ── Agentic-Suche vor der Antwort (T#309) ───────────────────────────────────
+
+    private string SelectedSuchModus =>
+        (SuchModusBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "schnell";
+
+    /// <summary>
+    /// Ruft GET /api/search/stream (ReActStreamClient, bisher nur im separaten
+    /// ReActDialog genutzt) für die aktuelle Nachricht auf und zeigt die
+    /// Live-Suchschritte inline im Chat — als eingeklappter/aufklappbarer Bereich
+    /// direkt über der kommenden Antwort, statt in einem eigenen Fenster.
+    /// Gibt den aus den gefundenen Quellen gebauten Kontext zurück (oder null),
+    /// der anschließend in PostChatAsync als zusätzlicher mandant_context an
+    /// /chat geht, damit die Suche die Antwort nachweislich beeinflusst.
+    /// </summary>
+    private async Task<string?> RunLiveSearchAsync(string query, string modus)
+    {
+        var events = new List<ReActStepEvent>();
+        var stepsHtml = new StringBuilder();
+        int panelIndex = -1;
+
+        if (_webViewInitialized)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                panelIndex = _chatHistoryHtml.Count;
+                _chatHistoryHtml.Add(ChatHtmlRenderer.WrapSearchPanel("", laufend: true, modus, gefundenCount: 0));
+                RefreshChatWebView();
+                ScrollToBottom();
+            });
+        }
+
+        try
+        {
+            await foreach (var evt in _reactClient.StreamAsync(query, modus).ConfigureAwait(true))
+            {
+                // antwort_chunk ist die vom ReAct-Engine selbst generierte Antwort —
+                // die zeigt der Chat nicht an, seine eigentliche Antwort kommt separat
+                // aus /chat (das den hier gesammelten Suchkontext bekommt).
+                if (evt.Step == "antwort_chunk")
+                    continue;
+
+                events.Add(evt);
+
+                if (_webViewInitialized)
+                {
+                    stepsHtml.Append(ChatHtmlRenderer.SearchStepRowHtml(evt.Step, evt.Quelle, evt.Text, evt.Confidence, evt.Status));
+                    Dispatcher.Invoke(() =>
+                    {
+                        _chatHistoryHtml[panelIndex] = ChatHtmlRenderer.WrapSearchPanel(stepsHtml.ToString(), laufend: true, modus, gefundenCount: 0);
+                        RefreshChatWebView();
+                        ScrollToBottom();
+                    });
+                }
+                else
+                {
+                    AddReasoning(evt.Step == "suchergebnis" && evt.IstVerworfen ? "✗" : "🔎", $"{evt.Quelle ?? evt.Step}: {evt.Text}");
+                }
+            }
+        }
+        catch (ReActStreamNotReachableException ex)
+        {
+            if (_webViewInitialized && panelIndex >= 0)
+            {
+                stepsHtml.Append(ChatHtmlRenderer.SearchStepRowHtml("fehler", "Live-Suche", ex.Message, null, null));
+            }
+            else
+            {
+                AddReasoning("⚠️", $"Live-Suche nicht erreichbar: {ex.Message}");
+            }
+        }
+
+        var gefundenCount = events.Count(e => e.Step == "suchergebnis" && !e.IstVerworfen);
+        if (_webViewInitialized && panelIndex >= 0)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _chatHistoryHtml[panelIndex] = ChatHtmlRenderer.WrapSearchPanel(stepsHtml.ToString(), laufend: false, modus, gefundenCount);
+                RefreshChatWebView();
+                ScrollToBottom();
+            });
+        }
+
+        return AgenticSearchContext.BuildKontext(events, modus);
+    }
+
     // ── Chat-Backend ─────────────────────────────────────────────────────────
 
-    private async Task<(string content, string suggestedAction, double confidence, List<(string Zitat, int ChunkId)> quellen)> PostChatAsync()
+    private async Task<(string content, string suggestedAction, double confidence, List<(string Zitat, int ChunkId)> quellen)> PostChatAsync(string? suchKontext = null)
     {
         // Früher standen hier zusätzlich "Suche in Rechtsdatenbank..." und
         // "Generiere juristische Antwort..." als eigene Schritte — beides pauschale
@@ -1600,6 +1711,10 @@ document.addEventListener('click', function (e) {{
         if (!string.IsNullOrWhiteSpace(mandantDokumenteContext)) contextParts.Add(mandantDokumenteContext);
         if (!string.IsNullOrWhiteSpace(attorneyContext)) contextParts.Add(attorneyContext);
         if (!string.IsNullOrWhiteSpace(templateContext)) contextParts.Add(templateContext);
+        // T#309: Quellen aus der vor dieser Antwort gelaufenen Agentic-Suche
+        // (/api/search/stream) — damit die im Chat sichtbare Live-Suche nicht nur
+        // Anzeige ist, sondern die Antwort tatsächlich mitprägt.
+        if (!string.IsNullOrWhiteSpace(suchKontext)) contextParts.Add(suchKontext);
 
         // Datenschutz (Task #308): Nachrichten + Mandant-Kontext (enthält Akte-Dokumente,
         // Mandantname etc.) gehen nur anonymisiert an den Server/die KI. Die Zuordnung
