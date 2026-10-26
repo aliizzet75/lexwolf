@@ -101,6 +101,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.67.0",
         "BUENDEL-RELEASE (2026-10-26): M27 Qualitaetsanzeige-Bugfixes (Konfidenz-Fehlberechnung repariert, 404 bei Quellen-Klick gefixt, Schriftsatz-Konfidenz+Quellen-Anbindung) + M28 Vorlagen-Verwaltung (Date",
     ),
+    (
+        "0.68.0",
+        "Nutzer-Feedback: Umbenennen eines Dokuments stuerzte die App ab. Ursache: DeleteDokumentChunks nach File.Move kann SqliteException werfen (Scanner greift evtl. gleichzeitig auf DB zu), nicht von IOExc",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
