@@ -1095,6 +1095,109 @@ document.addEventListener('click', function (e) {{
         }
     }
 
+    /// <summary>Rechtsklick-Menüpunkt: Datei/Unterordner umbenennen (nicht für den
+    /// Mandantenordner selbst — dessen Name hängt an der Mandanten-ID, siehe NormalMenuSichtbar).</summary>
+    private void OnDateiUmbenennen(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        if (node.IsMandantOrdner || string.IsNullOrEmpty(node.Path)) return;
+
+        var dlg = new UmbenennenDialog(node.Path, node.Name, node.IsFolder) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+
+        var ordner = Path.GetDirectoryName(node.Path)!;
+        var zielPfad = Path.Combine(ordner, dlg.NeuerName);
+        try
+        {
+            if (node.IsFolder)
+            {
+                Directory.Move(node.Path, zielPfad);
+            }
+            else
+            {
+                File.Move(node.Path, zielPfad);
+                _db.DeleteDokumentChunks(node.Path); // der Scanner liest die Datei unter dem neuen Pfad neu ein
+            }
+
+            if (_prioritizedPaths.Remove(node.Path))
+                _prioritizedPaths.Add(zielPfad);
+
+            BuildFileTree(_activeMandantName);
+            AddReasoning("✏️", $"„{node.Name}“ umbenannt in „{dlg.NeuerName}“.");
+        }
+        catch (IOException ex)
+        {
+            MessageBox.Show(this, $"„{node.Name}“ konnte nicht umbenannt werden — ist die Datei noch geöffnet?\n\n{ex.Message}",
+                "Umbenennen", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            MessageBox.Show(this, $"„{node.Name}“ konnte nicht umbenannt werden.\n\n{ex.Message}",
+                "Umbenennen", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Rechtsklick-Menüpunkt: Datei/Unterordner nach Sicherheitsabfrage löschen
+    /// (Papierkorb, wenn das Laufwerk einen hat — wie bei „Mandant löschen“).</summary>
+    private void OnDateiLoeschen(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        if (node.IsMandantOrdner || string.IsNullOrEmpty(node.Path)) return;
+
+        var art = node.IsFolder ? "den Ordner" : "die Datei";
+        if (MessageBox.Show(this, $"{art} „{node.Name}“ wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden, " +
+                                   "falls das Laufwerk keinen Papierkorb hat.", "Löschen",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            var papierkorb = MandantLoeschenDialog.HatPapierkorb(node.Path);
+            if (node.IsFolder)
+            {
+                foreach (var datei in Directory.EnumerateFiles(node.Path, "*", SearchOption.AllDirectories))
+                    _db.DeleteDokumentChunks(datei);
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(node.Path,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    papierkorb ? Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin
+                               : Microsoft.VisualBasic.FileIO.RecycleOption.DeletePermanently);
+            }
+            else
+            {
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(node.Path,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    papierkorb ? Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin
+                               : Microsoft.VisualBasic.FileIO.RecycleOption.DeletePermanently);
+                _db.DeleteDokumentChunks(node.Path);
+            }
+
+            _prioritizedPaths.Remove(node.Path);
+            BuildFileTree(_activeMandantName);
+            AddReasoning("🗑", $"„{node.Name}“ gelöscht" + (papierkorb ? " — liegt im Papierkorb." : " — endgültig (kein Papierkorb)."));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"„{node.Name}“ konnte nicht gelöscht werden — ist noch eine Datei daraus geöffnet?\n\n{ex.Message}",
+                "Löschen", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Rechtsklick-Menüpunkt: Datei im Standardprogramm bzw. Ordner im Explorer anzeigen.</summary>
+    private void OnDateiAnzeigen(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { CommandParameter: Models.FileTreeNode node }) return;
+        if (string.IsNullOrEmpty(node.Path)) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(node.Path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            AddReasoning("⚠️", $"„{node.Name}“ konnte nicht angezeigt werden: {ex.Message}");
+        }
+    }
+
     // ── Chat ──────────────────────────────────────────────────────────────────
 
     /// <summary>Entfernt alle Chat-Elemente des WPF-Fallbacks (und z.B. das

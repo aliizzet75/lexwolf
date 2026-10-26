@@ -31,6 +31,12 @@ namespace LexWolf.Models
         public System.Windows.Visibility MandantMenuSichtbar =>
             IsMandantOrdner ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
 
+        /// <summary>Umbenennen/Löschen gelten für Dateien und Unterordner, aber nicht für den
+        /// Mandantenordner selbst — der hängt an der Mandanten-ID (siehe DokumentScanner.MandantIdFuer)
+        /// und wird ausschließlich über den eigenen „Mandant löschen“-Dialog entfernt.</summary>
+        public System.Windows.Visibility NormalMenuSichtbar =>
+            IsMandantOrdner ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+
         private bool _isExpanded;
         public bool IsExpanded
         {

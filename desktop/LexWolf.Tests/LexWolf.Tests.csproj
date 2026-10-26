@@ -55,6 +55,7 @@
     <Compile Include="../Services/VorschlaegeService.cs" Link="VorschlaegeService.cs" />
     <Compile Include="../Services/ReActStreamClient.cs" Link="ReActStreamClient.cs" />
     <Compile Include="../Models/ReActStepEvent.cs" Link="ReActStepEvent.cs" />
+    <Compile Include="../Services/DateiVerwaltung.cs" Link="DateiVerwaltung.cs" />
   </ItemGroup>
 
   <ItemGroup>
