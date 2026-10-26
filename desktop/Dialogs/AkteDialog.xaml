@@ -151,6 +151,7 @@
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="Datum"/>
                                                     <ColumnDefinition Width="22"/>
                                                     <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding DatumText}" Foreground="#e8a838" FontWeight="SemiBold"
                                                            FontSize="{DynamicResource LwSchriftNormal}" Margin="0,0,0,14"/>
@@ -160,6 +161,9 @@
                                                          HorizontalAlignment="Center" Margin="0,4,0,0"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding Beschreibung}" Style="{StaticResource LwFliesstext}"
                                                            Margin="6,0,0,14"/>
+                                                <Button Grid.Column="3" Content="✕" Style="{StaticResource LwSmallButton}"
+                                                        Padding="6,2" VerticalAlignment="Top" Click="OnZeitleisteEintragLoeschen"
+                                                        ToolTip="Diesen Zeitleiste-Eintrag ausblenden (z.B. falsch zugeordnete E-Mail)"/>
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>

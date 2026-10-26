@@ -102,6 +102,19 @@ namespace LexWolf.Database
                     key   TEXT PRIMARY KEY,
                     value TEXT
                 );
+
+                -- Zeitleiste wird aus den Ereignissen aller zugeordneten Eingänge live
+                -- berechnet (AkteService.Zeitleiste) statt separat gespeichert — falsch
+                -- zugeordnete E-Mails erzeugen dadurch falsche Zeitleiste-Einträge. Statt
+                -- die zugrunde liegende Zuordnung aufzudröseln, kann der Anwalt einzelne
+                -- Einträge hier gezielt ausblenden (Datum+Beschreibung identisch zur
+                -- Gruppierung in AkteService.Zeitleiste).
+                CREATE TABLE IF NOT EXISTS zeitleiste_ausgeblendet (
+                    mandant_id   TEXT,
+                    datum        TEXT,
+                    beschreibung TEXT,
+                    PRIMARY KEY (mandant_id, datum, beschreibung)
+                );
             ";
             cmd.ExecuteNonQuery();
         }
@@ -246,6 +259,11 @@ namespace LexWolf.Database
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>Entfernt einen Eingang (Dokument/E-Mail) wieder aus der Akte — z.B. wenn die
+        /// automatische Zuordnung falsch war. Löscht NUR die Auswertung/Zuordnung
+        /// (dokument_analyse), NICHT die zugrunde liegende Datei auf der Festplatte — dafür gibt
+        /// es "Datei löschen" im Dateibaum. Die Zeitleiste wird live aus dokument_analyse
+        /// berechnet (siehe AkteService.Zeitleiste) und ist damit automatisch mitkorrigiert.</summary>
         public void DeleteAnalyse(string pfad)
         {
             using var conn = GetConnection();
@@ -273,6 +291,38 @@ namespace LexWolf.Database
             while (r.Read())
                 result.Add(new EingangEintrag(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3),
                     DateTime.Parse(r.GetString(4), null, DateTimeStyles.RoundtripKind), r.GetInt32(5) == 1));
+            return result;
+        }
+
+        // --- Zeitleiste: einzelne Einträge ausblenden ---
+
+        /// <summary>Blendet einen einzelnen Zeitleiste-Eintrag aus (z.B. wenn aus einem sonst
+        /// korrekt zugeordneten Dokument ein einzelnes, irrelevantes Ereignis extrahiert wurde).
+        /// Schlüssel (Datum, Beschreibung) muss zur Gruppierung in AkteService.Zeitleiste passen.</summary>
+        public void BlendeZeitleisteEintragAus(string mandantId, DateTime datum, string beschreibung)
+        {
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT OR IGNORE INTO zeitleiste_ausgeblendet (mandant_id, datum, beschreibung)
+                VALUES ($m, $d, $b);
+            ";
+            cmd.Parameters.AddWithValue("$m", mandantId);
+            cmd.Parameters.AddWithValue("$d", D(datum));
+            cmd.Parameters.AddWithValue("$b", beschreibung.Trim().ToLowerInvariant());
+            cmd.ExecuteNonQuery();
+        }
+
+        public HashSet<(string Datum, string Beschreibung)> GetAusgeblendeteZeitleisteEintraege(string mandantId)
+        {
+            var result = new HashSet<(string, string)>();
+            using var conn = GetConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT datum, beschreibung FROM zeitleiste_ausgeblendet WHERE mandant_id = $m;";
+            cmd.Parameters.AddWithValue("$m", mandantId);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                result.Add((r.GetString(0), r.GetString(1)));
             return result;
         }
 

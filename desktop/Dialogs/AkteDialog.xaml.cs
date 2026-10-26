@@ -9,7 +9,7 @@ namespace LexWolf.Dialogs;
 /// <summary>Aktenstamm: Stammdaten, Beteiligte, Zeitleiste und Kollisionsprüfung eines Mandanten.</summary>
 public partial class AkteDialog : Window
 {
-    private sealed record ZeitleisteZeile(string DatumText, string Beschreibung);
+    private sealed record ZeitleisteZeile(DateTime Datum, string DatumText, string Beschreibung);
 
     private readonly LocalDb _db;
     private readonly AkteService _akte;
@@ -41,6 +41,16 @@ public partial class AkteDialog : Window
 
     private void OnAkteGeaendert() => Dispatcher.BeginInvoke(Laden);
 
+    /// <summary>Blendet einen einzelnen Zeitleiste-Eintrag dauerhaft aus — z.B. wenn eine
+    /// falsch zugeordnete E-Mail ein nicht passendes Ereignis in die Zeitleiste gebracht hat.
+    /// Entfernt nur diesen einen Eintrag, nicht das zugrunde liegende Dokument (dafür: Posteingang).</summary>
+    private void OnZeitleisteEintragLoeschen(object sender, RoutedEventArgs e)
+    {
+        if (((System.Windows.Controls.Button)sender).DataContext is not ZeitleisteZeile z) return;
+        _db.BlendeZeitleisteEintragAus(_mandantId, z.Datum, z.Beschreibung);
+        Laden();
+    }
+
     private void Laden()
     {
         var beteiligte = _akte.Beteiligte(_mandantId).OrderBy(b => b.Rolle).ThenBy(b => b.Name).ToList();
@@ -49,7 +59,7 @@ public partial class AkteDialog : Window
         BeteiligteLeer.Visibility = beteiligte.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var zeitleiste = _akte.Zeitleiste(_mandantId)
-            .Select(e => new ZeitleisteZeile(DatumEingabe.Format(e.Datum), e.Beschreibung)).ToList();
+            .Select(e => new ZeitleisteZeile(e.Datum, DatumEingabe.Format(e.Datum), e.Beschreibung)).ToList();
         ZeitleisteListe.ItemsSource = zeitleiste;
         ZeitleisteZahl.Text = zeitleiste.Count.ToString();
         ZeitleisteLeer.Visibility = zeitleiste.Count == 0 ? Visibility.Visible : Visibility.Collapsed;

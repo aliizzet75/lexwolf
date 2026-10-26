@@ -31,6 +31,9 @@
                                 Margin="0,0,6,4"/>
                         <Button Content="{Binding GelesenText}" Style="{StaticResource LwSmallButton}" Click="OnGelesen"
                                 Tag="{Binding}" Margin="0,0,6,4"/>
+                        <Button Content="✕ Entfernen" Style="{StaticResource LwSmallButton}" Click="OnEntfernen"
+                                Tag="{Binding}" Margin="0,0,6,4"
+                                ToolTip="Falsch zugeordnet — aus dieser Akte entfernen (Datei bleibt erhalten)"/>
                     </WrapPanel>
                 </StackPanel>
             </Border>

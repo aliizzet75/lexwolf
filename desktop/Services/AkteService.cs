@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -243,9 +244,11 @@ public sealed class AkteService
         {
             try { liste.AddRange(DokumentAnalyse.Parse(e.Json).Ereignisse); } catch { }
         }
+        var ausgeblendet = _db.GetAusgeblendeteZeitleisteEintraege(mandantId);
         return liste
             .GroupBy(x => (x.Datum, x.Beschreibung.Trim().ToLowerInvariant()))
             .Select(g => g.First())
+            .Where(x => !ausgeblendet.Contains((x.Datum.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), x.Beschreibung.Trim().ToLowerInvariant())))
             .OrderBy(x => x.Datum)
             .ToList();
     }

@@ -200,6 +200,22 @@ public partial class EingangPanel : UserControl
         Aktualisieren();
     }
 
+    /// <summary>Entfernt einen falsch zugeordneten Eingang wieder aus dieser Akte (z.B. eine
+    /// E-Mail, die versehentlich diesem Mandanten zugeordnet wurde). Löscht nur die
+    /// Zuordnung/Auswertung, nicht die zugrunde liegende Datei — und korrigiert damit
+    /// automatisch auch die Zeitleiste im Aktenstamm, die daraus abgeleitet wird.</summary>
+    private void OnEntfernen(object sender, RoutedEventArgs e)
+    {
+        if (ZeileAus(sender) is not { } z || _db is null) return;
+        if (System.Windows.MessageBox.Show(
+                Window.GetWindow(this),
+                $"„{z.Titel}“ wirklich aus dieser Akte entfernen?\n\nDie Datei selbst bleibt erhalten, nur die Zuordnung/Auswertung wird gelöscht.",
+                "Eingang entfernen", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+        _db.DeleteAnalyse(z.Eintrag.Pfad);
+        Aktualisieren();
+    }
+
     private void OnFilterGeaendert(object sender, RoutedEventArgs e) => Aktualisieren();
 
     private void OnPostfach(object sender, RoutedEventArgs e)
