@@ -12,17 +12,26 @@ import re
 
 from services.database_service import DatabaseService
 from services.search_service import HybridSearchService
+from services.quality_verification import QualityVerificationService
 
 router = APIRouter(prefix="/ask", tags=["ask"])
 
 db = DatabaseService()
 _search_service = None
+_quality_service = None
 
 def _get_search():
     global _search_service
     if _search_service is None:
         _search_service = HybridSearchService()
     return _search_service
+
+
+def _get_quality_service() -> QualityVerificationService:
+    global _quality_service
+    if _quality_service is None:
+        _quality_service = QualityVerificationService()
+    return _quality_service
 
 
 class AskRequest(BaseModel):
@@ -49,6 +58,7 @@ class AskResponse(BaseModel):
     output: str
     sources: List[Source]
     duration_ms: int
+    confidence_score: float = 0.0
 
 
 # ── Intent-Erkennung via semantische Ähnlichkeit ─────────────────────────────
@@ -712,6 +722,22 @@ async def ask(request: AskRequest):
     ))
     output = _format_output(intent, text, chunks, gegensuche_chunks)
 
+    # Konfidenz-Score (T#301): gleiche Berechnung wie in /chat (api.chat.chat) -
+    # LLM-as-Judge-Pipeline auf dem aufbereiteten Output, damit Schriftsatz-Entwürfe
+    # (die aus dieser Antwort entstehen) dieselbe Badge-Farbe zeigen wie eine
+    # vergleichbar verlässliche Chat-Antwort.
+    confidence_score = 0.0
+    try:
+        quality_result = await asyncio.to_thread(
+            _get_quality_service().verify_generated_content, output
+        )
+        confidence_score = quality_result.get("quality_score", 0.0)
+    except Exception as e:
+        reasoning.append(ReasoningStep(
+            emoji="⚠️",
+            text=f"Qualitätsprüfung fehlgeschlagen: {str(e)[:120]}"
+        ))
+
     # Sources
     sources = []
     for c in chunks[:5]:
@@ -738,4 +764,5 @@ async def ask(request: AskRequest):
         output=output,
         sources=sources,
         duration_ms=duration_ms,
+        confidence_score=confidence_score,
     )

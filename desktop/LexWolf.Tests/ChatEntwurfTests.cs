@@ -151,5 +151,53 @@ namespace LexWolf.Tests
             Assert.Contains("entwurf-karte inaktiv", html);
             Assert.DoesNotContain("data-action", html);
         }
+
+        /// <summary>Task #301: Entwurfskarte zeigt Konfidenz-Badge + klickbare Quellen,
+        /// analog zu WrapAiBubble (siehe KonfidenzBadgeTests).</summary>
+        [Fact]
+        public void Karte_MitConfidence_ZeigtBadgeMitRichtigerFarbeUndProzent()
+        {
+            var e = new ChatEntwurf("brief", "Kündigung", "RA Klein", "", "Text");
+            var html = ChatHtmlRenderer.WrapEntwurfKarte(new EntwurfKarteAnsicht(
+                4, e, "", Aktiv: true, ArtUmschaltbar: true, AblegenMoeglich: false,
+                OeffnenLabel: "📄 In Word öffnen", Confidence: 0.92));
+
+            Assert.Contains("confidence-badge", html);
+            Assert.Contains("confidence-green", html);
+            Assert.Contains("92%", html);
+        }
+
+        [Fact]
+        public void Karte_OhneConfidence_ZeigtKeinBadge()
+        {
+            var e = new ChatEntwurf("brief", "Kündigung", "RA Klein", "", "Text");
+            var html = ChatHtmlRenderer.WrapEntwurfKarte(new EntwurfKarteAnsicht(
+                5, e, "", Aktiv: true, ArtUmschaltbar: true, AblegenMoeglich: false, OeffnenLabel: "📄 In Word öffnen"));
+
+            Assert.DoesNotContain("confidence-badge", html);
+        }
+
+        [Fact]
+        public void Karte_MitQuellen_ZeigtKlickbareQuellenLinks()
+        {
+            var e = new ChatEntwurf("brief", "Kündigung", "RA Klein", "", "Text");
+            var quellen = new[] { ("§ 622 BGB", 123) };
+            var html = ChatHtmlRenderer.WrapEntwurfKarte(new EntwurfKarteAnsicht(
+                6, e, "", Aktiv: true, ArtUmschaltbar: true, AblegenMoeglich: false,
+                OeffnenLabel: "📄 In Word öffnen", Quellen: quellen));
+
+            Assert.Contains("quellen-liste", html);
+            Assert.Contains("data-action='quelle' data-msg='123' data-value='&#167; 622 BGB'", html);
+        }
+
+        [Fact]
+        public void Karte_OhneQuellen_ZeigtKeineQuellenListe()
+        {
+            var e = new ChatEntwurf("brief", "Kündigung", "RA Klein", "", "Text");
+            var html = ChatHtmlRenderer.WrapEntwurfKarte(new EntwurfKarteAnsicht(
+                7, e, "", Aktiv: true, ArtUmschaltbar: true, AblegenMoeglich: false, OeffnenLabel: "📄 In Word öffnen"));
+
+            Assert.DoesNotContain("quellen-liste", html);
+        }
     }
 }

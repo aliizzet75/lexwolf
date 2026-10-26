@@ -79,6 +79,10 @@ public partial class MainWindow : Window
         public string? Hinweis { get; set; }
         public int HtmlIndex { get; set; } = -1;
         public string Html { get; set; } = "";
+        // Task #301: confidence_score + geprüfte Quellen der /chat-Antwort, aus der
+        // dieser Entwurf entstand — analog zur Chat-Bubble (WrapAiBubble).
+        public double? Confidence { get; set; }
+        public IReadOnlyList<(string Zitat, int ChunkId)>? Quellen { get; set; }
     }
     // Karten-ID (data-msg der Buttons) -> Karte. Wird nie geleert, damit IDs auch
     // nach Mandantenwechsel eindeutig bleiben.
@@ -850,8 +854,10 @@ document.addEventListener('click', function (e) {{
                                     if (!string.IsNullOrWhiteSpace(rest))
                                         AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(rest), confidenceScore));
                                     // Zuordnung zur Datei ist nach Neustart weg -> nur Anzeige + Kopieren.
+                                    // confidenceScore kommt aus der gespeicherten chat_history-Zeile (quellen_check
+                                    // wird nicht persistiert, daher hier null).
                                     if (entwurf is not null)
-                                        EntwurfKarteAnlegen(entwurf, historie: true, mitRefresh: false);
+                                        EntwurfKarteAnlegen(entwurf, historie: true, mitRefresh: false, confidence: confidenceScore);
                                 }
                                 break;
                             default:
@@ -1356,7 +1362,7 @@ document.addEventListener('click', function (e) {{
             // Geöffnet wird nichts von selbst — das entscheidet der Anwalt in der Karte.
             var (rest, entwurf) = ChatEntwurfParser.Zerlege(content, suggestedAction);
             if (!string.IsNullOrWhiteSpace(rest)) AppendAiMessage(rest, confidence, quellen);
-            if (entwurf is not null) Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf));
+            if (entwurf is not null) Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf, confidence: confidence, quellen: quellen));
 
             Dispatcher.Invoke(() => KopierenBtn.Visibility = Visibility.Visible);
         }
@@ -1684,26 +1690,33 @@ document.addEventListener('click', function (e) {{
     /// Klick auf einen Quellen-Link (siehe ChatHtmlRenderer.
     /// WrapAiBubble/QuellenListeHtml) lädt den Chunk per chunk_id (T#296) vom Backend
     /// und zeigt ihn im QuelleDialog — der dort direkt zur exakten Passage springt
-    /// (ChatHtmlRenderer.FindeZitatPosition), statt nur den Dokumentanfang zu zeigen.</summary>
+    /// (ChatHtmlRenderer.FindeZitatPosition), statt nur den Dokumentanfang zu zeigen.
+    ///
+    /// T#300: Inline-Zitate aus ApplySemanticHighlighting (z.B. "§ 573 Abs. 2 Nr. 2 BGB"
+    /// mitten im Fließtext oder in der Zitatprüfung) tragen kein data-msg und damit keine
+    /// chunk_id — der Klick-Handler in GetChatBaseHtml liefert dafür msg=null, was hier als
+    /// chunkId &lt;= 0 ankommt. Direktes Laden von /legal-db/chunks/{chunkId} schlug dann
+    /// immer mit HTTP 404 fehl, obwohl die Norm indexiert war. Fallback: die Referenz selbst
+    /// über /legal-db/chunks/by-reference auflösen (QuellenangabeService, bisher ungenutzt).</summary>
     private async Task QuelleOeffnenAsync(int chunkId, string zitat)
     {
         try
         {
-            var response = await _http.GetAsync($"{BackendUrl}/legal-db/chunks/{chunkId}");
-            if (!response.IsSuccessStatusCode)
+            var chunk = chunkId > 0
+                ? await _quellenangabeService.LadeChunkAsync(chunkId)
+                : await _quellenangabeService.LadeChunkFuerReferenzAsync(zitat);
+
+            if (chunk is null)
             {
-                AppendSystemMessage($"Quelle konnte nicht geladen werden (HTTP {(int)response.StatusCode}).");
+                AppendSystemMessage("Quelle konnte nicht geladen werden.");
                 return;
             }
-            var body = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(body);
-            var root = doc.RootElement;
-            var text = root.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
-            var title = root.TryGetProperty("title", out var ti) ? ti.GetString() ?? zitat : zitat;
+
+            var title = string.IsNullOrWhiteSpace(chunk.Title) ? zitat : chunk.Title;
 
             Dispatcher.Invoke(() =>
             {
-                var dialog = new QuelleDialog(title, text, zitat) { Owner = this };
+                var dialog = new QuelleDialog(title, chunk.Text, zitat) { Owner = this };
                 dialog.Show();
             });
         }
@@ -1720,9 +1733,14 @@ document.addEventListener('click', function (e) {{
     /// im Block) ersetzt die vorige Fassung, statt eine weitere Datei anzulegen —
     /// ein neues, anderes Schreiben überschreibt dagegen nie einen vorhandenen
     /// Entwurf. Ohne Mandant fragt die Karte, wohin.</summary>
-    private void EntwurfKarteAnlegen(ChatEntwurf daten, bool historie = false, bool mitRefresh = true)
+    private void EntwurfKarteAnlegen(ChatEntwurf daten, bool historie = false, bool mitRefresh = true,
+        double? confidence = null, IReadOnlyList<(string Zitat, int ChunkId)>? quellen = null)
     {
-        var karte = new EntwurfKarte { Id = _karten.Count, Daten = daten, Mandant = _activeMandantName, Historie = historie };
+        var karte = new EntwurfKarte
+        {
+            Id = _karten.Count, Daten = daten, Mandant = _activeMandantName, Historie = historie,
+            Confidence = confidence, Quellen = quellen,
+        };
         EntwurfKarte? vorgaenger = null;
         if (!historie && daten.Ueberarbeitung)
         {
@@ -1845,7 +1863,9 @@ document.addEventListener('click', function (e) {{
             OeffnenLabel: k.Historie ? null : OeffnenLabel(k.Daten.IstEmail),
             MandantAuswahl: bearbeitbar && k.Mandant is null
                 ? _mandanten.Select(m => m.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList()
-                : null);
+                : null,
+            Confidence: k.Confidence,
+            Quellen: k.Quellen);
     }
 
     private void KarteZeigen(EntwurfKarte k, bool mitRefresh)

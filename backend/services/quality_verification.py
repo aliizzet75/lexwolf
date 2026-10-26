@@ -1,7 +1,10 @@
 import re
 from typing import Dict, List, Optional, Tuple
-from services.database_service import DatabaseService
 from services.feedback_service import FeedbackService
+# T#299: dieselbe Zitat-Regex und DB-Prüfung wie api.akte.pruefe_belege nutzen
+# statt einer eigenen, abweichenden (und trunkierenden) Implementierung - siehe
+# _extract_cited_paragraphs/_verify_sources unten.
+from api.akte import _PARAGRAPH_ZITAT, _paragraph_in_db
 import logging
 
 # Set up logging
@@ -14,7 +17,6 @@ class QualityVerificationService:
     """
 
     def __init__(self):
-        self.database_service = DatabaseService()
         # T#298: M5-Feedback-Loop (Anwalt-Korrekturen) zusätzlich für die
         # Qualitätspipeline nutzen - fachliche Korrekturen werden als
         # Testset-Kandidaten markiert und landen in einer Review-Queue.
@@ -85,62 +87,77 @@ class QualityVerificationService:
                 "quality_score": 0.0
             }
     
-    def _extract_cited_paragraphs(self, content: str) -> List[str]:
+    def _extract_cited_paragraphs(self, content: str) -> List[Dict]:
         """
-        Extract cited paragraphs (§X, Art. Y, etc.) from content
+        Extract cited paragraphs (§X, Art. Y, etc.) from content.
+
+        T#299: nutzt dieselbe Regex wie api.akte.pruefe_belege (_PARAGRAPH_ZITAT)
+        statt einer eigenen, flacheren Variante - die erfasst eine zusammengesetzte
+        Zitatkette ("§ 573 Abs. 2 Nr. 2 BGB") als EIN Zitat statt beim ersten
+        Abs./Nr.-Fragment abzuschneiden ("§ 573 Abs").
         """
-        # Pattern for German legal citations
-        patterns = [
-            r'§\s*\d+[a-z]*\s*[A-ZÄÖÜ][a-zA-Zßäöü]*',  # § 1 BGB, § 23 KSchG
-            r'Art\.\s*\d+[a-z]*\s*[A-ZÄÖÜ][a-zA-Zßäöü]*',  # Art. 1 GG
-            r'[A-ZÄÖÜ][a-zA-Zßäöü]*\s*§\s*\d+[a-z]*',  # BGB § 1
-        ]
-        
         cited_paragraphs = []
-        for pattern in patterns:
-            matches = re.findall(pattern, content, re.IGNORECASE)
-            cited_paragraphs.extend(matches)
-        
-        # Remove duplicates and clean up
-        cited_paragraphs = list(set([p.strip() for p in cited_paragraphs]))
+        seen = set()
+        for m in _PARAGRAPH_ZITAT.finditer(content):
+            zeichen, nr, gesetz = m.group(1), m.group(2), m.group(3).strip()
+            if gesetz in ("Abs", "Satz", "Nr") or (nr, gesetz) in seen:
+                continue
+            seen.add((nr, gesetz))
+            art = "Art." if zeichen == "Art." else "§"
+            cited_paragraphs.append({
+                "zitat": m.group(0).strip(),
+                "art": art,
+                "nr": nr,
+                "gesetz": gesetz,
+            })
         logger.info(f"Extracted {len(cited_paragraphs)} cited paragraphs")
-        
+
         return cited_paragraphs
-    
-    def _verify_sources(self, cited_paragraphs: List[str]) -> Dict:
+
+    def _verify_sources(self, cited_paragraphs: List[Dict]) -> Dict:
         """
-        Verify that cited paragraphs exist in the database
+        Verify that cited paragraphs exist in the database.
+
+        T#299: Verifikation läuft jetzt wie in api.akte::_paragraph_in_db über
+        einen Tag+Titel-Lookup in legal_chunks statt über eine wörtliche
+        Teilstring-Suche des (trunkierten) Zitats im rohen Chunk-Text - letztere
+        schlug fast immer fehl, weil Chunks strukturiert sind und nicht als
+        Fließtext in exakter Zitierform vorliegen.
         """
         verified_sources = []
         missing_sources = []
-        
-        for paragraph in cited_paragraphs:
-            # Search for the paragraph in the database
-            search_results = self.database_service.search_chunks_hybrid(paragraph, limit=5)
-            
-            if search_results and len(search_results) > 0:
-                # Check if any result matches the cited paragraph
-                found_match = False
-                for result in search_results:
-                    if paragraph.lower() in result["text"].lower():
-                        verified_sources.append(paragraph)
-                        found_match = True
-                        break
-                
-                if not found_match:
-                    missing_sources.append(paragraph)
+        unverifiable_sources = []
+
+        for zitat in cited_paragraphs:
+            text = zitat["zitat"]
+            if zitat["art"] == "Art.":
+                # Artikel (GG, EGBGB, DSGVO ...) stehen nicht unter "§" in der
+                # DB - wie in api.akte.pruefe_belege nicht per DB-Lookup prüfbar.
+                unverifiable_sources.append(text)
+                continue
+
+            status, _chunk_id = _paragraph_in_db(zitat["nr"], zitat["gesetz"])
+            if status == "geprüft":
+                verified_sources.append(text)
+            elif status == "nicht gefunden":
+                missing_sources.append(text)
             else:
-                missing_sources.append(paragraph)
-        
-        accuracy_rate = len(verified_sources) / len(cited_paragraphs) if cited_paragraphs else 1.0
-        
+                # "nicht in Datenbank" (Gesetz nicht gecrawlt) oder "nicht
+                # prüfbar" (DB-Fehler) - fehlende Abdeckung heißt nicht falsch,
+                # siehe Docstring von _paragraph_in_db in akte.py.
+                unverifiable_sources.append(text)
+
+        pruefbar = len(verified_sources) + len(missing_sources)
+        accuracy_rate = (len(verified_sources) / pruefbar) if pruefbar else 1.0
+
         if accuracy_rate < 0.99:
             self.metrics["source_accuracy"] = accuracy_rate
-            
+
         return {
             "total_cited": len(cited_paragraphs),
             "verified_sources": verified_sources,
             "missing_sources": missing_sources,
+            "unverifiable_sources": unverifiable_sources,
             "accuracy_rate": accuracy_rate
         }
     
@@ -169,32 +186,36 @@ class QualityVerificationService:
             "total_indicators": len(completeness_indicators)
         }
     
-    def _detect_hallucinations(self, content: str, cited_paragraphs: List[str]) -> Dict:
+    def _detect_hallucinations(self, content: str, cited_paragraphs: List[Dict]) -> Dict:
         """
         Detect potential hallucinations in the content
         """
         hallucinations_found = False
         hallucination_reasons = []
-        
+
         # Check for common hallucination patterns
+        # T#299: Das frühere Muster r"gemäß\s+§\s*\d+\s+[A-Z]+" wurde entfernt -
+        # es markierte die normale, korrekte Zitierweise ("gemäß § 573 BGB")
+        # fälschlich als Halluzination und widersprach sogar
+        # _check_completeness()["has_reasoning"], das "gemäß" positiv wertet.
         suspicious_patterns = [
-            r"gemäß\s+§\s*\d+\s+[A-Z]+",  # Unusual § references
             r"[A-Z][a-z]+\s+vom\s+\d+\.\d+\.\d+",  # Suspicious date formats
             r"Aus diesem Grund\s+.*\s+§\s*\d+",  # Unusual reasoning patterns
         ]
-        
+
         for pattern in suspicious_patterns:
             if re.search(pattern, content, re.IGNORECASE):
                 hallucinations_found = True
                 hallucination_reasons.append(f"Suspicious pattern detected: {pattern}")
-        
+
         # Check if cited paragraphs are realistic
-        for paragraph in cited_paragraphs:
+        for zitat in cited_paragraphs:
+            paragraph = zitat["zitat"]
             # Very basic check - in a real implementation, this would be more sophisticated
             if len(paragraph) > 50:  # Unusually long paragraph reference
                 hallucinations_found = True
                 hallucination_reasons.append(f"Unusually long paragraph reference: {paragraph}")
-        
+
         if hallucinations_found:
             self.metrics["hallucinations_detected"] += 1
             

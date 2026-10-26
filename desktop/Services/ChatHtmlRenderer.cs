@@ -11,6 +11,10 @@ namespace LexWolf.Services;
 /// <param name="Aktiv">false = nur Anzeige (Historie, durch neuere Fassung ersetzt).</param>
 /// <param name="MandantAuswahl">Nicht leer = noch keinem Mandanten zugeordnet; Auswahl anzeigen.</param>
 /// <param name="OeffnenLabel">z.B. "📄 In Word öffnen"; null = kein Öffnen-Button.</param>
+/// <param name="Confidence">Task #301: confidence_score der /chat-Antwort, aus der dieser
+/// Entwurf entstand (0..1); null (z.B. nach Neustart aus der Historie) zeigt kein Badge.</param>
+/// <param name="Quellen">Task #301: geprüfte Zitate mit chunk_id (T#296), analog zu
+/// WrapAiBubble — als klickbare Links, die zur exakten Stelle im Quellentext springen.</param>
 public sealed record EntwurfKarteAnsicht(
     int Id,
     ChatEntwurf Entwurf,
@@ -19,7 +23,9 @@ public sealed record EntwurfKarteAnsicht(
     bool ArtUmschaltbar,
     bool AblegenMoeglich,
     string? OeffnenLabel,
-    IReadOnlyList<string>? MandantAuswahl = null);
+    IReadOnlyList<string>? MandantAuswahl = null,
+    double? Confidence = null,
+    IReadOnlyList<(string Zitat, int ChunkId)>? Quellen = null);
 
 /// <summary>
 /// Konvertiert KI-Antwort-Text (Markdown-ähnliche Struktur) in sauberes,
@@ -183,8 +189,13 @@ public static class ChatHtmlRenderer
         // klickbar -> OnChatWebMessage löst sie über /legal-db/chunks/by-reference auf
         // und zeigt den Gesetzestext im Popup. Bloße Gesetzeskürzel ohne Nummer (z.B.
         // "nach dem BGB") bleiben reine Hervorhebung, da es dafür keinen eindeutigen Chunk gibt.
+        // T#300: Abs./Satz/Nr. müssen alle drei in der Wiederholungsgruppe stehen, sonst
+        // bricht der Treffer bei zusammengesetzten Normen wie "§ 573 Abs. 2 Nr. 2 BGB" (die
+        // Eigenbedarfs-Norm) nach "Nr" ab — data-value trug dann nur "§ 573 Abs. 2 Nr" statt
+        // der vollen Referenz, wodurch find_chunk_by_reference (backend) aus dem letzten Wort
+        // "nr" statt "bgb" das Gesetz erraten wollte und nie etwas fand (HTTP 404 im Popup).
         html = Regex.Replace(html,
-            @"(?i)(§\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+))*\s*[A-Za-z]*\b|Art\.\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+))*\s*[A-Za-z]*\b|\b(BGB|GG|KSchG|AGBG|AGB|AktG|GmbHG|HGB|StGB|StPO|ZPO|VwGO|BVerfG|BAG|BGH|BSG|LAG|OLG|LG|AG|EU-DSGVO|DSGVO|KWG|InsO|AO|BAföG|AsylbLG|SGB\s*(I{1,3}|IV|V|VI|VII|VIII|IX|X|XI|XII|1|2|3|4|5|6|7|8|9|10|11|12)))\b",
+            @"(?i)(§\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+|Nr\.\s*\d+))*\s*[A-Za-z]*\b|Art\.\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+|Nr\.\s*\d+))*\s*[A-Za-z]*\b|\b(BGB|GG|KSchG|AGBG|AGB|AktG|GmbHG|HGB|StGB|StPO|ZPO|VwGO|BVerfG|BAG|BGH|BSG|LAG|OLG|LG|AG|EU-DSGVO|DSGVO|KWG|InsO|AO|BAföG|AsylbLG|SGB\s*(I{1,3}|IV|V|VI|VII|VIII|IX|X|XI|XII|1|2|3|4|5|6|7|8|9|10|11|12)))\b",
             m =>
             {
                 if (!Regex.IsMatch(m.Value, @"\d"))
@@ -310,6 +321,9 @@ public static class ChatHtmlRenderer
         var sb = new StringBuilder();
         sb.Append($"<div id='ek-{k.Id}' class='entwurf-karte{(k.Aktiv ? "" : " inaktiv")}'>");
 
+        if (k.Confidence.HasValue)
+            sb.Append(ConfidenceBadgeHtml(k.Confidence.Value));
+
         sb.Append("<div class='ek-kopf'>");
         sb.Append($"<span class='ek-titel'>{(k.Entwurf.IstEmail ? "✉️" : "📄")} {H(k.Entwurf.Titel)}</span>");
         if (k.ArtUmschaltbar)
@@ -336,6 +350,9 @@ public static class ChatHtmlRenderer
         sb.Append($"<details class='ek-text'><summary>{H(vorschau)}</summary><div class='ek-volltext'>{H(text)}</div></details>");
 
         if (k.Status != "") sb.Append($"<div class='ek-status'>{H(k.Status)}</div>");
+
+        if (k.Quellen is { Count: > 0 } quellen)
+            sb.Append(QuellenListeHtml(quellen));
 
         if (k.MandantAuswahl is { Count: > 0 } auswahl)
         {
