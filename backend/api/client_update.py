@@ -93,6 +93,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.65.0",
         "Nutzer-Feedback: Word-Export-Dateiname sollte Inhalt statt Datum zeigen (jetzt wegen:-Zeile aus dem Entwurf, Fallback Datum). Dokumentenauswahl braucht Oeffnen-Button pro Dokument zur Pruefung vor Ein",
     ),
+    (
+        "0.66.0",
+        "Nutzer-Feedback (echter Entwurf): Text war abgehackt (Stakkato-Kurzsaetze), und [D1]/[D2]-Belegverweise landeten im an die Gegenseite versendeten Dokument. Backend-Prompt verlangt jetzt fluessige verb",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
