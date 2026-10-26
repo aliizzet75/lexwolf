@@ -50,5 +50,35 @@ namespace LexWolf.Tests
             Assert.DoesNotContain("<details class='such-panel' open>", html);
             Assert.Contains("3 Quelle(n) gefunden", html);
         }
+
+        // Task #311: Anonymisierten Text im selben Live-Panel wie die Suchschritte zeigen.
+        [Fact]
+        public void WrapSearchPanel_MitAnonymisiertGesendet_ZeigtEigenenAbschnitt()
+        {
+            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: false, modus: "schnell",
+                gefundenCount: 1, anonymisiertGesendet: "Für [PERSON_1] prüfen.");
+
+            Assert.Contains("such-anonym", html);
+            Assert.Contains("Anonymisiert gesendet", html);
+            Assert.Contains("[PERSON_1]", html);
+        }
+
+        [Fact]
+        public void WrapSearchPanel_OhneAnonymisiertGesendet_ZeigtKeinenAbschnitt()
+        {
+            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: false, modus: "schnell", gefundenCount: 0);
+
+            Assert.DoesNotContain("such-anonym", html);
+        }
+
+        [Fact]
+        public void WrapSearchPanel_AnonymisiertGesendet_EscapedHtml()
+        {
+            var html = ChatHtmlRenderer.WrapSearchPanel("", laufend: false, modus: "schnell",
+                gefundenCount: 0, anonymisiertGesendet: "<script>alert(1)</script>");
+
+            Assert.DoesNotContain("<script>", html);
+            Assert.Contains("&lt;script&gt;", html);
+        }
     }
 }

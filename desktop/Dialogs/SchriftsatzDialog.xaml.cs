@@ -167,16 +167,28 @@ public partial class SchriftsatzDialog : Window
             }
         }
 
+        // Task #311: vor dem Serialisieren materialisieren (statt lazy in der Payload),
+        // damit genau dieser anonymisierte Text auch im Live-Panel angezeigt werden kann —
+        // dieselbe Zuordnung (aliasToOriginal) wie bei anweisungAnonym.
+        var dokumenteAnonym = auswahl
+            .Select(d => (Titel: d.Titel, Text: AnonymizerEngine.AnonymizeText(d.Text, aliasToOriginal)))
+            .ToList();
+
         var payload = JsonSerializer.Serialize(new
         {
             art,
             anweisung = anweisungAnonym,
             mandant = _mandantName,
             stammdaten = stammText,
-            dokumente = auswahl.Select(d => new { titel = d.Titel, text = AnonymizerEngine.AnonymizeText(d.Text, aliasToOriginal) }),
+            dokumente = dokumenteAnonym.Select(d => new { titel = d.Titel, text = d.Text }),
             stil_vorlage = StilvorlageText(),
             recherche_kontext = rechercheKontext ?? "",
         });
+
+        // Task #311: denselben Abschnitt wie im Chat — zeigt im RecherchePanel (demselben
+        // Live-Panel wie die Suchschritte), was tatsächlich anonymisiert an den Server geht,
+        // nicht die Original-Eingabe aus AnweisungBox/den Akte-Dokumenten.
+        ZeigeAnonymisiertGesendet(AnonymisiertGesendetBuilder.BuildFuerSchriftsatz(anweisungAnonym, dokumenteAnonym));
 
         StatusText.Text = "⏳ LexWolf liest die Akte und entwirft den Schriftsatz …";
         try
@@ -273,6 +285,43 @@ public partial class SchriftsatzDialog : Window
             : $"🔎 Recherche abgeschlossen (Modus: {modus}) — keine Quellen gefunden";
 
         return AgenticSearchContext.BuildKontext(events, modus);
+    }
+
+    /// <summary>Task #311: Abschnitt "Anonymisiert gesendet" im selben RecherchePanel, das die
+    /// Suchschritte zeigt — macht das Panel sichtbar, auch wenn (z.B. ohne Art+Anweisung) keine
+    /// Recherche gelaufen ist, damit der Anwalt immer sieht, was den PC wirklich verlässt.</summary>
+    private void ZeigeAnonymisiertGesendet(string anonymisiertGesendet)
+    {
+        if (anonymisiertGesendet.Length == 0) return;
+        RecherchePanel.Visibility = Visibility.Visible;
+        RechercheListe.Items.Add(BuildAnonymisiertRow(anonymisiertGesendet));
+        RechercheScroll.ScrollToEnd();
+    }
+
+    /// <summary>Pendant zu BuildRechercheRow, nur für den anonymisierten Sende-Text (Task #311) —
+    /// eigene Farbe (Amber statt Grün/Rot), damit sie sich klar von den Suchschritten abhebt.</summary>
+    private UIElement BuildAnonymisiertRow(string text)
+    {
+        var amber = new SolidColorBrush(Color.FromRgb(0xe8, 0xa8, 0x38));
+
+        var header = new StackPanel { Orientation = Orientation.Horizontal };
+        header.Children.Add(new TextBlock { Text = "🔒", Foreground = amber, FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
+        header.Children.Add(new TextBlock { Text = "Anonymisiert gesendet:", Foreground = amber, FontSize = 11, FontWeight = FontWeights.SemiBold });
+
+        var body = new StackPanel();
+        body.Children.Add(header);
+        body.Children.Add(new TextBlock { Text = text, Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e)), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(18, 2, 0, 0) });
+
+        return new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(0x0d, 0x11, 0x17)),
+            BorderBrush = amber,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(8, 5, 8, 5),
+            Margin = new Thickness(0, 0, 0, 5),
+            Child = body,
+        };
     }
 
     /// <summary>Eine Zeile im RecherchePanel — Pendant zu ReActDialog.BuildRow, nur ohne

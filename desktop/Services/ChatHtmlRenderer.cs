@@ -346,8 +346,14 @@ public static class ChatHtmlRenderer
     /// die Schritte der Agentic-Suche (/api/search/stream) zeigt — bleibt während des
     /// Laufs offen, klappt beim ersten Rendern danach zu (Anwalt kann bei Bedarf
     /// wieder aufklappen), damit der eigentliche Chat nicht durch den Suchweg
-    /// zugemüllt wird, sobald die Antwort da ist.</summary>
-    public static string WrapSearchPanel(string stepsHtml, bool laufend, string modus, int gefundenCount)
+    /// zugemüllt wird, sobald die Antwort da ist.
+    /// <paramref name="anonymisiertGesendet"/> (Task #311): der tatsächlich anonymisiert an
+    /// den Server geschickte Text (siehe AnonymisiertGesendetBuilder) — steht als eigener
+    /// Abschnitt unter den Suchschritten, damit der Anwalt nachvollziehen kann, was den PC
+    /// wirklich verlässt (nicht die Original-Eingabe). Null/leer blendet den Abschnitt aus
+    /// (z.B. bevor die erste Nachricht gesendet wurde).</summary>
+    public static string WrapSearchPanel(string stepsHtml, bool laufend, string modus, int gefundenCount,
+        string? anonymisiertGesendet = null)
     {
         var modusLabel = modus == "tief" ? "tief" : "schnell";
         string summary;
@@ -358,9 +364,14 @@ public static class ChatHtmlRenderer
         else
             summary = $"🔎 Suche abgeschlossen (Modus: {modusLabel}) — keine Quellen gefunden";
 
+        var anonymHtml = string.IsNullOrWhiteSpace(anonymisiertGesendet)
+            ? ""
+            : "<div class='such-anonym'><div class='such-anonym-titel'>🔒 Anonymisiert gesendet:</div>" +
+              $"<div class='such-anonym-text'>{WebUtility.HtmlEncode(anonymisiertGesendet)}</div></div>";
+
         var openAttr = laufend ? " open" : "";
         return $"<details class='such-panel'{openAttr}><summary>{WebUtility.HtmlEncode(summary)}</summary>" +
-               $"<div class='such-liste'>{stepsHtml}</div></details>";
+               $"<div class='such-liste'>{stepsHtml}</div>{anonymHtml}</details>";
     }
 
     public static string WrapSystemMessage(string text)
@@ -534,6 +545,10 @@ public static class ChatHtmlRenderer
             .such-schritt.such-verworfen .such-quelle {{ color: #f85149; }}
             .such-schritt.such-fehler .such-quelle {{ color: #f85149; }}
             .such-schritt.such-done .such-quelle {{ color: #3fb950; }}
+
+            .such-anonym {{ margin: 2px 0 0 0; padding: 8px 12px; border-top: 1px solid #30363d; }}
+            .such-anonym-titel {{ color: #e8a838; font-weight: 600; font-size: {Math.Max(10, _outputFontSize - 1)}px; margin-bottom: 4px; }}
+            .such-anonym-text {{ white-space: pre-wrap; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 2)}px; max-height: 160px; overflow-y: auto; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px; font-family: Consolas, 'Courier New', monospace; }}
         </style>";
     }
 }

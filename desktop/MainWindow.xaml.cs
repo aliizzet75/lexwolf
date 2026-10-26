@@ -1510,9 +1510,10 @@ document.addEventListener('click', function (e) {{
         {
             var suchModus = SelectedSuchModus;
             string? suchKontext = null;
+            var suchPanel = new LiveSuchPanel(-1, "", suchModus, 0);
             try
             {
-                suchKontext = await RunLiveSearchAsync(text, suchModus);
+                (suchKontext, suchPanel) = await RunLiveSearchAsync(text, suchModus);
             }
             catch (Exception ex)
             {
@@ -1527,7 +1528,24 @@ document.addEventListener('click', function (e) {{
             // wieder abgebaut wird — die Wolf-Animation bliebe sonst nach dieser Nachricht
             // dauerhaft sichtbar.
             Dispatcher.Invoke(() => WolfLoadingText.Text = "Anfrage wird verarbeitet...");
-            var (content, suggestedAction, confidence, quellen) = await PostChatAsync(suchKontext);
+            var (content, suggestedAction, confidence, quellen, anonymisiertGesendet) = await PostChatAsync(suchKontext);
+
+            // Task #311: denselben such-panel-Eintrag (Suchschritte) um den Abschnitt
+            // "Anonymisiert gesendet" ergänzen — erst jetzt bekannt, da PostChatAsync die
+            // tatsächlich versendete anonymisierte Nachricht/Kontext gerade erst gebaut hat.
+            if (suchPanel.PanelIndex >= 0 && suchPanel.PanelIndex < _chatHistoryHtml.Count)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    _chatHistoryHtml[suchPanel.PanelIndex] = ChatHtmlRenderer.WrapSearchPanel(
+                        suchPanel.StepsHtml, laufend: false, suchPanel.Modus, suchPanel.GefundenCount, anonymisiertGesendet);
+                    RefreshChatWebView();
+                });
+            }
+            else if (!_webViewInitialized)
+            {
+                AddReasoning("🔒", $"Anonymisiert gesendet: {anonymisiertGesendet}");
+            }
 
             _history.Add(new ChatMessage("assistant", content));
             _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", content, confidence);
@@ -1576,6 +1594,12 @@ document.addEventListener('click', function (e) {{
     private string SelectedSuchModus =>
         (SuchModusBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "schnell";
 
+    /// <summary>Task #311: Panel-Angaben, mit denen SendeAsync nach Abschluss von
+    /// PostChatAsync denselben such-panel-Eintrag noch einmal mit dem Abschnitt
+    /// "Anonymisiert gesendet" ergänzt — PanelIndex -1, wenn WebView2 nicht
+    /// initialisiert ist (dann zeigt SendeAsync den Text stattdessen per AddReasoning).</summary>
+    private readonly record struct LiveSuchPanel(int PanelIndex, string StepsHtml, string Modus, int GefundenCount);
+
     /// <summary>
     /// Ruft GET /api/search/stream (ReActStreamClient, bisher nur im separaten
     /// ReActDialog genutzt) für die aktuelle Nachricht auf und zeigt die
@@ -1585,7 +1609,7 @@ document.addEventListener('click', function (e) {{
     /// der anschließend in PostChatAsync als zusätzlicher mandant_context an
     /// /chat geht, damit die Suche die Antwort nachweislich beeinflusst.
     /// </summary>
-    private async Task<string?> RunLiveSearchAsync(string query, string modus)
+    private async Task<(string? Kontext, LiveSuchPanel Panel)> RunLiveSearchAsync(string query, string modus)
     {
         var events = new List<ReActStepEvent>();
         var stepsHtml = new StringBuilder();
@@ -1653,12 +1677,13 @@ document.addEventListener('click', function (e) {{
             });
         }
 
-        return AgenticSearchContext.BuildKontext(events, modus);
+        var kontext = AgenticSearchContext.BuildKontext(events, modus);
+        return (kontext, new LiveSuchPanel(panelIndex, stepsHtml.ToString(), modus, gefundenCount));
     }
 
     // ── Chat-Backend ─────────────────────────────────────────────────────────
 
-    private async Task<(string content, string suggestedAction, double confidence, List<(string Zitat, int ChunkId)> quellen)> PostChatAsync(string? suchKontext = null)
+    private async Task<(string content, string suggestedAction, double confidence, List<(string Zitat, int ChunkId)> quellen, string anonymisiertGesendet)> PostChatAsync(string? suchKontext = null)
     {
         // Früher standen hier zusätzlich "Suche in Rechtsdatenbank..." und
         // "Generiere juristische Antwort..." als eigene Schritte — beides pauschale
@@ -1728,6 +1753,14 @@ document.addEventListener('click', function (e) {{
             ? AnonymizerEngine.AnonymizeText(string.Join("\n\n", contextParts), aliasToOriginal)
             : null;
 
+        // Task #311: genau das, was gleich per HttpClient rausgeht — die anonymisierte
+        // Nachricht dieser Runde plus anonymisierten Kontext — für die Anzeige im
+        // Live-Panel (such-panel) festhalten, bevor die Antwort unten wieder
+        // deanonymisiert wird.
+        var anonymisiertGesendet = AnonymisiertGesendetBuilder.BuildFuerChat(
+            anonymizedMessages.Length > 0 ? anonymizedMessages[^1].content : "",
+            anonymizedMandantContext);
+
         var payload = JsonSerializer.Serialize(new
         {
             messages        = anonymizedMessages,
@@ -1767,7 +1800,7 @@ document.addEventListener('click', function (e) {{
             }
         }
 
-        return (content, suggestedAction, confidence, quellen);
+        return (content, suggestedAction, confidence, quellen, anonymisiertGesendet);
     }
 
     // ── UI Rendering ──────────────────────────────────────────────────────────
