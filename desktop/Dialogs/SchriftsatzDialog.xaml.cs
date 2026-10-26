@@ -49,13 +49,8 @@ public partial class SchriftsatzDialog : Window
         };
     }
 
-    private static readonly string[] Arten =
-    {
-        "Klageerwiderung", "Klageschrift", "Antragsschrift (Familiensache)", "Antragserwiderung (Familiensache)",
-        "Stellungnahme an das Gericht", "Berufungsbegründung", "Beschwerdebegründung",
-        "Außergerichtliches Schreiben an die Gegenseite", "Gutachten / Erfolgsaussichten",
-        "Freier Entwurf (siehe Anweisung)",
-    };
+    // Einzige Quelle für die Liste: VorlagenOrdner.Arten (auch für die Vorlagen-Unterordner je Typ).
+    private static readonly string[] Arten = VorlagenOrdner.Arten;
 
     private readonly LocalDb _db;
     private readonly string _backendUrl;

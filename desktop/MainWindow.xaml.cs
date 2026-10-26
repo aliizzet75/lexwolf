@@ -273,6 +273,9 @@ document.addEventListener('click', function (e) {{
             _scanner?.Dispose();
             _scanner = null;
             Directory.CreateDirectory(path);
+            // Vorlagen/<Schriftsatz-Art>-Unterordner anlegen, falls noch nicht vorhanden
+            // (keine Migration bestehender Root-Vorlagen, siehe VorlagenOrdner).
+            VorlagenOrdner.SicherstellenUnterordner(path);
             _scanner = new DokumentScanner(path, _db);
             _scanner.OnDateiIndexiert = (mandantId, pfad) => _akte?.DateiIndexiert(mandantId, pfad);
             _scanner.ScanAll();
