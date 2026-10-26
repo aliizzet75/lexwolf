@@ -1601,10 +1601,22 @@ document.addEventListener('click', function (e) {{
         if (!string.IsNullOrWhiteSpace(attorneyContext)) contextParts.Add(attorneyContext);
         if (!string.IsNullOrWhiteSpace(templateContext)) contextParts.Add(templateContext);
 
+        // Datenschutz (Task #308): Nachrichten + Mandant-Kontext (enthält Akte-Dokumente,
+        // Mandantname etc.) gehen nur anonymisiert an den Server/die KI. Die Zuordnung
+        // (Alias -> Original) gilt nur für diese eine Anfrage und wird genutzt, um die
+        // Antwort unten wieder zurückzuübersetzen, bevor der Anwalt sie sieht.
+        var aliasToOriginal = new Dictionary<string, string>();
+        var anonymizedMessages = _history
+            .Select(m => new { role = m.Role, content = AnonymizerEngine.AnonymizeText(m.Content, aliasToOriginal) })
+            .ToArray();
+        var anonymizedMandantContext = contextParts.Count > 0
+            ? AnonymizerEngine.AnonymizeText(string.Join("\n\n", contextParts), aliasToOriginal)
+            : null;
+
         var payload = JsonSerializer.Serialize(new
         {
-            messages       = _history.Select(m => new { role = m.Role, content = m.Content }).ToArray(),
-            mandant_context = contextParts.Count > 0 ? string.Join("\n\n", contextParts) : null,
+            messages        = anonymizedMessages,
+            mandant_context = anonymizedMandantContext,
         });
         var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
 
@@ -1614,7 +1626,8 @@ document.addEventListener('click', function (e) {{
 
         using var doc = JsonDocument.Parse(body);
         var root            = doc.RootElement;
-        var content         = root.TryGetProperty("content",          out var c)  ? c.GetString()  ?? body  : body;
+        var rawContent      = root.TryGetProperty("content",          out var c)  ? c.GetString()  ?? body  : body;
+        var content         = AnonymizerEngine.DeAnonymizeText(rawContent, aliasToOriginal);
         var suggestedAction = root.TryGetProperty("suggested_action", out var sa) ? sa.GetString() ?? "frage" : "frage";
         var confidence      = root.TryGetProperty("confidence_score", out var cs) && cs.ValueKind == JsonValueKind.Number
             ? cs.GetDouble()

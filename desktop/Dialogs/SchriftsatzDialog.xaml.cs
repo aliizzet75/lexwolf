@@ -126,13 +126,18 @@ public partial class SchriftsatzDialog : Window
             stamm.Gegnervertreter.Length > 0 ? $"Gegnervertreter: {stamm.Gegnervertreter}" : "",
         }.Where(s => s.Length > 0));
 
+        // Datenschutz (Task #308): Anweisung + Akte-Dokumenteninhalte gehen nur anonymisiert
+        // an den Server/die KI. Die Zuordnung (Alias -> Original) gilt nur für diese eine
+        // Anfrage und wird genutzt, um den Entwurf unten wieder zurückzuübersetzen, bevor
+        // der Anwalt ihn sieht.
+        var aliasToOriginal = new Dictionary<string, string>();
         var payload = JsonSerializer.Serialize(new
         {
             art = (string)ArtBox.SelectedItem,
-            anweisung = AnweisungBox.Text.Trim(),
+            anweisung = AnonymizerEngine.AnonymizeText(AnweisungBox.Text.Trim(), aliasToOriginal),
             mandant = _mandantName,
             stammdaten = stammText,
-            dokumente = auswahl.Select(d => new { titel = d.Titel, text = d.Text }),
+            dokumente = auswahl.Select(d => new { titel = d.Titel, text = AnonymizerEngine.AnonymizeText(d.Text, aliasToOriginal) }),
             stil_vorlage = StilvorlageText(),
         });
 
@@ -146,10 +151,13 @@ public partial class SchriftsatzDialog : Window
             var response = await http.PostAsync($"{_backendUrl}/akte/schriftsatz", content, _cts.Token);
             response.EnsureSuccessStatusCode();
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(_cts.Token));
-            EntwurfBox.Text = doc.RootElement.GetProperty("text").GetString() ?? "";
+            var rohEntwurf = doc.RootElement.GetProperty("text").GetString() ?? "";
+            EntwurfBox.Text = AnonymizerEngine.DeAnonymizeText(rohEntwurf, aliasToOriginal);
             var belege = doc.RootElement.TryGetProperty("belege", out var b) && b.ValueKind == JsonValueKind.Array
-                ? b.EnumerateArray().Select(x => new Beleg(x.GetProperty("zitat").GetString() ?? "", x.GetProperty("status").GetString() ?? "",
-                    x.TryGetProperty("hinweis", out var h) ? h.GetString() ?? "" : "")).ToList()
+                ? b.EnumerateArray().Select(x => new Beleg(
+                    AnonymizerEngine.DeAnonymizeText(x.GetProperty("zitat").GetString() ?? "", aliasToOriginal),
+                    x.GetProperty("status").GetString() ?? "",
+                    x.TryGetProperty("hinweis", out var h) ? AnonymizerEngine.DeAnonymizeText(h.GetString() ?? "", aliasToOriginal) : "")).ToList()
                 : new List<Beleg>();
             // Fehlerhaftes zuerst, dann zu Prüfendes, Geprüftes zuletzt
             BelegeListe.ItemsSource = belege
