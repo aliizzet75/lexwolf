@@ -85,6 +85,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.63.0",
         "Nutzer-Feedback: Vorschlaege-Textbox blieb klein trotz maximiertem Fenster (MaxHeight entfernt). Speicher-Fehler bei Gespraechsprotokoll/E-Mail-Entwurf gingen nur ins Log (jetzt laute Meldung, Abbruch",
     ),
+    (
+        "0.64.0",
+        "BUENDEL-RELEASE (2026-10-26, Retry nach Merge-Konflikt-Fix): Alle 5 Datenqualitaets-Milestones: M19 Rohmaterial-Expansion (Urteile + Gesetzesbegruendungen), M24 Zitier-Graph & Multi-Hop-Suche, M18 Qua",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
