@@ -89,6 +89,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.64.0",
         "BUENDEL-RELEASE (2026-10-26, Retry nach Merge-Konflikt-Fix): Alle 5 Datenqualitaets-Milestones: M19 Rohmaterial-Expansion (Urteile + Gesetzesbegruendungen), M24 Zitier-Graph & Multi-Hop-Suche, M18 Qua",
     ),
+    (
+        "0.65.0",
+        "Nutzer-Feedback: Word-Export-Dateiname sollte Inhalt statt Datum zeigen (jetzt wegen:-Zeile aus dem Entwurf, Fallback Datum). Dokumentenauswahl braucht Oeffnen-Button pro Dokument zur Pruefung vor Ein",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
