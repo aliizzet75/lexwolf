@@ -36,6 +36,19 @@ namespace LexWolf.Tests
             Assert.Contains("<a href='#' class='highlight-paragraph quelle-link' data-action='quelle' data-value='&#167; 23 KSchG'>§ 23 KSchG</a>", html);
         }
 
+        /// <summary>T#300-Regression: bei zusammengesetzten Normen wie "§ 573 Abs. 2 Nr. 2 BGB"
+        /// (der Eigenbedarfs-Norm) brach der Treffer vorher nach "Nr" ab, weil die
+        /// Wiederholungsgruppe nur Abs./Satz, nicht aber Nr. kannte. data-value trug dann nur
+        /// "§ 573 Abs. 2 Nr" statt der vollen Referenz — das Backend (find_chunk_by_reference)
+        /// nimmt das letzte Wort als Gesetzeskürzel ("nr" statt "bgb") und findet nichts, der
+        /// Klick auf die Quelle endete im Popup mit "HTTP 404", obwohl § 573 BGB indexiert ist.</summary>
+        [Fact]
+        public void Zusammengesetzte_Norm_Mit_Abs_Und_Nr_Ist_Vollstaendig_Klickbar()
+        {
+            var html = ChatHtmlRenderer.Render("Eigenbedarf ist gemäß § 573 Abs. 2 Nr. 2 BGB ein Kündigungsgrund.");
+            Assert.Contains("data-value='&#167; 573 Abs. 2 Nr. 2 BGB'>§ 573 Abs. 2 Nr. 2 BGB</a>", html);
+        }
+
         /// <summary>Ein bloßes Gesetzeskürzel ohne Paragraphennummer lässt sich nicht
         /// eindeutig auf einen Chunk auflösen -> bleibt reine Hervorhebung ohne Link.</summary>
         [Fact]

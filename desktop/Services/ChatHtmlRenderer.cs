@@ -183,8 +183,13 @@ public static class ChatHtmlRenderer
         // klickbar -> OnChatWebMessage löst sie über /legal-db/chunks/by-reference auf
         // und zeigt den Gesetzestext im Popup. Bloße Gesetzeskürzel ohne Nummer (z.B.
         // "nach dem BGB") bleiben reine Hervorhebung, da es dafür keinen eindeutigen Chunk gibt.
+        // T#300: Abs./Satz/Nr. müssen alle drei in der Wiederholungsgruppe stehen, sonst
+        // bricht der Treffer bei zusammengesetzten Normen wie "§ 573 Abs. 2 Nr. 2 BGB" (die
+        // Eigenbedarfs-Norm) nach "Nr" ab — data-value trug dann nur "§ 573 Abs. 2 Nr" statt
+        // der vollen Referenz, wodurch find_chunk_by_reference (backend) aus dem letzten Wort
+        // "nr" statt "bgb" das Gesetz erraten wollte und nie etwas fand (HTTP 404 im Popup).
         html = Regex.Replace(html,
-            @"(?i)(§\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+))*\s*[A-Za-z]*\b|Art\.\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+))*\s*[A-Za-z]*\b|\b(BGB|GG|KSchG|AGBG|AGB|AktG|GmbHG|HGB|StGB|StPO|ZPO|VwGO|BVerfG|BAG|BGH|BSG|LAG|OLG|LG|AG|EU-DSGVO|DSGVO|KWG|InsO|AO|BAföG|AsylbLG|SGB\s*(I{1,3}|IV|V|VI|VII|VIII|IX|X|XI|XII|1|2|3|4|5|6|7|8|9|10|11|12)))\b",
+            @"(?i)(§\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+|Nr\.\s*\d+))*\s*[A-Za-z]*\b|Art\.\s*\d+(\s*(Abs\.\s*\d+|Satz\s*\d+|Nr\.\s*\d+))*\s*[A-Za-z]*\b|\b(BGB|GG|KSchG|AGBG|AGB|AktG|GmbHG|HGB|StGB|StPO|ZPO|VwGO|BVerfG|BAG|BGH|BSG|LAG|OLG|LG|AG|EU-DSGVO|DSGVO|KWG|InsO|AO|BAföG|AsylbLG|SGB\s*(I{1,3}|IV|V|VI|VII|VIII|IX|X|XI|XII|1|2|3|4|5|6|7|8|9|10|11|12)))\b",
             m =>
             {
                 if (!Regex.IsMatch(m.Value, @"\d"))

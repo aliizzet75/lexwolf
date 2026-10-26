@@ -1684,26 +1684,33 @@ document.addEventListener('click', function (e) {{
     /// Klick auf einen Quellen-Link (siehe ChatHtmlRenderer.
     /// WrapAiBubble/QuellenListeHtml) lädt den Chunk per chunk_id (T#296) vom Backend
     /// und zeigt ihn im QuelleDialog — der dort direkt zur exakten Passage springt
-    /// (ChatHtmlRenderer.FindeZitatPosition), statt nur den Dokumentanfang zu zeigen.</summary>
+    /// (ChatHtmlRenderer.FindeZitatPosition), statt nur den Dokumentanfang zu zeigen.
+    ///
+    /// T#300: Inline-Zitate aus ApplySemanticHighlighting (z.B. "§ 573 Abs. 2 Nr. 2 BGB"
+    /// mitten im Fließtext oder in der Zitatprüfung) tragen kein data-msg und damit keine
+    /// chunk_id — der Klick-Handler in GetChatBaseHtml liefert dafür msg=null, was hier als
+    /// chunkId &lt;= 0 ankommt. Direktes Laden von /legal-db/chunks/{chunkId} schlug dann
+    /// immer mit HTTP 404 fehl, obwohl die Norm indexiert war. Fallback: die Referenz selbst
+    /// über /legal-db/chunks/by-reference auflösen (QuellenangabeService, bisher ungenutzt).</summary>
     private async Task QuelleOeffnenAsync(int chunkId, string zitat)
     {
         try
         {
-            var response = await _http.GetAsync($"{BackendUrl}/legal-db/chunks/{chunkId}");
-            if (!response.IsSuccessStatusCode)
+            var chunk = chunkId > 0
+                ? await _quellenangabeService.LadeChunkAsync(chunkId)
+                : await _quellenangabeService.LadeChunkFuerReferenzAsync(zitat);
+
+            if (chunk is null)
             {
-                AppendSystemMessage($"Quelle konnte nicht geladen werden (HTTP {(int)response.StatusCode}).");
+                AppendSystemMessage("Quelle konnte nicht geladen werden.");
                 return;
             }
-            var body = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(body);
-            var root = doc.RootElement;
-            var text = root.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
-            var title = root.TryGetProperty("title", out var ti) ? ti.GetString() ?? zitat : zitat;
+
+            var title = string.IsNullOrWhiteSpace(chunk.Title) ? zitat : chunk.Title;
 
             Dispatcher.Invoke(() =>
             {
-                var dialog = new QuelleDialog(title, text, zitat) { Owner = this };
+                var dialog = new QuelleDialog(title, chunk.Text, zitat) { Owner = this };
                 dialog.Show();
             });
         }
