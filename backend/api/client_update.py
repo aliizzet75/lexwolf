@@ -109,6 +109,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.69.0",
         "Nutzer-Feedback: falsch zugeordnete E-Mails verfaelschen die Zeitleiste im Aktenstamm, es gab keine Moeglichkeit sie zu entfernen. Posteingang bekommt Entfernen-Button (nutzt bereits vorhandene, nie a",
     ),
+    (
+        "0.70.0",
+        "Nutzer-Frage deckte echten Bug auf: Vorlage fuer diese Art und Stilvorlage sahen gleich aus, aber nur Stilvorlage floss tatsaechlich in den Entwurf ein - Vorlage fuer diese Art wirkte nur auf den allg",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
