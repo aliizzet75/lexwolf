@@ -62,6 +62,7 @@
     <Compile Include="../Services/ReActStreamClient.cs" Link="ReActStreamClient.cs" />
     <Compile Include="../Models/ReActStepEvent.cs" Link="ReActStepEvent.cs" />
     <Compile Include="../Services/AgenticSearchContext.cs" Link="AgenticSearchContext.cs" />
+    <Compile Include="../Services/RechercheQueryBuilder.cs" Link="RechercheQueryBuilder.cs" />
     <Compile Include="../Services/DateiVerwaltung.cs" Link="DateiVerwaltung.cs" />
   </ItemGroup>
 

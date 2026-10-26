@@ -103,8 +103,21 @@
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom">
+                    <!-- T#310: Agentic-RAG-Recherche zu Normen/Rechtsprechung für den
+                         gewählten Streitgegenstand (Art + Anweisung), läuft vor dem
+                         Entwurf (GET /api/search/stream) — gleiches schnell/tief wie
+                         beim Chat (T#309). -->
+                    <DockPanel Margin="0,12,0,0">
+                        <ComboBox x:Name="SuchModusBox" DockPanel.Dock="Right" Width="110"
+                                  Style="{StaticResource DarkComboBoxStyle}"
+                                  ToolTip="Rechtsrecherche vor dem Entwurf: schnell (1 Runde) oder tief (mehrere Runden, Zitier-Graph)">
+                            <ComboBoxItem Content="⚡ Schnell" Tag="schnell" IsSelected="True"/>
+                            <ComboBoxItem Content="🐢 Tief" Tag="tief"/>
+                        </ComboBox>
+                        <TextBlock Text="Rechtsrecherche" Style="{StaticResource LwHinweis}" VerticalAlignment="Center"/>
+                    </DockPanel>
                     <Button x:Name="ErstellenBtn" Content="✨ Entwurf erstellen" Style="{StaticResource LwPrimaryButton}"
-                            Padding="14,10" Margin="0,12,0,0" Click="OnErstellen"/>
+                            Padding="14,10" Margin="0,8,0,0" Click="OnErstellen"/>
                 </StackPanel>
 
                 <Border Style="{StaticResource LwKarte}" Padding="10,8">
@@ -139,6 +152,21 @@
                             Click="OnBerechnung" ToolTip="Unterhalt, Zugewinn, Verfahrenswert oder Kosten berechnen und mit Rechenweg einfügen"/>
                     <TextBlock Text="Entwurf" Style="{StaticResource LwAbschnitt}"/>
                 </DockPanel>
+
+                <!-- T#310: Live-Schritte der Rechtsrecherche (ReActStreamClient), bleibt
+                     sichtbar während der Entwurf entsteht. Vor der ersten Recherche
+                     unsichtbar (Collapsed), damit der Dialog nicht leer wirkt. -->
+                <Border x:Name="RecherchePanel" DockPanel.Dock="Top" Style="{StaticResource LwKarte}"
+                        Padding="10,8" Margin="0,0,0,10" MaxHeight="220" Visibility="Collapsed">
+                    <DockPanel>
+                        <TextBlock x:Name="RechercheStatusText" DockPanel.Dock="Top" Style="{StaticResource LwHinweis}"
+                                   Margin="0,0,0,6"/>
+                        <ScrollViewer x:Name="RechercheScroll" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="RechercheListe"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+
                 <Grid>
                     <TextBox x:Name="EntwurfBox" Style="{StaticResource LwEditor}" FontFamily="Segoe UI" TextChanged="OnEntwurfGeaendert"/>
                     <StackPanel x:Name="LeerHinweis" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
