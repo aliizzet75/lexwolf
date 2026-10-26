@@ -79,6 +79,10 @@ public partial class MainWindow : Window
         public string? Hinweis { get; set; }
         public int HtmlIndex { get; set; } = -1;
         public string Html { get; set; } = "";
+        // Task #301: confidence_score + geprüfte Quellen der /chat-Antwort, aus der
+        // dieser Entwurf entstand — analog zur Chat-Bubble (WrapAiBubble).
+        public double? Confidence { get; set; }
+        public IReadOnlyList<(string Zitat, int ChunkId)>? Quellen { get; set; }
     }
     // Karten-ID (data-msg der Buttons) -> Karte. Wird nie geleert, damit IDs auch
     // nach Mandantenwechsel eindeutig bleiben.
@@ -850,8 +854,10 @@ document.addEventListener('click', function (e) {{
                                     if (!string.IsNullOrWhiteSpace(rest))
                                         AddHtmlMessage(ChatHtmlRenderer.WrapAiBubble(ChatHtmlRenderer.Render(rest), confidenceScore));
                                     // Zuordnung zur Datei ist nach Neustart weg -> nur Anzeige + Kopieren.
+                                    // confidenceScore kommt aus der gespeicherten chat_history-Zeile (quellen_check
+                                    // wird nicht persistiert, daher hier null).
                                     if (entwurf is not null)
-                                        EntwurfKarteAnlegen(entwurf, historie: true, mitRefresh: false);
+                                        EntwurfKarteAnlegen(entwurf, historie: true, mitRefresh: false, confidence: confidenceScore);
                                 }
                                 break;
                             default:
@@ -1356,7 +1362,7 @@ document.addEventListener('click', function (e) {{
             // Geöffnet wird nichts von selbst — das entscheidet der Anwalt in der Karte.
             var (rest, entwurf) = ChatEntwurfParser.Zerlege(content, suggestedAction);
             if (!string.IsNullOrWhiteSpace(rest)) AppendAiMessage(rest, confidence, quellen);
-            if (entwurf is not null) Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf));
+            if (entwurf is not null) Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf, confidence: confidence, quellen: quellen));
 
             Dispatcher.Invoke(() => KopierenBtn.Visibility = Visibility.Visible);
         }
@@ -1727,9 +1733,14 @@ document.addEventListener('click', function (e) {{
     /// im Block) ersetzt die vorige Fassung, statt eine weitere Datei anzulegen —
     /// ein neues, anderes Schreiben überschreibt dagegen nie einen vorhandenen
     /// Entwurf. Ohne Mandant fragt die Karte, wohin.</summary>
-    private void EntwurfKarteAnlegen(ChatEntwurf daten, bool historie = false, bool mitRefresh = true)
+    private void EntwurfKarteAnlegen(ChatEntwurf daten, bool historie = false, bool mitRefresh = true,
+        double? confidence = null, IReadOnlyList<(string Zitat, int ChunkId)>? quellen = null)
     {
-        var karte = new EntwurfKarte { Id = _karten.Count, Daten = daten, Mandant = _activeMandantName, Historie = historie };
+        var karte = new EntwurfKarte
+        {
+            Id = _karten.Count, Daten = daten, Mandant = _activeMandantName, Historie = historie,
+            Confidence = confidence, Quellen = quellen,
+        };
         EntwurfKarte? vorgaenger = null;
         if (!historie && daten.Ueberarbeitung)
         {
@@ -1852,7 +1863,9 @@ document.addEventListener('click', function (e) {{
             OeffnenLabel: k.Historie ? null : OeffnenLabel(k.Daten.IstEmail),
             MandantAuswahl: bearbeitbar && k.Mandant is null
                 ? _mandanten.Select(m => m.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList()
-                : null);
+                : null,
+            Confidence: k.Confidence,
+            Quellen: k.Quellen);
     }
 
     private void KarteZeigen(EntwurfKarte k, bool mitRefresh)
