@@ -1,10 +1,13 @@
 import asyncio
+import json
 import logging
+import re
 import sys
 from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 from services.neo4j_service import Neo4jService
+from services import llm_client
 
 
 GROUNDED_SYSTEM_PROMPT = """Du bist ein juristischer Assistent. Beantworte ausschliesslich mit Informationen aus den bereitgestellten Quellen. Erfinde keine Gesetze oder Paragraphen. Wenn die Quellen unzureichend sind, sage das explizit. Verwende keine Trainingsdaten, sondern nur die uebergebenen Chunks als Grundlage fuer deine Antworten. Bei fehlenden Infos: "Dazu liegen mir keine Informationen vor"."""
@@ -27,20 +30,47 @@ def check_confidence_refusal(aussagen: list, chunks: list) -> "dict | None":
 
 
 def evaluate_completeness(query: str, results: List[str]) -> Dict[str, object]:
+    """Bewertet inhaltlich, ob die gefundenen Quellen die Rechtsfrage
+    beantworten. Bei 0 Ergebnissen sofort unvollständig, sonst Kurzer
+    LLM-Judge-Aufruf über ask_llm."""
     if not results or len(results) == 0:
         return {
             'vollstaendig': False,
             'fehlende_aspekte': ['Keine Suchergebnisse gefunden']
         }
-    if len(results) >= 3:
+
+    context = "\n\n---\n\n".join(str(r) for r in results)
+    prompt = (
+        "Reicht dieser Kontext, um folgende Rechtsfrage vollständig zu beantworten:\n"
+        f"{query}\n\n"
+        "Kontext:\n"
+        f"{context}\n\n"
+        "Antworte ausschließlich als JSON in diesem Format:\n"
+        '{"vollstaendig": true|false, "fehlende_aspekte": ["..."]}'
+    )
+
+    try:
+        raw = llm_client.ask_llm(prompt, max_tokens=512)
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group(0))
+        else:
+            parsed = json.loads(raw)
+        if parsed.get('vollstaendig', False):
+            return {
+                'vollstaendig': True,
+                'fehlende_aspekte': list(parsed.get('fehlende_aspekte', []))
+            }
         return {
-            'vollstaendig': True,
-            'fehlende_aspekte': []
+            'vollstaendig': False,
+            'fehlende_aspekte': list(parsed.get('fehlende_aspekte', ['Mehr relevante Informationen benoetigt']))
         }
-    return {
-        'vollstaendig': False,
-        'fehlende_aspekte': ['Mehr relevante Informationen benoetigt']
-    }
+    except Exception as e:
+        logger.warning(f"Inhaltliche Vollständigkeitsprüfung fehlgeschlagen: {e}")
+        return {
+            'vollstaendig': False,
+            'fehlende_aspekte': ['Mehr relevante Informationen benoetigt']
+        }
 
 
 def build_gegensuche_queries(query: str) -> List[str]:

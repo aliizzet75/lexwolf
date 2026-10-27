@@ -191,21 +191,27 @@ async def chat(request: ChatRequest) -> ChatResponse:
     try:
         from api.akte import pruefe_belege
         belege = await asyncio.to_thread(pruefe_belege, content, 0)
-        content += format_zitatpruefung(belege)
     except Exception as e:
         logger.warning(f"Zitatprüfung im Chat fehlgeschlagen: {e}")
 
     # 9. Qualitätsmetriken (M3 LLM-as-Judge-Pipeline) pro Antwort — auf dem
     # reinen LLM-Content berechnet, bevor Zitatprüfung/Disclaimer angehängt werden,
     # sonst würden die eigenen "✓ §… gefunden"-Zeilen die Zitat-Extraktion verzerren.
+    llm_content = content  # unveränderter Originaltext für die Bewertung
     confidence_score = 0.0
     try:
         quality_result = await asyncio.to_thread(
-            _get_quality_service().verify_generated_content, content
+            _get_quality_service().verify_generated_content, llm_content
         )
         confidence_score = quality_result.get("quality_score", 0.0)
     except Exception as e:
         logger.warning(f"Qualitätsprüfung im Chat fehlgeschlagen: {e}")
+
+    # 10. Zitatprüf-Ergebnis an den zurückzugebenden Content anhängen.
+    try:
+        content += format_zitatpruefung(belege)
+    except Exception as e:
+        logger.warning(f"Anhängen der Zitatprüfung im Chat fehlgeschlagen: {e}")
 
     quellen_check = _quellen_check_aus_belegen(belege)
 

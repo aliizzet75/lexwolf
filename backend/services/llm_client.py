@@ -25,8 +25,12 @@ import anthropic
 
 from . import llm_config as _llm_config
 
+import logging as _logging
+
+_LOGGER = _logging.getLogger(__name__)
 _PROVIDER = os.environ.get("LLM_PROVIDER", "claude").strip().lower()
 _DEFAULT_MODEL = os.environ.get("LLM_MODEL", "claude-opus-5-5")
+_FALLBACK_PROVIDER = os.environ.get("LLM_FALLBACK_PROVIDER", "").strip().lower()
 # Aktuelle Claude-Modelle denken immer (adaptive thinking), und das Denken zählt
 # gegen max_tokens. Die max_tokens der Aufrufer meinen aber nur die sichtbare
 # Antwort — z.B. llm_judge mit 200 bekäme sonst eine leere Antwort, weil das
@@ -64,21 +68,51 @@ def ask_llm(
     Modus (siehe llm_config.ROLLEN_IMMER_HOCHWERTIG) erzwingt das das teurere
     der beiden konfigurierten Modelle unabhängig von max_tokens. Ohne rolle
     (HyDE/Reranking/Feature-Feedback) bleibt das bisherige größenbasierte
-    Verhalten unverändert."""
-    provider, routed_model, api_key = _llm_config.route(max_tokens, rolle=rolle)
-    if provider is not None:
-        effective_model = model or routed_model
-        if provider == "ollama":
-            return _ask_ollama(prompt_or_messages, max_tokens, effective_model)
-        if provider == "ki-proxy":
-            return _ask_ki_proxy(prompt_or_messages, max_tokens, effective_model)
-        return _ask_claude(prompt_or_messages, max_tokens, effective_model, api_key)
+    Verhalten unverändert.
 
-    if _PROVIDER == "ollama":
+    T#316: Scheitert der primäre Provider, wird automatisch ein Versuch mit dem
+    konfigurierten Fallback-Provider unternommen, bevor die Exception nach oben
+    durchgereicht wird."""
+    for idx, (provider, routed_model, api_key) in enumerate(_llm_config.route_mit_fallback(max_tokens, rolle=rolle)):
+        if provider is None:
+            # localhost-Modus: LLM_PROVIDER/LLM_FALLBACK_PROVIDER bestimmen Provider
+            if idx == 0:
+                provider = _PROVIDER
+            else:
+                provider = _FALLBACK_PROVIDER or _default_fallback_provider(_PROVIDER)
+                if provider == _PROVIDER:
+                    continue
+        effective_model = model or routed_model
+        try:
+            return _ask_provider(provider, prompt_or_messages, max_tokens, effective_model, api_key)
+        except Exception as e:
+            _LOGGER.warning(f"KI-Provider '{provider}' fehlgeschlagen: {e}")
+            last_error = e
+            continue
+
+    raise last_error
+
+
+def _default_fallback_provider(primary: str) -> str:
+    """Einfacher provider-übergreifender Fallback: claude/ki-proxy -> ollama,
+    ollama -> claude."""
+    if primary in ("claude", "ki-proxy"):
+        return "ollama"
+    return "claude"
+
+
+def _ask_provider(
+    provider: str,
+    prompt_or_messages: Union[str, Messages],
+    max_tokens: int,
+    model: Optional[str],
+    api_key: Optional[str] = None,
+) -> str:
+    if provider == "ollama":
         return _ask_ollama(prompt_or_messages, max_tokens, model)
-    if _PROVIDER == "ki-proxy":
+    if provider == "ki-proxy":
         return _ask_ki_proxy(prompt_or_messages, max_tokens, model)
-    return _ask_claude(prompt_or_messages, max_tokens, model)
+    return _ask_claude(prompt_or_messages, max_tokens, model, api_key)
 
 
 def _ask_claude(
