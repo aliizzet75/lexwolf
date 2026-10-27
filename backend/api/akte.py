@@ -365,7 +365,7 @@ async def schriftsatz(req: SchriftsatzRequest):
         aufbau=_aufbau_fuer_art(req.art),
         stil=stil)
     try:
-        text = await asyncio.to_thread(ask_llm, prompt, max_tokens=8000)
+        text = await asyncio.to_thread(ask_llm, prompt, max_tokens=8000, rolle="schriftsatz")
     except Exception as e:
         logger.error(f"Schriftsatz fehlgeschlagen: {e}")
         raise HTTPException(status_code=502, detail="KI aktuell nicht erreichbar")

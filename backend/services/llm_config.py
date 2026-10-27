@@ -39,6 +39,12 @@ _DEFAULT: dict = {
 # (z.B. Schriftsatz-Entwürfe mit 8000) statt "kurz" (z.B. LLM-Judge mit 200).
 SCHWELLE_AUFWAENDIG = 3000
 
+# T#312: Diese Rollen bekommen im Hybrid-Modus IMMER das teurere der beiden
+# Modelle, unabhängig von max_tokens — der LLM-Judge (max_tokens=200) würde
+# sonst trotz kurzer Antwort immer auf der günstigen Seite landen, obwohl die
+# Bewertungsqualität von der Modellwahl des Anwalts (Chat/Schriftsatz) abhängt.
+ROLLEN_IMMER_HOCHWERTIG = {"judge", "chat", "schriftsatz"}
+
 
 def laden() -> dict:
     with _lock:
@@ -70,9 +76,12 @@ def _claude_provider(cfg: dict) -> str:
     return "claude" if cfg.get("claude_api_key", "").strip() else "ki-proxy"
 
 
-def route(max_tokens: int) -> tuple[Optional[str], Optional[str], Optional[str]]:
+def route(max_tokens: int, rolle: Optional[str] = None) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """(provider, model, claude_api_key) für ask_llm() — provider None bedeutet
-    "localhost": bisheriges LLM_PROVIDER-Verhalten unverändert verwenden."""
+    "localhost": bisheriges LLM_PROVIDER-Verhalten unverändert verwenden.
+
+    rolle (T#312): im Hybrid-Modus wählt eine Rolle aus ROLLEN_IMMER_HOCHWERTIG
+    immer das teurere der beiden Modelle, unabhängig von max_tokens."""
     cfg = laden()
     modus = cfg.get("modus", "localhost")
     api_key = cfg.get("claude_api_key", "").strip() or None
@@ -94,6 +103,8 @@ def route(max_tokens: int) -> tuple[Optional[str], Optional[str], Optional[str]]
         if len(paar) == 1:
             return paar[0]
         paar.sort(key=lambda p: llm_catalog.kosten(p[1]))
+        if rolle in ROLLEN_IMMER_HOCHWERTIG:
+            return paar[1]
         return paar[1] if max_tokens >= SCHWELLE_AUFWAENDIG else paar[0]
 
     return None, None, None
