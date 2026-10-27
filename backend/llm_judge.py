@@ -77,7 +77,7 @@ def _claude_score(frage: str, antwort: str, erwartet: list) -> tuple:
         f"Antwort: {antwort[:800]}\n\n"
         f"Antworte NUR mit JSON: {{\"score\": <1-5>, \"begruendung\": \"<max 100 Zeichen>\"}}"
     )
-    text = ask_llm(prompt, max_tokens=200).strip()
+    text = ask_llm(prompt, max_tokens=200, rolle="judge").strip()
     m = re.search(r'\{.*\}', text, re.DOTALL)
     if not m:
         raise ValueError(f"Kein JSON in Claude-Antwort: {text[:100]}")

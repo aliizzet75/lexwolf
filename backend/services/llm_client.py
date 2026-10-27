@@ -68,11 +68,18 @@ def ask_llm(
     *,
     max_tokens: int = 4096,
     model: Optional[str] = None,
+    rolle: Optional[str] = None,
 ) -> str:
     """Sendet einen Prompt (str) oder eine Chat-History (Liste von
     {"role", "content"}-Dicts, z.B. [{"role": "system", ...}, {"role": "user", ...}])
-    an die KI und gibt den reinen Antworttext zurück."""
-    provider, routed_model, api_key = _llm_config.route(max_tokens)
+    an die KI und gibt den reinen Antworttext zurück.
+
+    rolle (T#312, optional): z.B. "judge", "chat", "schriftsatz" — im Hybrid-
+    Modus (siehe llm_config.ROLLEN_IMMER_HOCHWERTIG) erzwingt das das teurere
+    der beiden konfigurierten Modelle unabhängig von max_tokens. Ohne rolle
+    (HyDE/Reranking/Feature-Feedback) bleibt das bisherige größenbasierte
+    Verhalten unverändert."""
+    provider, routed_model, api_key = _llm_config.route(max_tokens, rolle=rolle)
     if provider is not None:
         effective_model = model or routed_model
         if provider == "ollama":

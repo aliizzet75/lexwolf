@@ -165,7 +165,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     # 6. KI aufrufen — bei Denkprotokoll-Leckage einmal mit Verstärkung retryen
     # ask_llm ist blockierend (Anthropic-SDK-Call) — ebenfalls in Thread
     # auslagern, siehe Kommentar oben bei _search_chunks.
-    content = await asyncio.to_thread(ask_llm, ollama_messages, max_tokens=6000)
+    content = await asyncio.to_thread(ask_llm, ollama_messages, max_tokens=6000, rolle="chat")
     if _looks_like_reasoning_leak(content):
         logger.warning("Reasoning-Leak erkannt (%d Zeichen) — Retry mit verstärkter Anweisung", len(content))
         reinforced = ollama_messages + [{
@@ -173,7 +173,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             "content": "Wichtig: Antworte NUR mit der fertigen Antwort auf Deutsch, "
                        "ohne jegliche Zwischengedanken oder Erklärung deines Vorgehens.",
         }]
-        content = await asyncio.to_thread(ask_llm, reinforced, max_tokens=6000)
+        content = await asyncio.to_thread(ask_llm, reinforced, max_tokens=6000, rolle="chat")
         if _looks_like_reasoning_leak(content):
             logger.warning("Reasoning-Leak nach Retry weiterhin vorhanden — gebe Fallback-Antwort")
             content = (
