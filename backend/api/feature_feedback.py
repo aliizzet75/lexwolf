@@ -308,15 +308,12 @@ async def feedback_chat(request: FeedbackChatRequest) -> FeedbackChatResponse:
         logger.error(f"Fehler bei Feature-Feedback-Chat: {e}")
         raise HTTPException(status_code=500, detail="KI aktuell nicht erreichbar")
 
-    from services.llm_client import using_temporary_test_backend, TEST_MODE_DISCLAIMER
-    disclaimer = TEST_MODE_DISCLAIMER if using_temporary_test_backend() else ""
-
     parsed = _extract_json(content)
     if not parsed or "reply" not in parsed:
-        return FeedbackChatResponse(status="clarifying", reply=content.strip()[:2000] + disclaimer, summary=None)
+        return FeedbackChatResponse(status="clarifying", reply=content.strip()[:2000], summary=None)
 
     status = parsed.get("status") if parsed.get("status") in ("clarifying", "ready") else "clarifying"
-    return FeedbackChatResponse(status=status, reply=parsed["reply"] + disclaimer, summary=parsed.get("summary"))
+    return FeedbackChatResponse(status=status, reply=parsed["reply"], summary=parsed.get("summary"))
 
 
 @router.post("/clear-history", response_model=ClearHistoryResponse)

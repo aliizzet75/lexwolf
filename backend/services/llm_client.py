@@ -45,22 +45,8 @@ def _claude_client(api_key: Optional[str]) -> anthropic.Anthropic:
         _clients_by_key[api_key] = anthropic.Anthropic(api_key=api_key)
     return _clients_by_key[api_key]
 
+
 Messages = list[dict]
-
-TEST_MODE_DISCLAIMER = (
-    "\n\n---\n⚠️ Testmodus: Diese Antwort stammt von einer temporären "
-    "KI-Anbindung zu Entwicklungszwecken, nicht von der für den "
-    "produktiven Einsatz vorgesehenen Anbindung."
-)
-
-
-def using_temporary_test_backend() -> bool:
-    """True, solange LLM_PROVIDER=claude (Platzhalter) statt "ollama" (der eigentlich
-    für den kommerziellen Einsatz vorgesehene Kimi-Zugang) — oder solange in den
-    LexWolf-Einstellungen ein Test-Modus (Hybrid/ein festes Modell) aktiv ist (T#313)."""
-    if _llm_config.laden().get("modus", "localhost") != "localhost":
-        return True
-    return _PROVIDER != "ollama"
 
 
 def ask_llm(

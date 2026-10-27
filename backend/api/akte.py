@@ -17,7 +17,7 @@ from typing import List, Optional, Tuple
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.llm_client import ask_llm, using_temporary_test_backend, TEST_MODE_DISCLAIMER
+from services.llm_client import ask_llm
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/akte", tags=["akte"])
@@ -370,8 +370,6 @@ async def schriftsatz(req: SchriftsatzRequest):
         logger.error(f"Schriftsatz fehlgeschlagen: {e}")
         raise HTTPException(status_code=502, detail="KI aktuell nicht erreichbar")
     belege = await asyncio.to_thread(pruefe_belege, text, len(req.dokumente))
-    if using_temporary_test_backend():
-        text += TEST_MODE_DISCLAIMER
     return {"text": text, "belege": belege}
 
 
@@ -546,8 +544,6 @@ async def antwort(req: AntwortRequest):
     except Exception as e:
         logger.error(f"Antwortentwurf fehlgeschlagen: {e}")
         raise HTTPException(status_code=502, detail="KI aktuell nicht erreichbar")
-    if using_temporary_test_backend():
-        text += TEST_MODE_DISCLAIMER
     return {"text": text}
 
 
@@ -600,6 +596,4 @@ async def sachstand(req: SachstandRequest):
     except Exception as e:
         logger.error(f"Sachstand fehlgeschlagen: {e}")
         raise HTTPException(status_code=502, detail="KI aktuell nicht erreichbar")
-    if using_temporary_test_backend():
-        text += TEST_MODE_DISCLAIMER
     return {"text": text}

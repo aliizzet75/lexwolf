@@ -209,10 +209,6 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     quellen_check = _quellen_check_aus_belegen(belege)
 
-    from services.llm_client import using_temporary_test_backend, TEST_MODE_DISCLAIMER
-    if using_temporary_test_backend():
-        content += TEST_MODE_DISCLAIMER
-
     return ChatResponse(
         content=content,
         intent=intent,
