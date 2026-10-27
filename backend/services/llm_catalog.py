@@ -12,15 +12,18 @@ CLAUDE_MODELLE = [
     {"id": "claude-opus-5", "label": "Opus 5", "kosten": 9},
 ]
 
-# Entspricht den aktuell über diesen Ollama-Zugang abrufbaren Cloud-Modellen
-# (GET http://localhost:11434/api/tags, Einträge mit remote_host) — Stand der
-# Einrichtung dieses Umschalters. Ändert sich das Angebot, hier nachziehen.
+# Per Hand gegen http://localhost:11434/v1/chat/completions geprüfte, tatsächlich
+# erreichbare Cloud-Modelle (Stand 2026-10-27) — die vorherige Liste (Qwen3-Coder,
+# Kimi K2.5, DeepSeek V3.2) war zu diesem Zeitpunkt bereits von Ollama retired
+# (HTTP 410 "was retired on ..."), was bei Nutzern als 500er ankam. Ändert sich
+# das Angebot wieder, hier nachziehen und neu gegenprüfen statt nur aus /api/tags
+# zu übernehmen — dort stehen auch längst retirete Modelle noch drin.
 OLLAMA_MODELLE = [
-    {"id": "qwen3-coder-next:cloud", "label": "Qwen3 Coder Next 80B (cloud)", "kosten": 4},
-    {"id": "kimi-k2.5:cloud", "label": "Kimi K2.5 (cloud)", "kosten": 5},
-    {"id": "kimi-k2.7-code:cloud", "label": "Kimi K2.7 Code (cloud)", "kosten": 7},
-    {"id": "qwen3-coder:480b-cloud", "label": "Qwen3 Coder 480B (cloud)", "kosten": 8},
-    {"id": "deepseek-v3.2:cloud", "label": "DeepSeek V3.2 671B (cloud)", "kosten": 9},
+    {"id": "gpt-oss:20b-cloud", "label": "GPT-OSS 20B (cloud)", "kosten": 3},
+    {"id": "glm-5.3-flash:cloud", "label": "GLM 5.3 Flash (cloud)", "kosten": 3},
+    {"id": "kimi-k2.7-code:cloud", "label": "Kimi K2.7 Code (cloud)", "kosten": 6},
+    {"id": "glm-5.3:cloud", "label": "GLM 5.3 (cloud)", "kosten": 6},
+    {"id": "gpt-oss:120b-cloud", "label": "GPT-OSS 120B (cloud)", "kosten": 7},
 ]
 
 _KOSTEN_NACH_ID = {m["id"]: m["kosten"] for m in CLAUDE_MODELLE + OLLAMA_MODELLE}
