@@ -121,6 +121,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.72.0",
         "Recherche-Panel (Live-Suche) besser lesbar, anonymisiert gesendeter Text deutlicher markiert. Kanzlei-Stammdaten (Ort, Kontodaten) in den Einstellungen, Datum/Ort jetzt automatisch im Schriftsatz-Entwurf. Neu in den Einstellungen: KI-Modell (Test) - zum Testen umschaltbar zwischen Localhost, Hybrid (zwei Modelle) oder einem festen Modell, inkl. Claude-Code-API-Key.",
     ),
+    (
+        "0.73.0",
+        "Aus Codex-Qualitäts-Review der Suche/RAG-Pipeline, von Claude Code im echten Repo (nicht der alten codex.disabled-Kopie) nachgeprüft und priorisiert. Scope: Testanwalt-Phase, noch keine Kanzlei-/Accou",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
