@@ -108,3 +108,44 @@ def route(max_tokens: int, rolle: Optional[str] = None) -> tuple[Optional[str], 
         return paar[1] if max_tokens >= SCHWELLE_AUFWAENDIG else paar[0]
 
     return None, None, None
+
+
+def route_mit_fallback(max_tokens: int, rolle: Optional[str] = None) -> list[tuple[Optional[str], Optional[str], Optional[str]]]:
+    """Liefert eine Liste mit mindestens einem und maximal zwei
+    (provider, model, api_key)-Tupeln: primärer Versuch zuerst,
+    Fallback-Provider danach. Für ask_llm()-Fallback-Logik (T#316).
+
+    Baut auf route() auf, damit ein Patch von route() in Tests weiterhin
+    greift."""
+    cfg = laden()
+    modus = cfg.get("modus", "localhost")
+    api_key = cfg.get("claude_api_key", "").strip() or None
+
+    primary = route(max_tokens, rolle=rolle)
+    if primary[0] is None:
+        # localhost-Modus: Fallback wird in ask_llm() über Env-Vars bestimmt.
+        return [primary]
+
+    result = [primary]
+
+    if modus == "ein_modell":
+        if cfg.get("ein_modell_anbieter") == "claude_code":
+            fallback_modell = cfg.get("hybrid_ollama_modell") or llm_catalog.OLLAMA_MODELLE[0]["id"]
+            result.append(("ollama", fallback_modell, None))
+        else:
+            fallback_modell = cfg.get("hybrid_claude_code_modell") or llm_catalog.CLAUDE_MODELLE[0]["id"]
+            result.append((_claude_provider(cfg), fallback_modell, api_key))
+        return result
+
+    if modus == "hybrid":
+        claude_modell = cfg.get("hybrid_claude_code_modell") or None
+        ollama_modell = cfg.get("hybrid_ollama_modell") or None
+        paar = [p for p in ((_claude_provider(cfg), claude_modell, api_key), ("ollama", ollama_modell, None)) if p[1]]
+        if len(paar) < 2:
+            return result
+        # Primär ist bereits das Ergebnis von route(); Fallback ist das andere.
+        fallback = paar[0] if primary == paar[1] else paar[1]
+        result.append(fallback)
+        return result
+
+    return result
