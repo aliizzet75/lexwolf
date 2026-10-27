@@ -113,6 +113,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.70.0",
         "Nutzer-Frage deckte echten Bug auf: Vorlage fuer diese Art und Stilvorlage sahen gleich aus, aber nur Stilvorlage floss tatsaechlich in den Entwurf ein - Vorlage fuer diese Art wirkte nur auf den allg",
     ),
+    (
+        "0.71.0",
+        "Nutzer-Anfrage: Live-Suche (schnell/tief, Live-Denkprozess) ist aktuell nur im separaten, unpraktischen Live-Suche-Fenster nutzbar — weder Chat (/chat) noch Schriftsatz-Erstellung (/akte/schriftsatz) ",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
