@@ -117,6 +117,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.71.0",
         "Nutzer-Anfrage: Live-Suche (schnell/tief, Live-Denkprozess) ist aktuell nur im separaten, unpraktischen Live-Suche-Fenster nutzbar — weder Chat (/chat) noch Schriftsatz-Erstellung (/akte/schriftsatz) ",
     ),
+    (
+        "0.72.0",
+        "Recherche-Panel (Live-Suche) besser lesbar, anonymisiert gesendeter Text deutlicher markiert. Kanzlei-Stammdaten (Ort, Kontodaten) in den Einstellungen, Datum/Ort jetzt automatisch im Schriftsatz-Entwurf. Neu in den Einstellungen: KI-Modell (Test) - zum Testen umschaltbar zwischen Localhost, Hybrid (zwei Modelle) oder einem festen Modell, inkl. Claude-Code-API-Key.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
