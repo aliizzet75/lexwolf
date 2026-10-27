@@ -531,24 +531,24 @@ public static class ChatHtmlRenderer
             .confidence-badge.confidence-red {{ background: #f8514926; color: #ff7b72; }}
 
             .such-panel {{ margin: 8px 8px 12px 8px; border: 1px solid #30363d; border-radius: 8px; background: #161b22; }}
-            .such-panel summary {{ cursor: pointer; padding: 8px 12px; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 1)}px; list-style: none; }}
+            .such-panel summary {{ cursor: pointer; padding: 10px 14px; color: #c9d1d9; font-size: {_outputFontSize}px; font-weight: 600; list-style: none; }}
             .such-panel summary::-webkit-details-marker {{ display: none; }}
             .such-panel[open] summary {{ border-bottom: 1px solid #30363d; }}
-            .such-liste {{ padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }}
-            .such-schritt {{ border: 1px solid #30363d; border-radius: 6px; padding: 6px 9px; background: #0d1117; }}
+            .such-liste {{ padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }}
+            .such-schritt {{ border: 1px solid #30363d; border-radius: 6px; padding: 8px 11px; background: #0d1117; }}
             .such-kopf {{ display: flex; align-items: center; gap: 6px; }}
-            .such-icon {{ font-size: 13px; }}
-            .such-quelle {{ color: #c9d1d9; font-weight: 600; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
-            .such-konfidenz {{ margin-left: auto; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
-            .such-text {{ margin-top: 3px; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
+            .such-icon {{ font-size: {Math.Max(13, _outputFontSize + 1)}px; }}
+            .such-quelle {{ color: #c9d1d9; font-weight: 600; font-size: {_outputFontSize}px; }}
+            .such-konfidenz {{ margin-left: auto; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
+            .such-text {{ margin-top: 4px; color: #a8b3bd; font-size: {Math.Max(11, _outputFontSize - 1)}px; line-height: 1.5; }}
             .such-schritt.such-gefunden .such-quelle {{ color: #3fb950; }}
             .such-schritt.such-verworfen .such-quelle {{ color: #f85149; }}
             .such-schritt.such-fehler .such-quelle {{ color: #f85149; }}
             .such-schritt.such-done .such-quelle {{ color: #3fb950; }}
 
-            .such-anonym {{ margin: 2px 0 0 0; padding: 8px 12px; border-top: 1px solid #30363d; }}
-            .such-anonym-titel {{ color: #e8a838; font-weight: 600; font-size: {Math.Max(10, _outputFontSize - 1)}px; margin-bottom: 4px; }}
-            .such-anonym-text {{ white-space: pre-wrap; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 2)}px; max-height: 160px; overflow-y: auto; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px; font-family: Consolas, 'Courier New', monospace; }}
+            .such-anonym {{ margin: 4px 0 0 0; padding: 10px 14px 12px 14px; border-top: 1px solid #30363d; background: rgba(232, 168, 56, 0.06); }}
+            .such-anonym-titel {{ color: #e8a838; font-weight: 700; font-size: {_outputFontSize}px; margin-bottom: 6px; }}
+            .such-anonym-text {{ white-space: pre-wrap; color: #c9d1d9; font-size: {Math.Max(11, _outputFontSize - 1)}px; line-height: 1.5; max-height: 280px; overflow-y: auto; background: #0d1117; border: 1px solid #e8a838; border-radius: 6px; padding: 10px; font-family: Consolas, 'Courier New', monospace; }}
         </style>";
     }
 }

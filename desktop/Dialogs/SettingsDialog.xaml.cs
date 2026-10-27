@@ -22,6 +22,8 @@ public partial class SettingsDialog : Window
             DokumentePfad = current.DokumentePfad,
             Briefkopf = current.Briefkopf,
             Briefende = current.Briefende,
+            KanzleiOrt = current.KanzleiOrt,
+            KanzleiKontodaten = current.KanzleiKontodaten,
             FeedbackOptIn = current.FeedbackOptIn,
             AbTestOptIn = current.AbTestOptIn,
             ChatInputFont = current.ChatInputFont,
@@ -51,6 +53,8 @@ public partial class SettingsDialog : Window
         DokumentePfadBox.Text = Settings.DokumentePfad;
         BriefkopfBox.Text = Settings.Briefkopf;
         BriefendeBox.Text = Settings.Briefende;
+        KanzleiOrtBox.Text = Settings.KanzleiOrt;
+        KanzleiKontodatenBox.Text = Settings.KanzleiKontodaten;
         BundeslandBox.ItemsSource = FristRechner.Bundeslaender.Select(kv => new Land(kv.Key, kv.Value)).ToList();
         BundeslandBox.SelectedValue = Settings.Bundesland;
         FeedbackOptInBox.IsChecked = Settings.FeedbackOptIn;
@@ -145,6 +149,8 @@ public partial class SettingsDialog : Window
         Settings.DokumentePfad = DokumentePfadBox.Text.Trim();
         Settings.Briefkopf = BriefkopfBox.Text.Trim();
         Settings.Briefende = BriefendeBox.Text.Trim();
+        Settings.KanzleiOrt = KanzleiOrtBox.Text.Trim();
+        Settings.KanzleiKontodaten = KanzleiKontodatenBox.Text.Trim();
         Settings.Bundesland = BundeslandBox.SelectedValue as string ?? Settings.Bundesland;
         Settings.FeedbackOptIn = FeedbackOptInBox.IsChecked == true;
         Settings.AbTestOptIn = AbTestOptInBox.IsChecked == true;

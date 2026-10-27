@@ -174,6 +174,16 @@ public partial class SchriftsatzDialog : Window
             .Select(d => (Titel: d.Titel, Text: AnonymizerEngine.AnonymizeText(d.Text, aliasToOriginal)))
             .ToList();
 
+        // T#312: Kanzlei-Stammdaten (Briefkopf/Briefende/Kontodaten aus den Einstellungen) und
+        // der Kanzleiort gehen mit, damit der Entwurf Datum/Ort und Briefkopf/-ende selbst
+        // befüllt, statt Platzhalter zu lassen — der Anwalt muss das nicht mehr nachtragen.
+        var kanzleiTeile = new[]
+        {
+            _settings.Briefkopf.Length > 0 ? $"Briefkopf: {_settings.Briefkopf}" : "",
+            _settings.KanzleiKontodaten.Length > 0 ? $"Kontodaten: {_settings.KanzleiKontodaten}" : "",
+            _settings.Briefende.Length > 0 ? $"Briefende: {_settings.Briefende}" : "",
+        }.Where(s => s.Length > 0);
+
         var payload = JsonSerializer.Serialize(new
         {
             art,
@@ -183,6 +193,8 @@ public partial class SchriftsatzDialog : Window
             dokumente = dokumenteAnonym.Select(d => new { titel = d.Titel, text = d.Text }),
             stil_vorlage = StilvorlageText(),
             recherche_kontext = rechercheKontext ?? "",
+            kanzlei_stammdaten = string.Join("\n", kanzleiTeile),
+            ort = _settings.KanzleiOrt,
         });
 
         // Task #311: denselben Abschnitt wie im Chat — zeigt im RecherchePanel (demselben
@@ -305,21 +317,21 @@ public partial class SchriftsatzDialog : Window
         var amber = new SolidColorBrush(Color.FromRgb(0xe8, 0xa8, 0x38));
 
         var header = new StackPanel { Orientation = Orientation.Horizontal };
-        header.Children.Add(new TextBlock { Text = "🔒", Foreground = amber, FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
-        header.Children.Add(new TextBlock { Text = "Anonymisiert gesendet:", Foreground = amber, FontSize = 11, FontWeight = FontWeights.SemiBold });
+        header.Children.Add(new TextBlock { Text = "🔒", Foreground = amber, FontSize = 15, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
+        header.Children.Add(new TextBlock { Text = "Anonymisiert an die KI gesendet:", Foreground = amber, FontSize = 14, FontWeight = FontWeights.Bold });
 
         var body = new StackPanel();
         body.Children.Add(header);
-        body.Children.Add(new TextBlock { Text = text, Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e)), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(18, 2, 0, 0) });
+        body.Children.Add(new TextBlock { Text = text, Foreground = System.Windows.Media.Brushes.White, FontSize = 13, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(18, 6, 0, 0) });
 
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x0d, 0x11, 0x17)),
+            Background = new SolidColorBrush(Color.FromRgb(0x1a, 0x16, 0x08)),
             BorderBrush = amber,
-            BorderThickness = new Thickness(1),
+            BorderThickness = new Thickness(2),
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 5, 8, 5),
-            Margin = new Thickness(0, 0, 0, 5),
+            Padding = new Thickness(10, 8, 10, 10),
+            Margin = new Thickness(0, 0, 0, 6),
             Child = body,
         };
     }
@@ -342,15 +354,15 @@ public partial class SchriftsatzDialog : Window
         var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex));
 
         var header = new StackPanel { Orientation = Orientation.Horizontal };
-        header.Children.Add(new TextBlock { Text = icon, Foreground = brush, FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
-        header.Children.Add(new TextBlock { Text = quelle, Foreground = System.Windows.Media.Brushes.White, FontSize = 11, FontWeight = FontWeights.SemiBold });
+        header.Children.Add(new TextBlock { Text = icon, Foreground = brush, FontSize = 14, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
+        header.Children.Add(new TextBlock { Text = quelle, Foreground = System.Windows.Media.Brushes.White, FontSize = 13, FontWeight = FontWeights.SemiBold });
         if (confidence.HasValue)
-            header.Children.Add(new TextBlock { Text = $"  {confidence.Value * 100:F0}%", Foreground = brush, FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) });
+            header.Children.Add(new TextBlock { Text = $"  {confidence.Value * 100:F0}%", Foreground = brush, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) });
 
         var body = new StackPanel();
         body.Children.Add(header);
         if (!string.IsNullOrWhiteSpace(text))
-            body.Children.Add(new TextBlock { Text = text, Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e)), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(18, 2, 0, 0) });
+            body.Children.Add(new TextBlock { Text = text, Foreground = new SolidColorBrush(Color.FromRgb(0xa8, 0xb3, 0xbd)), FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(20, 3, 0, 0) });
 
         return new Border
         {
@@ -358,8 +370,8 @@ public partial class SchriftsatzDialog : Window
             BorderBrush = new SolidColorBrush(Color.FromRgb(0x30, 0x36, 0x3d)),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 5, 8, 5),
-            Margin = new Thickness(0, 0, 0, 5),
+            Padding = new Thickness(10, 7, 10, 7),
+            Margin = new Thickness(0, 0, 0, 7),
             Child = body,
         };
     }

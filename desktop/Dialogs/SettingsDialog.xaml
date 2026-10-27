@@ -181,9 +181,13 @@
                                     Click="OnBrowse"/>
                         </Grid>
 
-                        <TextBlock Text="Briefkopf"
+                        <TextBlock Text="Briefkopf (Kanzleiname, Adresse)"
                                    Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,20,0,4"/>
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="#8b949e" FontSize="12">
+                            Wird oben in neue Schriftsatz-Entwürfe und in den Chat-Kontext eingefügt.
+                        </TextBlock>
                         <TextBox x:Name="BriefkopfBox"
                                  Style="{StaticResource Input}"
                                  TextWrapping="Wrap"
@@ -191,14 +195,39 @@
                                  MinHeight="80"
                                  Margin="0,0,0,12"/>
 
-                        <TextBlock Text="Briefende"
+                        <TextBlock Text="Briefende (Grußformel, Unterschrift)"
                                    Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,0,0,4"/>
                         <TextBox x:Name="BriefendeBox"
                                  Style="{StaticResource Input}"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
-                                 MinHeight="80"/>
+                                 MinHeight="80"
+                                 Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Ort (für Datum/Ort-Zeile im Schriftsatz)"
+                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="#8b949e" FontSize="12">
+                            Z. B. „Düsseldorf" — zusammen mit dem heutigen Datum automatisch im Entwurf.
+                        </TextBlock>
+                        <TextBox x:Name="KanzleiOrtBox"
+                                 Style="{StaticResource Input}"
+                                 Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Kontodaten"
+                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="#8b949e" FontSize="12">
+                            Bank, IBAN, BIC — wird nur eingefügt, wenn der Entwurf Zahlungsangaben braucht (z. B. Kostennote).
+                        </TextBlock>
+                        <TextBox x:Name="KanzleiKontodatenBox"
+                                 Style="{StaticResource Input}"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 MinHeight="60"/>
 
                         <TextBlock Text="Bundesland"
                                    Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"

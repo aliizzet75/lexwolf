@@ -157,7 +157,7 @@
                      sichtbar während der Entwurf entsteht. Vor der ersten Recherche
                      unsichtbar (Collapsed), damit der Dialog nicht leer wirkt. -->
                 <Border x:Name="RecherchePanel" DockPanel.Dock="Top" Style="{StaticResource LwKarte}"
-                        Padding="10,8" Margin="0,0,0,10" MaxHeight="220" Visibility="Collapsed">
+                        Padding="10,8" Margin="0,0,0,10" MaxHeight="360" Visibility="Collapsed">
                     <DockPanel>
                         <TextBlock x:Name="RechercheStatusText" DockPanel.Dock="Top" Style="{StaticResource LwHinweis}"
                                    Margin="0,0,0,6"/>

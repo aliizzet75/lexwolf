@@ -21,6 +21,12 @@ public class AppSettings
 
     public string Briefende { get; set; } = "";
 
+    // Kanzlei-Stammdaten (T#312): Ort für die Datum/Ort-Zeile und Kontodaten für Entwürfe,
+    // die Zahlungsangaben brauchen (z.B. Kostennote). Name/Adresse stehen bereits in Briefkopf.
+    public string KanzleiOrt { get; set; } = "";
+
+    public string KanzleiKontodaten { get; set; } = "";
+
     public bool FeedbackOptIn { get; set; } = false;
 
     public bool AbTestOptIn { get; set; } = false;

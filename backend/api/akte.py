@@ -264,6 +264,11 @@ class SchriftsatzRequest(BaseModel):
     # SchriftsatzDialog.RunLiveSearchAsync + Services/AgenticSearchContext). Normen/
     # Rechtsprechung sollen daraus zitiert werden statt aus dem Trainingswissen der KI.
     recherche_kontext: str = ""
+    # T#312: Kanzlei-Stammdaten aus den Einstellungen (Briefkopf/Briefende/Kontodaten) und der
+    # Kanzleiort — damit Datum/Ort und Briefkopf/-ende im Entwurf selbst stehen, nicht als
+    # Platzhalter für den Anwalt zum Nachtragen.
+    kanzlei_stammdaten: str = ""
+    ort: str = ""
 
 
 def _kanzleistil(art: str) -> str:
@@ -293,6 +298,8 @@ def _kanzleistil(art: str) -> str:
 _SCHRIFTSATZ_PROMPT = """Du bist erfahrene Rechtsanwältin/erfahrener Rechtsanwalt in Deutschland und entwirfst für die Kanzlei: {art}.
 Mandant: {mandant}
 {stammdaten}
+{kanzlei}
+Heutiges Datum: {heute}{ort_hinweis}
 
 WICHTIG: "{mandant}" ist der tatsächliche, bereits bekannte Name — verwende diesen Namen direkt im Rubrum und im Fließtext. Schreibe NICHT das Platzhalterwort "Mandant" oder "[Ergänzung erforderlich: Name]" an Stellen, an denen der Name bereits oben angegeben ist.
 
@@ -306,6 +313,8 @@ Anforderungen an den Entwurf:
 - JEDE Tatsachenbehauptung aus der Akte mit Fundstelle belegen, z.B. [D2] oder [D2, S. 3]. Seitenzahlen nur angeben, wenn das Dokument [Seite N]-Marken enthält — sonst nur [D2]. Die Klammer steht am Satzende, nicht nach jedem Teilsatz. Was nicht in der Akte steht, als [Ergänzung erforderlich: ...] markieren — nichts erfinden.
 - Anlagen als K1/B1 usw. bezeichnen und am Ende ein Anlagenverzeichnis mit Zuordnung zu [Dn] anfügen.
 - Normen genau zitieren (z.B. § 1361 Abs. 1 BGB). Normen und Rechtsprechung bevorzugt aus den oben genannten Rechercheergebnissen entnehmen (falls vorhanden) statt aus deinem Trainingswissen — das sind echte Treffer aus der Rechtsdatenbank der Kanzlei. Rechtsprechung nur zitieren, wenn du dir des Aktenzeichens sicher bist (aus der Recherche oder Akte), sonst weglassen.
+- Datum/Ort-Zeile (falls im Aufbau üblich) und Briefkopf/Briefende (falls oben angegeben) direkt mit diesen echten Angaben ausfüllen — kein Platzhalter wie "[Ort], den [Datum]" oder "[Kanzleiname]".
+- Kontodaten nur einfügen, wenn der Entwurf tatsächlich eine Zahlung verlangt (z.B. Kostennote, Rechnung) — sonst weglassen.
 - Keine Vorrede, keine Meta-Kommentare — nur der Schriftsatz.{stil}"""
 
 _GUTACHTEN_AUFBAU = (
@@ -347,6 +356,9 @@ async def schriftsatz(req: SchriftsatzRequest):
     prompt = _SCHRIFTSATZ_PROMPT.format(
         art=req.art, mandant=req.mandant or "—",
         stammdaten=f"Aktenstamm: {req.stammdaten}" if req.stammdaten else "",
+        kanzlei=f"Kanzlei-Stammdaten:\n{req.kanzlei_stammdaten}" if req.kanzlei_stammdaten.strip() else "",
+        heute=date.today().strftime("%d.%m.%Y"),
+        ort_hinweis=f", Ort der Kanzlei (für die Datum/Ort-Zeile): {req.ort}" if req.ort.strip() else "",
         anweisung=req.anweisung or "keine besonderen Vorgaben",
         recherche=recherche,
         dokumente="\n\n".join(teile) or "(keine Dokumente)",
