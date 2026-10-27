@@ -54,9 +54,11 @@ public static class DokumentExport
     private static readonly Regex Aufzaehlung = new(@"^\s*[-*•]\s+(.*)$");
     private static readonly Regex Steuerzeichen = new(@"[\x00-\x08\x0B\x0C\x0E-\x1F]");
     // Fundstellen-Verweise wie [D2] oder [D2, S. 3], auch mehrere direkt hintereinander
-    // ("[D1], [D2]") — für die Belegprüfung im Editor gedacht, dürfen aber nicht im
-    // Dokument stehen, das an einen Dritten geht (sonst z.B. "Sie schlugen [D1], [D2].").
-    private static readonly Regex Fundstellen = new(@"\s*(?:\[D\d+(?:,\s*S\.\s*\d+)?\]\s*,?\s*)+");
+    // ("[D1], [D2]") oder mehrere D-Nummern IN EINER Klammer ("[D1, D2]", "[D1, D2, S. 3]")
+    // — für die Belegprüfung im Editor gedacht, dürfen aber nicht im Dokument stehen, das
+    // an einen Dritten geht (sonst z.B. "Sie schlugen [D1, D2].").
+    private static readonly Regex Fundstellen = new(
+        @"\s*(?:\[(?:D\d+|S\.\s*\d+)(?:,\s*(?:D\d+|S\.\s*\d+))*\]\s*,?\s*)+");
     private static readonly Regex LeerzeichenVorSatzzeichen = new(@" +([.,;:!?])");
     private static readonly Regex MehrfachesLeerzeichen = new(@" {2,}");
 

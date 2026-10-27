@@ -230,6 +230,18 @@ namespace LexWolf.Tests
         }
 
         [Fact]
+        public void OhneFundstellen_entfernt_mehrere_Dn_in_einer_Klammer()
+        {
+            Assert.Equal(
+                "Da Herr Schmidt-Vasterling vorsätzlich mit der Faust geschlagen hat, ist die subjektive Tatseite gegeben.",
+                DokumentExport.OhneFundstellen(
+                    "Da Herr Schmidt-Vasterling vorsätzlich mit der Faust geschlagen hat, ist die subjektive Tatseite gegeben [D1, D2]."));
+            Assert.Equal(
+                "Vollmacht liegt vor.",
+                DokumentExport.OhneFundstellen("Vollmacht liegt vor [D1, D2, S. 3]."));
+        }
+
+        [Fact]
         public void OhneFundstellen_laesst_Text_ohne_Verweise_unveraendert()
         {
             Assert.Equal(

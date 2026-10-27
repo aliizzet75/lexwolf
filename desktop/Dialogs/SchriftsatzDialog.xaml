@@ -183,7 +183,9 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock Text="🔎 Belegprüfung" Style="{StaticResource LwHeading}"/>
-                        <TextBlock Style="{StaticResource LwHinweis}" Margin="0,2,0,10" Text="Rechtsprechung immer selbst prüfen."/>
+                        <TextBlock Style="{StaticResource LwHinweis}" Margin="0,2,0,2" Text="Rechtsprechung immer selbst prüfen."/>
+                        <TextBlock Style="{StaticResource LwHinweis}" Margin="0,0,0,10" TextWrapping="Wrap"
+                                   Text="Die Verweise wie [D1] dienen nur dieser Prüfung hier — beim Kopieren oder Speichern als Word werden sie automatisch entfernt."/>
                         <Grid x:Name="BelegeKacheln" Margin="0,0,0,12" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition/>
