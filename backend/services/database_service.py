@@ -23,16 +23,16 @@ class DatabaseService:
     """
     Service for database operations
     """
-    
+
     def __init__(self):
         # Database setup - use PostgreSQL for production, SQLite for testing
         self.DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@host.docker.internal:5432/lexwolf")
         self.engine = create_engine(self.DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in self.DATABASE_URL else {})
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-        
+
         # Create database tables
         Base.metadata.create_all(bind=self.engine)
-    
+
     def store_chunk(self, chunk_data: dict):
         """
         Store a chunk in the database
@@ -43,16 +43,16 @@ class DatabaseService:
             existing_chunk = db.query(LegalChunk).filter(
                 LegalChunk.chunk_hash == chunk_data.get('chunk_hash')
             ).first()
-            
+
             if existing_chunk:
                 print(f"Chunk with hash {chunk_data.get('chunk_hash')} already exists, skipping")
                 return
-            
+
             # Create document if it doesn't exist
             document = db.query(LegalDocument).filter(
                 LegalDocument.url == chunk_data.get('url')
             ).first()
-            
+
             if not document:
                 document = LegalDocument(
                     title=chunk_data.get('title', ''),
@@ -65,7 +65,7 @@ class DatabaseService:
                 )
                 db.add(document)
                 db.flush()  # Get document ID
-            
+
             # Versioning: close previous active version of same title/paragraph
             valid_from_val = chunk_data.get('valid_from')
             valid_until_val = chunk_data.get('valid_until')
@@ -100,7 +100,7 @@ class DatabaseService:
                 valid_from=valid_from_val,
                 valid_until=valid_until_val,
             )
-            
+
             db.add(chunk)
             db.flush()
             # ts_vector direkt per SQL befüllen (PostgreSQL to_tsvector)
@@ -118,39 +118,12 @@ class DatabaseService:
             return None
         finally:
             db.close()
-    
+
     def save_chunk(self, chunk_data: dict, embedding: list):
         """Save a chunk with embedding and return dict with id."""
         chunk_data['vector'] = embedding
         return self.store_chunk(chunk_data)
-    
-    def search_chunks_hybrid(self, query: str, limit: int = 10) -> list:
-        """
-        Perform hybrid search (dense + sparse) on chunks
-        """
-        db = self.SessionLocal()
-        try:
-            # For now, return all chunks (in a real implementation, this would do actual search)
-            chunks = db.query(LegalChunk).limit(limit).all()
-            
-            results = []
-            for chunk in chunks:
-                results.append({
-                    "id": chunk.id,
-                    "text": chunk.text,
-                    "title": chunk.title,
-                    "score": 0.0,  # In a real implementation, this would be a relevance score
-                    "source": chunk.document.source if chunk.document else "",
-                    "url": chunk.document.url if chunk.document else ""
-                })
-            
-            return results
-        except Exception as e:
-            print(f"Error searching chunks: {e}")
-            return []
-        finally:
-            db.close()
-    
+
     def get_chunk_by_id(self, chunk_id: int) -> dict:
         """
         Get a specific chunk by ID
@@ -158,7 +131,7 @@ class DatabaseService:
         db = self.SessionLocal()
         try:
             chunk = db.query(LegalChunk).filter(LegalChunk.id == chunk_id).first()
-            
+
             if chunk:
                 return {
                     "id": chunk.id,
@@ -227,7 +200,7 @@ class DatabaseService:
             profile = db.query(StyleProfile).filter(
                 StyleProfile.profile_id == profile_id
             ).first()
-            
+
             if profile:
                 # Update existing profile
                 profile.vector = json.dumps(vector)  # Store as JSON string
@@ -241,10 +214,10 @@ class DatabaseService:
                     updated_at=datetime.utcnow()
                 )
                 db.add(profile)
-            
+
             db.commit()
             print(f"Stored style profile: {profile_id}")
-            
+
         except Exception as e:
             db.rollback()
             print(f"Error storing style profile: {e}")

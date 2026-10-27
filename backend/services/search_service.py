@@ -367,7 +367,7 @@ class HybridSearchService:
 
         except Exception as e:
             logger.error(f"Error in hybrid search: {e}")
-            return self.database_service.search_chunks_hybrid(query, limit)
+            return []
     
     def _dense_search(self, query_vector: List[float], limit: int = 10) -> List[Dict]:
         """
