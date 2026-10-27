@@ -143,6 +143,7 @@
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="allgemein">Allgemein</ListBoxItem>
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="darstellung">Darstellung</ListBoxItem>
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="sprache">Spracheingabe</ListBoxItem>
+                        <ListBoxItem Style="{StaticResource NavItem}" Tag="ki_modell">KI-Modell (Test)</ListBoxItem>
                     </ListBox>
                 </DockPanel>
             </Border>
@@ -337,6 +338,88 @@
                         </TextBlock>
                         <TextBlock x:Name="VoskGrossStatus" TextWrapping="Wrap" Margin="24,0,0,0"
                                    Foreground="#6e7681" FontSize="11"/>
+
+                    </StackPanel>
+
+                    <!-- === KI-Modell (Test) === -->
+                    <StackPanel x:Name="PanelKiModell" Visibility="Collapsed">
+
+                        <TextBlock Text="KI-Modell (Test)" Foreground="#e6edf3"
+                                   FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,20"
+                                   Foreground="#8b949e" FontSize="12" LineHeight="18">
+                            Zum Testen umschaltbar, welches KI-Modell LexWolf tatsächlich verwendet — wirkt
+                            sofort beim Klick auf „Übernehmen", unabhängig vom restlichen „Speichern" dieses
+                            Fensters.
+                        </TextBlock>
+
+                        <TextBlock Text="Modus" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="KiModusBox" Style="{StaticResource DarkComboBoxStyle}"
+                                  HorizontalAlignment="Left" Width="260" Margin="0,0,0,16"
+                                  SelectionChanged="OnKiModusChanged">
+                            <ComboBoxItem Content="Localhost (wie bisher)" Tag="localhost"/>
+                            <ComboBoxItem Content="Hybrid (zwei Modelle)" Tag="hybrid"/>
+                            <ComboBoxItem Content="Alles über ein Modell" Tag="ein_modell"/>
+                        </ComboBox>
+
+                        <!-- Ein Modell -->
+                        <StackPanel x:Name="KiEinModellPanel" Visibility="Collapsed">
+                            <TextBlock Text="Anbieter" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="KiAnbieterBox" Style="{StaticResource DarkComboBoxStyle}"
+                                      HorizontalAlignment="Left" Width="260" Margin="0,0,0,12"
+                                      SelectionChanged="OnKiAnbieterChanged">
+                                <ComboBoxItem Content="Claude Code" Tag="claude_code"/>
+                                <ComboBoxItem Content="Ollama Cloud" Tag="ollama"/>
+                            </ComboBox>
+                            <TextBlock Text="Modell" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="KiEinModellModellBox" Style="{StaticResource DarkComboBoxStyle}"
+                                      HorizontalAlignment="Left" Width="320" Margin="0,0,0,16"
+                                      DisplayMemberPath="Anzeige"/>
+                        </StackPanel>
+
+                        <!-- Hybrid -->
+                        <StackPanel x:Name="KiHybridPanel" Visibility="Collapsed">
+                            <TextBlock Text="Claude-Code-Modell" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="KiHybridClaudeBox" Style="{StaticResource DarkComboBoxStyle}"
+                                      HorizontalAlignment="Left" Width="320" Margin="0,0,0,12"
+                                      DisplayMemberPath="Anzeige"/>
+                            <TextBlock Text="Ollama-Cloud-Modell" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="KiHybridOllamaBox" Style="{StaticResource DarkComboBoxStyle}"
+                                      HorizontalAlignment="Left" Width="320" Margin="0,0,0,12"
+                                      DisplayMemberPath="Anzeige"/>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,16"
+                                       Foreground="#8b949e" FontSize="12" LineHeight="18">
+                                Kurze/einfache Anfragen gehen automatisch an das günstigere, aufwändige
+                                Entwürfe (z.B. Schriftsätze) an das teurere der beiden Modelle.
+                            </TextBlock>
+                        </StackPanel>
+
+                        <Separator Background="#21262d" Margin="0,4,0,20"/>
+
+                        <TextBlock Text="Claude Code API-Key" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="#8b949e" FontSize="12">
+                            Ohne Key läuft Claude Code über den lokalen Entwickler-Proxy (kein eigener Zugang
+                            nötig). Mit Key geht es direkt über die Anthropic-API.
+                        </TextBlock>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <PasswordBox x:Name="KiApiKeyBox" Grid.Column="0"
+                                         Background="#0d1117" Foreground="#c9d1d9"
+                                         BorderBrush="#30363d" BorderThickness="1"
+                                         Padding="10,7" FontSize="13" CaretBrush="#c9d1d9"
+                                         VerticalContentAlignment="Center" Margin="0,0,6,0"/>
+                            <Button Grid.Column="1" Content="Entfernen" Style="{StaticResource GhostBtn}"
+                                    Padding="12,7" Click="OnKiApiKeyEntfernen"/>
+                        </Grid>
+                        <TextBlock x:Name="KiApiKeyStatus" Foreground="#6e7681" FontSize="11" Margin="0,0,0,20"/>
+
+                        <Button x:Name="KiUebernehmenBtn" Content="Übernehmen" Style="{StaticResource PrimaryBtn}"
+                                HorizontalAlignment="Left" Click="OnKiUebernehmen"/>
+                        <TextBlock x:Name="KiStatusLabel" FontSize="12" Margin="0,10,0,0"/>
 
                     </StackPanel>
 

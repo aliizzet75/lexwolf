@@ -121,3 +121,7 @@ attachments/
 # Fertig gebaute Programme (Ausgabe von dotnet publish) und lokale Claude-Code-Einstellungen
 tools/*/publish/
 .claude/
+
+# Laufzeit-Konfiguration des KI-Modell-Umschalters (T#313) — kann den Claude-Code-API-Key
+# im Klartext enthalten, gehört nicht ins Repo.
+backend/data/llm_config.json

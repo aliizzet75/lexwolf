@@ -455,7 +455,7 @@ document.addEventListener('click', function (e) {{
 
     private void OnOpenSettings(object sender, RoutedEventArgs e)
     {
-        var dlg = new SettingsDialog(_settings) { Owner = this };
+        var dlg = new SettingsDialog(_settings, BackendUrl) { Owner = this };
         if (dlg.ShowDialog() == true)
         {
             var oldPath = _settings.DokumentePfad;

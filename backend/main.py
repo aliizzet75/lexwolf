@@ -26,6 +26,7 @@ from api.routes.export import router as export_router
 from api.routes.kanzlei import router as kanzlei_router
 from api.routes.search import router as search_router
 from api.akte import router as akte_router
+from api.routes.llm_config import router as llm_config_router
 
 # Import Neo4j service
 from services.neo4j_service import Neo4jService
@@ -87,6 +88,7 @@ app.include_router(export_router)
 app.include_router(kanzlei_router)
 app.include_router(search_router)
 app.include_router(akte_router)
+app.include_router(llm_config_router)
 app.mount(
     "/client/download",
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static", "client-releases")),

@@ -9,6 +9,12 @@ ANTHROPIC_API_KEY), "ki-proxy" (Claude Code auf dem Entwicklungsrechner
 über den lokalen KI-Proxy, siehe tools/ki-proxy)
 oder "ollama" (der für den kommerziellen Einsatz vorgesehene Kimi/Ollama-
 Zugang). Umschalten = nur diese Env-Var ändern, kein Code-Edit nötig.
+
+T#313: Zusätzlich dazu kann in den LexWolf-Einstellungen ("KI-Modell (Test)") zum
+Testen zwischen Localhost (diese Env-Var-Logik unverändert), einem festen Modell
+oder Hybrid (zwei Modelle, automatisch nach Anfragegröße aufgeteilt) umgeschaltet
+werden, ohne das Backend neu zu starten — siehe llm_config.route(). Das übersteuert
+LLM_PROVIDER nur, wenn ein Modus ungleich "localhost" aktiv ist.
 """
 import json as _json
 import os
@@ -16,6 +22,8 @@ import urllib.request as _urlreq
 from typing import Optional, Union
 
 import anthropic
+
+from . import llm_config as _llm_config
 
 _PROVIDER = os.environ.get("LLM_PROVIDER", "claude").strip().lower()
 _DEFAULT_MODEL = os.environ.get("LLM_MODEL", "claude-opus-5-5")
@@ -25,6 +33,17 @@ _DEFAULT_MODEL = os.environ.get("LLM_MODEL", "claude-opus-5-5")
 # Budget schon beim Denken aufgebraucht ist. Bezahlt werden nur echte Tokens.
 _THINKING_HEADROOM = 10000
 _client = anthropic.Anthropic()
+# Eigene Clients je abweichendem API-Key aus llm_config (T#313) — der globale
+# _client oben bleibt für den Env-Var-Default (ANTHROPIC_API_KEY) unverändert.
+_clients_by_key: dict[str, anthropic.Anthropic] = {}
+
+
+def _claude_client(api_key: Optional[str]) -> anthropic.Anthropic:
+    if not api_key:
+        return _client
+    if api_key not in _clients_by_key:
+        _clients_by_key[api_key] = anthropic.Anthropic(api_key=api_key)
+    return _clients_by_key[api_key]
 
 Messages = list[dict]
 
@@ -36,8 +55,11 @@ TEST_MODE_DISCLAIMER = (
 
 
 def using_temporary_test_backend() -> bool:
-    """True, solange LLM_PROVIDER=claude (Platzhalter) statt "ollama"
-    (der eigentlich für den kommerziellen Einsatz vorgesehene Kimi-Zugang)."""
+    """True, solange LLM_PROVIDER=claude (Platzhalter) statt "ollama" (der eigentlich
+    für den kommerziellen Einsatz vorgesehene Kimi-Zugang) — oder solange in den
+    LexWolf-Einstellungen ein Test-Modus (Hybrid/ein festes Modell) aktiv ist (T#313)."""
+    if _llm_config.laden().get("modus", "localhost") != "localhost":
+        return True
     return _PROVIDER != "ollama"
 
 
@@ -50,6 +72,15 @@ def ask_llm(
     """Sendet einen Prompt (str) oder eine Chat-History (Liste von
     {"role", "content"}-Dicts, z.B. [{"role": "system", ...}, {"role": "user", ...}])
     an die KI und gibt den reinen Antworttext zurück."""
+    provider, routed_model, api_key = _llm_config.route(max_tokens)
+    if provider is not None:
+        effective_model = model or routed_model
+        if provider == "ollama":
+            return _ask_ollama(prompt_or_messages, max_tokens, effective_model)
+        if provider == "ki-proxy":
+            return _ask_ki_proxy(prompt_or_messages, max_tokens, effective_model)
+        return _ask_claude(prompt_or_messages, max_tokens, effective_model, api_key)
+
     if _PROVIDER == "ollama":
         return _ask_ollama(prompt_or_messages, max_tokens, model)
     if _PROVIDER == "ki-proxy":
@@ -57,7 +88,9 @@ def ask_llm(
     return _ask_claude(prompt_or_messages, max_tokens, model)
 
 
-def _ask_claude(prompt_or_messages: Union[str, Messages], max_tokens: int, model: Optional[str]) -> str:
+def _ask_claude(
+    prompt_or_messages: Union[str, Messages], max_tokens: int, model: Optional[str], api_key: Optional[str] = None,
+) -> str:
     """Eine führende {"role": "system"}-Nachricht wird als System-Prompt
     behandelt; weitere "system"-Nachrichten weiter hinten in der Liste
     (z.B. nachträgliche Verstärkungs-Hinweise) bleiben als Mid-Conversation-
@@ -80,7 +113,7 @@ def _ask_claude(prompt_or_messages: Union[str, Messages], max_tokens: int, model
     if system is not None:
         kwargs["system"] = system
 
-    response = _client.messages.create(**kwargs)
+    response = _claude_client(api_key).messages.create(**kwargs)
     return "".join(block.text for block in response.content if block.type == "text")
 
 

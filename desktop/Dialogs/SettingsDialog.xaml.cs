@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -12,11 +16,26 @@ namespace LexWolf.Dialogs;
 
 public partial class SettingsDialog : Window
 {
+    /// <summary>Ein Modell aus dem Katalog von GET /api/llm-config (T#313), mit
+    /// Kostenpunkten 1-10 zur Orientierung beim Testen.</summary>
+    private sealed record KiModellEintrag(string Id, string Label, int Kosten)
+    {
+        public string Anzeige => $"{Label} (Kosten: {Kosten}/10)";
+    }
+
     public AppSettings Settings { get; }
 
-    public SettingsDialog(AppSettings current)
+    private readonly string _backendUrl;
+    private List<KiModellEintrag> _claudeKatalog = new();
+    private List<KiModellEintrag> _ollamaKatalog = new();
+    private bool _kiKonfigLaedt;
+    private bool _kiApiKeyVorhanden;
+    private bool _kiApiKeyLoeschen;
+
+    public SettingsDialog(AppSettings current, string backendUrl)
     {
         InitializeComponent();
+        _backendUrl = backendUrl;
         Settings = new AppSettings
         {
             DokumentePfad = current.DokumentePfad,
@@ -81,6 +100,167 @@ public partial class SettingsDialog : Window
         UpdatePreview();
 
         NavList.SelectedIndex = 0;
+
+        _ = LadeKiModellKonfigurationAsync();
+    }
+
+    // ── KI-Modell (Test, T#313) ─────────────────────────────────────────────
+
+    private async Task LadeKiModellKonfigurationAsync()
+    {
+        try
+        {
+            using var http = new HttpClient();
+            var antwort = await http.GetStringAsync($"{_backendUrl}/api/llm-config");
+            using var doc = JsonDocument.Parse(antwort);
+            var root = doc.RootElement;
+
+            _claudeKatalog = LiesKatalog(root.GetProperty("kataloge").GetProperty("claude_code"));
+            _ollamaKatalog = LiesKatalog(root.GetProperty("kataloge").GetProperty("ollama"));
+
+            var config = root.GetProperty("config");
+            _kiKonfigLaedt = true;
+            try
+            {
+                var modus = config.GetProperty("modus").GetString() ?? "localhost";
+                SelectByTag(KiModusBox, modus);
+                SetzeModusSichtbarkeit(modus);
+
+                var anbieter = config.GetProperty("ein_modell_anbieter").GetString() ?? "ollama";
+                SelectByTag(KiAnbieterBox, anbieter);
+                KiEinModellModellBox.ItemsSource = anbieter == "claude_code" ? _claudeKatalog : _ollamaKatalog;
+                SelectById(KiEinModellModellBox, config.GetProperty("ein_modell").GetString() ?? "");
+
+                KiHybridClaudeBox.ItemsSource = _claudeKatalog;
+                SelectById(KiHybridClaudeBox, config.GetProperty("hybrid_claude_code_modell").GetString() ?? "");
+                KiHybridOllamaBox.ItemsSource = _ollamaKatalog;
+                SelectById(KiHybridOllamaBox, config.GetProperty("hybrid_ollama_modell").GetString() ?? "");
+
+                _kiApiKeyVorhanden = config.GetProperty("hat_claude_api_key").GetBoolean();
+                AktualisiereApiKeyStatus();
+            }
+            finally
+            {
+                _kiKonfigLaedt = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            KiStatusLabel.Text = $"KI-Modell-Konfiguration konnte nicht geladen werden: {ex.Message}";
+            KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0xf8, 0x51, 0x49));
+        }
+    }
+
+    private static List<KiModellEintrag> LiesKatalog(JsonElement array) =>
+        array.EnumerateArray()
+            .Select(m => new KiModellEintrag(
+                m.GetProperty("id").GetString() ?? "",
+                m.GetProperty("label").GetString() ?? "",
+                m.GetProperty("kosten").GetInt32()))
+            .ToList();
+
+    private static void SelectByTag(ComboBox box, string tag)
+    {
+        foreach (var obj in box.Items)
+            if (obj is ComboBoxItem item && item.Tag as string == tag)
+            {
+                box.SelectedItem = item;
+                return;
+            }
+        box.SelectedIndex = box.Items.Count > 0 ? 0 : -1;
+    }
+
+    private static void SelectById(ComboBox box, string id)
+    {
+        if (box.ItemsSource is IEnumerable<KiModellEintrag> eintraege)
+        {
+            box.SelectedItem = eintraege.FirstOrDefault(e => e.Id == id);
+            if (box.SelectedItem is null && box.Items.Count > 0)
+                box.SelectedIndex = 0;
+        }
+    }
+
+    private void SetzeModusSichtbarkeit(string modus)
+    {
+        KiEinModellPanel.Visibility = modus == "ein_modell" ? Visibility.Visible : Visibility.Collapsed;
+        KiHybridPanel.Visibility = modus == "hybrid" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void AktualisiereApiKeyStatus()
+    {
+        KiApiKeyStatus.Text = _kiApiKeyVorhanden
+            ? "Ein Key ist hinterlegt (geht direkt über die Anthropic-API). Feld leer lassen, um ihn zu behalten."
+            : "Kein Key hinterlegt — läuft über den lokalen Claude-Code-Proxy.";
+    }
+
+    private void OnKiModusChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_kiKonfigLaedt) return;
+        if (KiModusBox.SelectedItem is ComboBoxItem item && item.Tag is string modus)
+            SetzeModusSichtbarkeit(modus);
+    }
+
+    private void OnKiAnbieterChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_kiKonfigLaedt) return;
+        if (KiAnbieterBox.SelectedItem is ComboBoxItem item && item.Tag as string == "claude_code")
+            KiEinModellModellBox.ItemsSource = _claudeKatalog;
+        else
+            KiEinModellModellBox.ItemsSource = _ollamaKatalog;
+        if (KiEinModellModellBox.Items.Count > 0)
+            KiEinModellModellBox.SelectedIndex = 0;
+    }
+
+    private void OnKiApiKeyEntfernen(object sender, RoutedEventArgs e)
+    {
+        KiApiKeyBox.Password = "";
+        _kiApiKeyLoeschen = true;
+        _kiApiKeyVorhanden = false;
+        AktualisiereApiKeyStatus();
+    }
+
+    private async void OnKiUebernehmen(object sender, RoutedEventArgs e)
+    {
+        KiUebernehmenBtn.IsEnabled = false;
+        KiStatusLabel.Text = "Wird übernommen …";
+        KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e));
+        try
+        {
+            var modus = (KiModusBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "localhost";
+            var anbieter = (KiAnbieterBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "ollama";
+            var payload = JsonSerializer.Serialize(new
+            {
+                modus,
+                ein_modell_anbieter = anbieter,
+                ein_modell = (KiEinModellModellBox.SelectedItem as KiModellEintrag)?.Id ?? "",
+                hybrid_claude_code_modell = (KiHybridClaudeBox.SelectedItem as KiModellEintrag)?.Id ?? "",
+                hybrid_ollama_modell = (KiHybridOllamaBox.SelectedItem as KiModellEintrag)?.Id ?? "",
+                claude_api_key = KiApiKeyBox.Password,
+                claude_api_key_loeschen = _kiApiKeyLoeschen,
+            });
+
+            using var http = new HttpClient();
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            var response = await http.PostAsync($"{_backendUrl}/api/llm-config", content);
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            _kiApiKeyVorhanden = doc.RootElement.GetProperty("config").GetProperty("hat_claude_api_key").GetBoolean();
+            _kiApiKeyLoeschen = false;
+            KiApiKeyBox.Password = "";
+            AktualisiereApiKeyStatus();
+
+            KiStatusLabel.Text = "✓ Übernommen — wirkt sofort, auch ohne das Fenster zu schließen.";
+            KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0x3f, 0xb9, 0x50));
+        }
+        catch (Exception ex)
+        {
+            KiStatusLabel.Text = $"Fehlgeschlagen: {ex.Message}";
+            KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0xf8, 0x51, 0x49));
+        }
+        finally
+        {
+            KiUebernehmenBtn.IsEnabled = true;
+        }
     }
 
     private void OnNavChanged(object sender, SelectionChangedEventArgs e)
@@ -89,6 +269,7 @@ public partial class SettingsDialog : Window
         PanelAllgemein.Visibility = item.Tag as string == "allgemein" ? Visibility.Visible : Visibility.Collapsed;
         PanelDarstellung.Visibility = item.Tag as string == "darstellung" ? Visibility.Visible : Visibility.Collapsed;
         PanelSprache.Visibility = item.Tag as string == "sprache" ? Visibility.Visible : Visibility.Collapsed;
+        PanelKiModell.Visibility = item.Tag as string == "ki_modell" ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnInputFontChanged(object sender, SelectionChangedEventArgs e)
