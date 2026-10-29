@@ -51,6 +51,7 @@
     <Compile Include="../Services/DatumEingabe.cs" Link="DatumEingabe.cs" />
     <Compile Include="../Services/FristenListe.cs" Link="FristenListe.cs" />
     <Compile Include="../Services/Schriftgroessen.cs" Link="Schriftgroessen.cs" />
+    <Compile Include="../Services/Theme.cs" Link="Theme.cs" />
     <Compile Include="../Services/MandatAufnahme.cs" Link="MandatAufnahme.cs" />
     <Compile Include="../Services/AktenAblage.cs" Link="AktenAblage.cs" />
     <Compile Include="../Services/VorlagenOrdner.cs" Link="VorlagenOrdner.cs" />

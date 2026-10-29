@@ -27,6 +27,8 @@ public class AppSettings
 
     public string KanzleiKontodaten { get; set; } = "";
 
+    public bool DunkelModus { get; set; } = true;
+
     public bool FeedbackOptIn { get; set; } = false;
 
     public bool AbTestOptIn { get; set; } = false;

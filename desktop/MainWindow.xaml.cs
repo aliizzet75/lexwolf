@@ -130,6 +130,7 @@ public partial class MainWindow : Window
         InputBox.FontSize = _settings.ChatInputFontSize;
         ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
         App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
+        App.SetzeTheme(_settings.DunkelModus);
         _diktat.LiveTextChanged += OnDiktatLiveText;
         // App-Hintergrund (Fenster verliert Fokus, z.B. Alt-Tab) löst ebenfalls eine
         // Hintergrund-Zusammenfassung aus, nicht nur der Mandant-Wechsel — sonst
@@ -464,6 +465,7 @@ document.addEventListener('click', function (e) {{
             InputBox.FontSize = _settings.ChatInputFontSize;
             ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
             App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
+            App.SetzeTheme(_settings.DunkelModus);
             if (_webViewInitialized)
                 RefreshChatWebView();
             if (_settings.DokumentePfad != oldPath)
@@ -1481,6 +1483,7 @@ document.addEventListener('click', function (e) {{
         InputBox.FontSize = _settings.ChatInputFontSize;
         ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
         App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
+        App.SetzeTheme(_settings.DunkelModus);
         if (_webViewInitialized)
             RefreshChatWebView();
     }
