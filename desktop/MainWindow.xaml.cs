@@ -130,6 +130,7 @@ public partial class MainWindow : Window
         InputBox.FontSize = _settings.ChatInputFontSize;
         ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
         App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
+        App.SetzeTheme(_settings.DunkelModus);
         _diktat.LiveTextChanged += OnDiktatLiveText;
         // App-Hintergrund (Fenster verliert Fokus, z.B. Alt-Tab) löst ebenfalls eine
         // Hintergrund-Zusammenfassung aus, nicht nur der Mandant-Wechsel — sonst
@@ -455,6 +456,10 @@ document.addEventListener('click', function (e) {{
 
     private void OnOpenSettings(object sender, RoutedEventArgs e)
     {
+        // SettingsDialog wendet das Dunkel/Hell-Umschalten live über App.SetzeTheme an
+        // (Vorschau beim Klick auf die Checkbox, vor dem Speichern) — bei Abbrechen muss
+        // die Vorschau daher zurückgesetzt werden, sonst bleibt sie ungewollt aktiv.
+        var dunkelModusVorDialog = _settings.DunkelModus;
         var dlg = new SettingsDialog(_settings, BackendUrl) { Owner = this };
         if (dlg.ShowDialog() == true)
         {
@@ -464,6 +469,7 @@ document.addEventListener('click', function (e) {{
             InputBox.FontSize = _settings.ChatInputFontSize;
             ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
             App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
+            App.SetzeTheme(_settings.DunkelModus);
             if (_webViewInitialized)
                 RefreshChatWebView();
             if (_settings.DokumentePfad != oldPath)
@@ -473,6 +479,10 @@ document.addEventListener('click', function (e) {{
             }
             _ = LoadStyleProgressAsync();
             StarteGrossesSprachmodell(); // gerade eingeschaltet -> sofort laden, nicht erst beim nächsten Start
+        }
+        else
+        {
+            App.SetzeTheme(dunkelModusVorDialog);
         }
     }
 

@@ -8,14 +8,14 @@
         Icon="Assets/lexwolf.ico"
         Width="1200" Height="750"
         MinWidth="900" MinHeight="550"
-        Background="#0d1117"
+        Background="{DynamicResource LwFensterHintergrund}"
         AllowDrop="True" PreviewDragOver="OnFensterDragOver" PreviewDragEnter="OnFensterDragOver" PreviewDrop="OnFensterDrop">
     <DockPanel>
 
         <!-- Top: status bar -->
-        <Border DockPanel.Dock="Top" Background="#161b22" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource LwOberflaeche}" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
             <DockPanel>
-                <TextBlock Text="LexWolf" FontSize="16" FontWeight="Bold" Foreground="#e8a838"
+                <TextBlock Text="LexWolf" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource LwAkzent}"
                            DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,16,0"/>
                 <Ellipse x:Name="StatusDot" Width="10" Height="10"
                          DockPanel.Dock="Left" VerticalAlignment="Center" Fill="#555" Margin="0,0,6,0"/>
@@ -203,7 +203,7 @@
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#21262d"/>
 
             <!-- Right: Chat-Verlauf -->
-            <DockPanel Grid.Column="2" Background="#0d1117">
+            <DockPanel Grid.Column="2" Background="{DynamicResource LwFensterHintergrund}">
                 <Border DockPanel.Dock="Top" Background="#161b22" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="10,6">
                     <DockPanel>
                         <TextBlock Text="Chat" Foreground="#8b949e" FontSize="11" FontWeight="SemiBold"
@@ -325,7 +325,7 @@
                     </DockPanel>
                 </Border>
                 <!-- Werkzeuge für den aktiven Mandanten (sichtbar, sobald einer gewählt ist) -->
-                <Border x:Name="AktenLeiste" DockPanel.Dock="Top" Background="#0d1117" BorderBrush="#30363d"
+                <Border x:Name="AktenLeiste" DockPanel.Dock="Top" Background="{DynamicResource LwFensterHintergrund}" BorderBrush="#30363d"
                         BorderThickness="0,0,0,1" Padding="10,8,10,0" Visibility="Collapsed">
                     <WrapPanel>
                         <Button Content="📎 Dokumente" Style="{StaticResource LwButton}" Padding="12,6" Click="OnDokumenteClick"
@@ -357,7 +357,7 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0" Background="#0d1117" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
+                    <Border Grid.Row="0" Background="{DynamicResource LwFensterHintergrund}" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
                         <Grid>
                             <StackPanel x:Name="ReasoningPanel"/>
                             <StackPanel x:Name="WolfLoadingPanel" Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
@@ -389,7 +389,7 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <Border Grid.Row="2" Background="#161b22" Padding="12,10" BorderBrush="#30363d" BorderThickness="0,1,0,0">
+                    <Border Grid.Row="2" Background="{DynamicResource LwOberflaeche}" Padding="12,10" BorderBrush="#30363d" BorderThickness="0,1,0,0">
                         <DockPanel>
                             <!-- Ladeanzeige des großen Sprachmodells (Diktat), oben über der ganzen Breite -->
                             <StackPanel x:Name="ModellLadePanel" DockPanel.Dock="Top" Margin="0,0,0,8" Visibility="Collapsed">
@@ -457,8 +457,8 @@
                                      MinHeight="36"
                                      MaxHeight="200"
                                      Padding="2,7"
-                                     Background="#0d1117"
-                                     Foreground="#c9d1d9"
+                                     Background="{DynamicResource LwFensterHintergrund}"
+                                     Foreground="{DynamicResource LwVordergrund}"
                                      BorderBrush="#30363d"
                                      BorderThickness="1"
                                      TextWrapping="Wrap"

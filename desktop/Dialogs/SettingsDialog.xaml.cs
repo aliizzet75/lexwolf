@@ -50,6 +50,7 @@ public partial class SettingsDialog : Window
             ChatOutputFont = current.ChatOutputFont,
             ChatOutputFontSize = current.ChatOutputFontSize,
             Bundesland = current.Bundesland,
+            DunkelModus = current.DunkelModus,
             StilvorlagePfad = current.StilvorlagePfad,
             PostfachAktiv = current.PostfachAktiv,
             PostfachServer = current.PostfachServer,
@@ -97,6 +98,7 @@ public partial class SettingsDialog : Window
         OutputFontSizeSlider.Value = Settings.ChatOutputFontSize;
         InputFontSizeLabel.Text = $"Größe: {Settings.ChatInputFontSize:0} pt";
         OutputFontSizeLabel.Text = $"Größe: {Settings.ChatOutputFontSize:0} pt";
+        DunklesDesignBox.IsChecked = Settings.DunkelModus;
         UpdatePreview();
 
         NavList.SelectedIndex = 0;
@@ -308,6 +310,13 @@ public partial class SettingsDialog : Window
         UpdatePreview();
     }
 
+    private void OnDunklesDesignChanged(object sender, RoutedEventArgs e)
+    {
+        if (Settings is null || DunklesDesignBox.IsChecked is null) return;
+        Settings.DunkelModus = DunklesDesignBox.IsChecked.Value;
+        App.SetzeTheme(Settings.DunkelModus);
+    }
+
     private void UpdatePreview()
     {
         PreviewText.FontFamily = new FontFamily(Settings.ChatOutputFont);
@@ -340,6 +349,7 @@ public partial class SettingsDialog : Window
         Settings.ChatInputFontSize = InputFontSizeSlider.Value;
         Settings.ChatOutputFont = OutputFontCombo.SelectedItem as string ?? "Segoe UI";
         Settings.ChatOutputFontSize = OutputFontSizeSlider.Value;
+        Settings.DunkelModus = DunklesDesignBox.IsChecked == true;
         Settings.Save();
         StatusLabel.Text       = "Gespeichert";
         StatusLabel.Visibility = Visibility.Visible;

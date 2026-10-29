@@ -15,6 +15,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Version>0.72.0</Version>
     <ApplicationIcon>Assets\lexwolf.ico</ApplicationIcon>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <ItemGroup>

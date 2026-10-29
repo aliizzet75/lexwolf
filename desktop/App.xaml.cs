@@ -1,3 +1,4 @@
+using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
 using WpfApplication = System.Windows.Application;
 
@@ -14,6 +15,17 @@ public partial class App : WpfApplication
         Current.Resources["LwSchriftNormal"] = s.Normal;
         Current.Resources["LwSchriftGross"] = s.Gross;
         Current.Resources["LwSchriftTitel"] = s.Titel;
+    }
+
+    /// <summary>Setzt die Theme-Kernfarben der Oberfläche; alles mit DynamicResource passt sich sofort an.</summary>
+    public static void SetzeTheme(bool dunkel)
+    {
+        if (Current is null) return;
+        var t = LexWolf.Services.Theme.Aus(dunkel);
+        Current.Resources["LwFensterHintergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Hintergrund));
+        Current.Resources["LwVordergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Vordergrund));
+        Current.Resources["LwOberflaeche"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Oberflaeche));
+        Current.Resources["LwAkzent"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Akzent));
     }
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)

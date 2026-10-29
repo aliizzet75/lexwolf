@@ -278,6 +278,12 @@
                         <TextBlock Text="Darstellung" Foreground="#e6edf3"
                                    FontSize="16" FontWeight="SemiBold" Margin="0,0,0,20"/>
 
+                        <CheckBox x:Name="DunklesDesignBox" Foreground="#c9d1d9" FontSize="13"
+                                  Margin="0,0,0,18" VerticalContentAlignment="Center"
+                                  Checked="OnDunklesDesignChanged" Unchecked="OnDunklesDesignChanged">
+                            <TextBlock Text="Dunkles Design" Foreground="#c9d1d9" FontSize="13"/>
+                        </CheckBox>
+
                         <TextBlock Text="Chat-Eingabefeld"
                                    Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,0,0,4"/>
