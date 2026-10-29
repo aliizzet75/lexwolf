@@ -59,6 +59,7 @@ public partial class MainWindow : Window
     // Läuft nach jedem Mandantenwechsel; wer direkt danach etwas in den Chat schreibt, wartet darauf.
     private Task? _historieLaden;
     private readonly List<string> _chatHistoryHtml = new();
+    private int _mandantHinweisIndex = -1; // Index der aktuellen "Mandant geladen"-Systemnachricht im Chat-Verlauf
     /// <summary>Datei eines Entwurfs (.docx/.eml): in &lt;Mandant&gt;\Entwürfe, nach der
     /// Übernahme im Mandantenordner; Lose = ohne Mandant unter Dokumente\LexWolf\Schreiben.</summary>
     private sealed class Entwurf
@@ -742,16 +743,8 @@ document.addEventListener('click', function (e) {{
 
         _activeMandantId   = match.Id;
         _activeMandantName = match.Name;
-        var activeMsg = $"Mandant: {match.Name} — Chat-Kontext aktiv.";
         _mandantAnalyseService.StarteScan(match.Id);
-        if (_webViewInitialized)
-        {
-            _chatHistoryHtml.Clear();
-            AddHtmlMessage(ChatHtmlRenderer.WrapSystemMessage(activeMsg));
-            RefreshChatWebView();
-        }
-        else
-            AppendSystemMessage(activeMsg);
+        MandantHinweisAnzeigen(match.Name);
 
         // Vorhandene Chat-Historie im Hintergrund laden (Task #226). Ein laufender
         // Ladevorgang wird beim erneuten Wechsel abgebrochen, damit keine Historie
@@ -765,6 +758,29 @@ document.addEventListener('click', function (e) {{
         if (_mandantAusBaum) MarkiereAktivenMandantImBaum(match.Name);
         else BuildFileTree(match.Name);
         AktenMandantGewechselt();
+    }
+
+    /// <summary>Task #322: Zeigt die "Mandant geladen"-Systemnachricht mit klickbaren
+    /// Aktionen für Zusammenfassung und Timeline an. Wie schon vor Task #322 wird der
+    /// Chat-Verlauf dabei komplett neu aufgebaut (nicht nur der Hinweis ausgetauscht):
+    /// sonst blieben beim Mandantenwechsel die zuvor per LoadChatHistoryAsync geladenen
+    /// Chat-Nachrichten des VORHERIGEN Mandanten unter dem neuen Hinweis sichtbar stehen
+    /// -- eine Verwechslungsgefahr zwischen Mandanten-Chatverläufen, nicht nur ein
+    /// "zu viele Hinweise"-Problem. Der Hinweis selbst steht dadurch immer exakt einmal,
+    /// an Index 0, im sichtbaren Verlauf.</summary>
+    private void MandantHinweisAnzeigen(string mandantName)
+    {
+        if (_webViewInitialized)
+        {
+            _chatHistoryHtml.Clear();
+            _chatHistoryHtml.Add(ChatHtmlRenderer.WrapMandantGeladenHinweis(mandantName));
+            _mandantHinweisIndex = 0;
+            RefreshChatWebView();
+        }
+        else
+        {
+            AppendSystemMessage($"👤 Mandant {mandantName} geladen.");
+        }
     }
 
     /// <summary>Nur die Hervorhebung umsetzen, ohne den Baum neu aufzubauen (Auswahl kam aus dem Baum).</summary>
@@ -2097,6 +2113,18 @@ document.addEventListener('click', function (e) {{
                 return;
             }
 
+            // Task #322: Aktionen aus der "Mandant geladen"-Systemnachricht.
+            if (action == "mandant-zusammenfassung")
+            {
+                OnZusammenfassungClick(this, new RoutedEventArgs());
+                return;
+            }
+            if (action == "mandant-timeline")
+            {
+                ZeitleisteOeffnen();
+                return;
+            }
+
             if (!_karten.TryGetValue(id, out var karte)) return;
 
             switch (action)
@@ -2812,93 +2840,18 @@ document.addEventListener('click', function (e) {{
         });
     }
 
-    private async void OnExportClicked(object sender, RoutedEventArgs e)
+    /// <summary>Task #322: "Timeline"-Aktion aus der Mandant-geladen-Hinweisnachricht:
+    /// öffnet den Aktenstamm-Dialog (AkteDialog). Der Zeitleiste-Bereich ist
+    /// im Dialog rechts permanent sichtbar, daher ist keine Tab-Umschaltung nötig.
+    /// </summary>
+    private void ZeitleisteOeffnen()
     {
-        // Ordnerauswahl für Export-Ziel
-        var folderDialog = new Forms.FolderBrowserDialog();
-        folderDialog.Description = "Wählen Sie den Ausgabeordner für anonymisierte Dateien";
-        folderDialog.ShowNewFolderButton = true;
-        
-        var result = folderDialog.ShowDialog();
-        if (result != Forms.DialogResult.OK)
-            return;
-
-        var outputFolder = folderDialog.SelectedPath;
-        var inputFolder = ""; // Dies müsste aus den Dateibaum-Dateien ermittelt werden
-
-        // Export-Fortschritt
-        SetProgressBusy(true);
-        ProgressBar.Value = 0;
-        
-        // Alle Dateien im Input-Ordner rekursiv durchlaufen
-        var extensions = new[] { ".docx", ".pdf", ".txt", ".eml" };
-        var allFiles = new System.Collections.Generic.List<string>();
-        try
+        if (string.IsNullOrEmpty(_activeMandantId) || _activeMandantName is null || _akte is null)
         {
-            allFiles = Directory.GetFiles(inputFolder, "*.*", SearchOption.AllDirectories)
-                .Where(f => extensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show($"Fehler beim Scannen: {ex.Message}");
-            SetProgressBusy(false);
+            AppendSystemMessage("Bitte zuerst einen Mandanten auswählen.");
             return;
         }
-
-        if (allFiles.Count == 0)
-        {
-            System.Windows.MessageBox.Show("Keine unterstützten Dateien gefunden.");
-            SetProgressBusy(false);
-            return;
-        }
-
-        // Export mit Fortschritt
-        var exportedCount = 0;
-        foreach (var file in allFiles)
-        {
-            try
-            {
-                // Relative Pfad ermitteln
-                var relativePath = Path.GetRelativePath(inputFolder, file);
-                var outputFile = Path.Combine(outputFolder, relativePath);
-                var outputDir = Path.GetDirectoryName(outputFile);
-                
-                // Verzeichnis erstellen
-                if (!Directory.Exists(outputDir))
-                    Directory.CreateDirectory(outputDir);
-
-                // Datei laden und anonymisieren
-                var content = await Task.Run(() =>
-                {
-                    return LoadFileContent(file);
-                });
-
-                // Anonymisierung simulieren (hier würde der echte Anonymizer laufen)
-                var anonymizedContent = AnonymizeText(content);
-
-                // Anonymisierte Datei speichern
-                File.WriteAllText(outputFile, anonymizedContent);
-
-                exportedCount++;
-                var progress = (double)exportedCount / allFiles.Count * 100;
-                Dispatcher.Invoke(() => ProgressBar.Value = progress);
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"Fehler beim Exportieren von {file}: {ex.Message}");
-            }
-        }
-
-        SetProgressBusy(false);
-        System.Windows.MessageBox.Show($"Export abgeschlossen. {exportedCount} Dateien wurden in {outputFolder} gespeichert.");
-    }
-
-    private string AnonymizeText(string text)
-    {
-        // Hier würde der echte Anonymizer laufen
-        // Für Demo: Platzhalter einfügen
-        return text.Replace("Hans Müller", "[MANDANT_1]")
-                   .Replace("Müller", "[PERSON_1]");
+        var dialog = new AkteDialog(_db, _akte, _activeMandantId, _activeMandantName) { Owner = this };
+        dialog.ShowDialog();
     }
 }

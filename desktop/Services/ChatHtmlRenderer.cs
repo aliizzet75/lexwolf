@@ -410,6 +410,17 @@ public static class ChatHtmlRenderer
         return $"<div class='system-message'>{WebUtility.HtmlEncode(text)}</div>";
     }
 
+    /// <summary>Systemnachricht, die beim Mandantenwechsel eingeblendet wird,
+    /// mit direkt klickbaren Aktionen für Zusammenfassung und Timeline.</summary>
+    public static string WrapMandantGeladenHinweis(string mandantName)
+    {
+        static string H(string s) => WebUtility.HtmlEncode(s);
+        var text = $"👤 Mandant {H(mandantName)} geladen.";
+        return $"<div class='system-message'>{text}<br>" +
+               $"<button class='chat-action-button primary' data-action='mandant-zusammenfassung'>📊 Zusammenfassung</button>" +
+               $"<button class='chat-action-button' data-action='mandant-timeline'>🕐 Timeline</button></div>";
+    }
+
     /// <summary>Entwurfskarte im Chat: Titel, Art (Brief/E-Mail umschaltbar), Empfänger,
     /// eingeklappter Text, Ablageort und Aktionen. Klicks gehen per data-action an
     /// MainWindow.OnChatWebMessage. Ohne Aktionen (Historie, ersetzte Fassung) bleibt

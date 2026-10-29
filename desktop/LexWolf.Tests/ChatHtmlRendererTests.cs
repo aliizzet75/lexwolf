@@ -81,4 +81,25 @@ public class ChatHtmlRendererTests
         Assert.Contains("such-schritt", html);
         Assert.Contains("such-gefunden", html);
     }
+
+    [Fact]
+    public void WrapMandantGeladenHinweis_ZeigtNamenUndBeideAktionen()
+    {
+        var html = ChatHtmlRenderer.WrapMandantGeladenHinweis("Hans Schmidt");
+
+        Assert.Contains("Hans Schmidt", html);
+        Assert.Contains("geladen", html);
+        Assert.Contains("data-action='mandant-zusammenfassung'", html);
+        Assert.Contains("data-action='mandant-timeline'", html);
+        Assert.Contains("Zusammenfassung", html);
+        Assert.Contains("Timeline", html);
+    }
+
+    [Fact]
+    public void WrapMandantGeladenHinweis_EscapedMandantNamen()
+    {
+        var html = ChatHtmlRenderer.WrapMandantGeladenHinweis("<script>alert(1)</script>");
+
+        Assert.DoesNotContain("<script>", html);
+    }
 }
