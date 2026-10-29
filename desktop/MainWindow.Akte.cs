@@ -138,7 +138,8 @@ public partial class MainWindow
     /// <summary>Aus OnMandantChanged aufgerufen.</summary>
     private void AktenMandantGewechselt()
     {
-        AktenLeiste.Visibility = _activeMandantId is null ? Visibility.Collapsed : Visibility.Visible;
+        // Task #319: Die separate AktenLeiste entfällt; alle Aktionen sind nun
+        // in der kompakten Chat-Kopfzeile bzw. im Overflow-Menü erreichbar.
         FristenPanel.SetAktiverMandant(_activeMandantId);
         EingangPanel.SetAktiverMandant(_activeMandantId);
         AktualisiereKollisionHinweis();
@@ -418,14 +419,12 @@ public partial class MainWindow
         if (!gestartet) return;
 
         AddReasoning("🎙", $"Gesprächsaufnahme gestartet — Mandant „{_activeMandantName}“.");
-        GespraechBtn.IsEnabled = false;
 
         // Blockiert, bis der Anwalt auf "Aufnahme beenden" klickt (oder den Dialog
         // schließt — beides beendet die Aufnahme) UND Transkription+Strukturierung
         // fertig sind — der Dialog zeigt "bitte warten" statt einfach zu verschwinden.
         var aufnahmeDialog = new GespraechAufnahmeDialog(_gespraechsRecorder, DiktatService.WhisperPath(_settings), _http, BackendUrl) { Owner = this };
         aufnahmeDialog.ShowDialog();
-        GespraechBtn.IsEnabled = true;
 
         await VerarbeiteGespraechAsync(aufnahmeDialog);
     }
@@ -442,9 +441,12 @@ public partial class MainWindow
             "Gespräch aufnehmen — Modell einrichten", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (antwort != MessageBoxResult.Yes) return false;
 
-        GespraechBtn.IsEnabled = false;
-        var ursprungsText = GespraechBtn.Content;
-        var progress = new Progress<double>(p => GespraechBtn.Content = $"{p:P0}");
+        ZeigeWolfLoading("Whisper-Modell wird heruntergeladen…");
+        var progress = new Progress<double>(p =>
+        {
+            if (p >= 1.0) ModellLadeText.Text = "✓ Whisper-Modell fertig geladen";
+            else ModellLadeText.Text = $"Whisper-Modell wird heruntergeladen … {p:P0}";
+        });
         try
         {
             await DiktatService.DownloadModelsAsync(_settings, whisper: true, progress);
@@ -458,8 +460,7 @@ public partial class MainWindow
         }
         finally
         {
-            GespraechBtn.Content = ursprungsText;
-            GespraechBtn.IsEnabled = true;
+            VerbergeWolfLoading();
         }
     }
 

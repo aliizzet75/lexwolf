@@ -38,6 +38,9 @@ public class AppSettings
     public string ChatOutputFont { get; set; } = "Segoe UI";
     public double ChatOutputFontSize { get; set; } = 13;
 
+    // Default true: bestehende Nutzer sehen bis zum aktiven Umschalten keine Änderung.
+    public bool DunkelModus { get; set; } = true;
+
     // Eigener Musterschriftsatz als Stilvorlage für Schriftsatz-Entwürfe (leer = keine)
     public string StilvorlagePfad { get; set; } = "";
 

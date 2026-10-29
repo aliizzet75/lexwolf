@@ -35,9 +35,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- ApplicationIcon setzt nur das .exe-Icon (Explorer/Taskleiste-Datei) —
-         als WPF-Resource eingebunden, damit die Icon="Assets/..."-Referenzen
-         in MainWindow.xaml / den Dialogen zur Laufzeit auflösbar sind. -->
     <Resource Include="Assets\lexwolf.ico" />
   </ItemGroup>
 
