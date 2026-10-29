@@ -31,10 +31,12 @@ public partial class SettingsDialog : Window
     private bool _kiKonfigLaedt;
     private bool _kiApiKeyVorhanden;
     private bool _kiApiKeyLoeschen;
+    private bool _laden;
 
     public SettingsDialog(AppSettings current, string backendUrl)
     {
         InitializeComponent();
+        _laden = true;
         _backendUrl = backendUrl;
         Settings = new AppSettings
         {
@@ -65,6 +67,7 @@ public partial class SettingsDialog : Window
             VoskModellGross = current.VoskModellGross,
             VoskGrossBeimStart = current.VoskGrossBeimStart,
             VoskGrossLadezeitSek = current.VoskGrossLadezeitSek,
+            DunkelModus = current.DunkelModus,
             DiktatNachkorrektur = current.DiktatNachkorrektur,
             WhisperOrdner = current.WhisperOrdner,
             WhisperModell = current.WhisperModell,
@@ -79,6 +82,7 @@ public partial class SettingsDialog : Window
         FeedbackOptInBox.IsChecked = Settings.FeedbackOptIn;
         AbTestOptInBox.IsChecked = Settings.AbTestOptIn;
         VoskGrossBox.IsChecked = Settings.VoskGrossBeimStart;
+        DunkelModusBox.IsChecked = Settings.DunkelModus;
         var grossVorhanden = DiktatService.VoskGrossExists(Settings);
         VoskGrossBox.IsEnabled = grossVorhanden;
         VoskGrossStatus.Text = grossVorhanden
@@ -101,6 +105,7 @@ public partial class SettingsDialog : Window
 
         NavList.SelectedIndex = 0;
 
+        _laden = false;
         _ = LadeKiModellKonfigurationAsync();
     }
 
@@ -272,6 +277,14 @@ public partial class SettingsDialog : Window
         PanelKiModell.Visibility = item.Tag as string == "ki_modell" ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private void OnDunkelModusChanged(object sender, RoutedEventArgs e)
+    {
+        if (_laden || Settings is null) return;
+        Settings.DunkelModus = DunkelModusBox.IsChecked == true;
+        App.SetzeTheme(Settings.DunkelModus);
+        Settings.Save();
+    }
+
     private void OnInputFontChanged(object sender, SelectionChangedEventArgs e)
     {
         if (InputFontCombo.SelectedItem is string font)
@@ -340,6 +353,8 @@ public partial class SettingsDialog : Window
         Settings.ChatInputFontSize = InputFontSizeSlider.Value;
         Settings.ChatOutputFont = OutputFontCombo.SelectedItem as string ?? "Segoe UI";
         Settings.ChatOutputFontSize = OutputFontSizeSlider.Value;
+        Settings.DunkelModus = DunkelModusBox.IsChecked == true;
+        App.SetzeTheme(Settings.DunkelModus);
         Settings.Save();
         StatusLabel.Text       = "Gespeichert";
         StatusLabel.Visibility = Visibility.Visible;
