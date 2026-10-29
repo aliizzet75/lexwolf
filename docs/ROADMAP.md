@@ -55,6 +55,7 @@ Diese Trennung bleibt.
 | **Phase 1** | Schriftgröße überall, Einrichtungsassistent, Briefbogen, aufgeräumte Oberfläche, Nutzungsmessung | jetzt |
 | **Phase G** | Gutachtliche Prüfung: Erfolgsaussichten, Anspruch, Einwände, Rechtsprechung (Konzept: `docs/KONZEPT_GUTACHTEN.md`) | **als Nächstes** |
 | **Phase 2** | Fristen haftungsfest, beA-Eingang, Erwiderung auf Schriftsätze, Fragen an die Akte, VKH-Antrag, Rechnungen, Fremdsprachen, Vermerke, Wochen-Check | danach |
+| **Phase 2b** | Premium-Rechtsquellen (ohne kostenpflichtige Verlagslizenzen): Bundesgerichte, OLG-Leitlinien, Begründungen, Kanzlei-Wissen | vor dem Verkauf |
 | **Phase 3** | Bezahlung, Preise, mehrere Arbeitsplätze | vor dem Verkauf |
 | **Phase 4** | Word-Add-in, Kanzleisoftware, weitere Rechtsgebiete | nach 20 zahlenden Kanzleien |
 | **Aufräumen** | Altlasten im Repo, ungenutzte Endpunkte, CI | nebenbei |
@@ -355,6 +356,73 @@ Vorfristen, Löschung erst nach Erledigung, Ausgangskontrolle). Ziel: LexWolf is
   keinen Kontakt zum Mandanten? Unbeantwortete Eingänge? Fristen ohne Vorfrist? Dokumente, die
   nicht ausgewertet sind? Ergebnis als Liste „Diese Woche liegt an“ mit Ein-Klick-Aktionen
   (Sachstand entwerfen, Antwort entwerfen, Akte auswerten).
+
+---
+
+## Phase 2b – Premium-Rechtsquellen (ohne kostenpflichtige Verlagslizenzen)
+
+Ziel: LexWolf liefert mehr Rechtssicherheit und Tiefe, ohne auf teure Beck-online/juris-Lizenzen
+angewiesen zu sein. Alle Quellen sind urheberrechtlich unbedenklich oder amtlich verfügbar.
+
+### [x] P2b-1 Bundesgerichte systematisch ausbauen
+- BVerfG, BGH, BAG, BFH, BSG, BVerwG bereits über RIS-Crawler abgedeckt.
+- **Neu:** Dedizierter `crawlers/bgh_backfill_crawler.py`, der bundesgerichtshof.de
+  systematisch nach PDF-Entscheidungen durchsucht und Volltext extrahiert. Ersetzt
+  den vorherigen, unzuverlässigen OpenJur-Fallback für den BGH-Backfill.
+- `main_crawler.py` nutzt `BghBackfillCrawler`; `LEXWOLF_BGH_BACKFILL_DAYS` auf
+  **1095 Tage (3 Jahre)** und `LEXWOLF_BGH_BACKFILL_MAX_RESULTS` auf **500**
+  angehoben (P2b-1).
+- Unit-Tests in `tests/test_bgh_backfill_crawler.py` prüfen Parser, Chunking und
+  Chunk-Struktur ohne Netzwerk. Integrationstest-Stub für bekannte BGH-Leitentscheidung
+  vorhanden, läuft nur bei `RUN_INTEGRATION_TESTS=1`.
+- **Offen:** Regressionstests für BVerfG, BAG, BFH, BSG, BVerwG (automatisierte
+  Aktenzeichen-Checks); P2b-1 gilt damit für BGH als umgesetzt, für die übrigen
+  Bundesgerichte als Teilumsetzung.
+
+### [ ] P2b-2 OLG-Leitlinien und Länderrecht indexieren
+- OLG-Leitlinien (z. B. BGH-orientierte OLG-Richtlinien, Familiensenate) sind oft frei auf den
+  Websites der OLG verfügbar.
+- Landesgesetzblätter für Bundesländer ergänzen, wo das Mandat landesspezifisch ist.
+- Akzeptanz: Suche nach „OLG Dresden Leitlinien Unterhalt“ liefert Treffer mit Quelle.
+
+### [ ] P2b-3 Gesetzesbegründungen massiv ausbauen
+- BT-Drucksachen (`crawlers.drucksachen_crawler`) sind bereits angebunden.
+- Sicherstellen, dass zu den Top-N-Gesetzen (BGB, ZPO, FamFG, BRAO, RVG, KSchG, BUrlG) für jede
+  wichtige Änderung die Begründung im Index liegt.
+- Neo4j-Kanten `ERLAEUTERT` bereits vorhanden — prüfen, dass sie für alle neuen Begründungen
+  gesetzt werden.
+- Akzeptanz: Test, dass zu einer Gesetzesänderung (z. B. BGB 2002) die Begründung über den
+  Graph erreichbar ist.
+
+### [ ] P2b-4 Kanzlei-eigenes Wissen als Quelle integrieren
+- Musterschriftsätze, interne Checklisten, erledigte Fälle (anonymisiert) und gelernte
+  Stilprofile als eigene Quelle `kanzlei_dokumente` indexieren.
+- Boost im Retrieval: Kanzlei-eigene Treffer sollen bei Schriftsatz und Antworten priorisiert
+  werden, sobald genügend Material vorhanden ist.
+- Datenschutz: Keine Mandantennamen, keine Aktenzeichen, keine E-Mail-Adressen. Vor dem Indexieren
+  mit dem bestehenden Pseudonymisierer/Anonymisierer bereinigen.
+- Akzeptanz: Test, dass ein hochgeladener Musterschriftsatz bei passender Anfrage gefunden wird
+  und dass keine PII im Index landet.
+
+### [ ] P2b-5 Amtliche Formulare und Mustervordrucke
+- Gerichtliche Formulare (z. B. Antrag auf Verfahrenskostenhilfe, Scheidungsantrag,
+  Antrag auf Erlass einer einstweiligen Anordnung) indexieren.
+- BRAK-Mustervordrucke prüfen, ob lizenzfrei nutzbar; falls nein, als eigene Aufgabe vormerken.
+- Akzeptanz: 20 häufige Formulare abrufbar mit aktuellem Datum der letzten Fassung.
+
+### [ ] P2b-6 Zitations- und Aktualitätsqualität sicherstellen
+- Automatischer Check: Ist jede im Chat/Schriftsatz zitierte Norm im Index auf dem
+  aktuellen Stand (`valid_until IS NULL`)?
+- Warnung an den Anwalt, wenn eine zitierte Norm veraltet sein könnte oder keine Quelle gefunden
+  wurde.
+- Akzeptanz: Test, bei dem eine veraltete Norm bewusst im Index liegt und LexWolf die Warnung
+  ausgibt.
+
+### [ ] P2b-7 Verlags-Partnerschaften vorbereiten (optional, ohne Budget 🧑)
+- Kontaktdaten und Erstkontakt-Texte für C.H. Beck (Beck-online API) und Wolters Kluwer (juris
+  API) in `docs/rechtliches/partnerschaften.md` hinterlegen.
+- Nicht selbst verhandeln — Material für den Nutzer bereitstellen.
+- Akzeptanz: Dokument vorhanden mit Nutzen-Kosten-Argumentation und Datenverarbeitungs-Fragen.
 
 ---
 

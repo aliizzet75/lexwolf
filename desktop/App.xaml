@@ -11,6 +11,13 @@
         <sys:Double x:Key="LwSchriftGross">15</sys:Double>
         <sys:Double x:Key="LwSchriftTitel">19</sys:Double>
 
+        <!-- Hauptfarben: werden beim Start und bei Theme-Umschaltung neu gesetzt
+             (App.SetzeTheme). Immer per DynamicResource verwenden. -->
+        <SolidColorBrush x:Key="LwFensterHintergrund" Color="#0d1117"/>
+        <SolidColorBrush x:Key="LwVordergrund" Color="#c9d1d9"/>
+        <SolidColorBrush x:Key="LwOberflaeche" Color="#161b22"/>
+        <SolidColorBrush x:Key="LwAkzent" Color="#e8a838"/>
+
         <!-- Dark-Theme ComboBox: die Standard-Vorlage ignoriert Background/Foreground
              für Popup und Chrome weitgehend — ohne eigenes ControlTemplate wirkt sie
              auf dunklem Grund ausgegraut / kaum lesbar. Auf Application-Ebene, damit

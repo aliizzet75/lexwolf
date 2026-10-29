@@ -3,16 +3,17 @@ import os
 from collections import Counter
 from datetime import datetime
 from typing import List, Dict, Set
-from crawlers.gesetze_crawler import GesetzeImInternetCrawler
-from crawlers.ris_crawler import RisCrawler, DEFAULT_FIRM_RECHTSGEBIETE, FEEDS, PRIORITY_COURTS
-from crawlers.openjur_crawler import OpenJurCrawler
+from crawlers.bgh_backfill_crawler import BghBackfillCrawler
 from crawlers.drucksachen_crawler import DrucksachenCrawler
-from services.embedding_service import EmbeddingService, MockEmbeddingService
+from crawlers.gesetze_crawler import GesetzeImInternetCrawler
+from crawlers.openjur_crawler import OpenJurCrawler
+from crawlers.ris_crawler import DEFAULT_FIRM_RECHTSGEBIETE, FEEDS, PRIORITY_COURTS, RisCrawler
 from services.database_service import DatabaseService
+from services.embedding_service import EmbeddingService, MockEmbeddingService
 from services.neo4j_service import Neo4jService
+from services.notification_service import notify
 from services.paragraph_parser import extract_references
 from scripts.import_to_neo4j import create_paragraph_node, create_simple_relationships
-from services.notification_service import notify
 import hashlib
 import logging
 
@@ -30,11 +31,13 @@ RIS_DAYS = int(os.getenv("LEXWOLF_RIS_DAYS", "7"))
 RIS_DAYS_PRIORITY = int(os.getenv("LEXWOLF_RIS_DAYS_PRIORITY", "30"))
 
 # Das RIS-Feed für BGH/BVerfG deckt nur ein rollendes Fenster von ca. 1 Monat ab.
-# bundesgerichtshof.de erlaubt eine Volltextsuche weit in die Vergangenheit (über ein
-# Jahr, tausende Treffer) — damit wird der Index zusätzlich historisch mit BGH-Urteilen
-# aufgefüllt, die über das RIS-Feed-Fenster hinausgehen.
-BGH_BACKFILL_DAYS = int(os.getenv("LEXWOLF_BGH_BACKFILL_DAYS", "365"))
-BGH_BACKFILL_MAX_RESULTS = int(os.getenv("LEXWOLF_BGH_BACKFILL_MAX_RESULTS", "50"))
+# bundesgerichtshof.de erlaubt eine Volltextsuche weit in die Vergangenheit (über
+# Jahre, tausende Treffer) — damit wird der Index zusätzlich historisch mit
+# BGH-Urteilen aufgefüllt, die über das RIS-Feed-Fenster hinausgehen.
+# P2b-1: Backfill jetzt 3 Jahre (1095 Tage), damit die wichtigsten Leitentscheidungen
+# der letzten Amtsperiode im Index liegen.
+BGH_BACKFILL_DAYS = int(os.getenv("LEXWOLF_BGH_BACKFILL_DAYS", "1095"))
+BGH_BACKFILL_MAX_RESULTS = int(os.getenv("LEXWOLF_BGH_BACKFILL_MAX_RESULTS", "500"))
 
 # Mindestanzahl §§, für die drucksachen_crawler eine Gesetzesbegründung liefern soll (T#291).
 BEGRUENDUNGEN_TOP_N = int(os.getenv("LEXWOLF_BEGRUENDUNGEN_TOP_N", "50"))
@@ -177,6 +180,7 @@ class LegalDatabaseCrawler:
     def __init__(self):
         self.gesetze_crawler = GesetzeImInternetCrawler()
         self.ris_crawler = RisCrawler()
+        self.bgh_backfill_crawler = BghBackfillCrawler()
         self.openjur_crawler = OpenJurCrawler()
         self.drucksachen_crawler = DrucksachenCrawler()
         self.embedding_service = EmbeddingService()
@@ -239,10 +243,11 @@ class LegalDatabaseCrawler:
 
         logger.info(
             f"Crawling bundesgerichtshof.de (BGH-Backfill über das RIS-Feed-Fenster "
-            f"hinaus, {BGH_BACKFILL_DAYS} Tage, max. {BGH_BACKFILL_MAX_RESULTS} Urteile)..."
+            f"hinaus, {BGH_BACKFILL_DAYS} Tage, max. {BGH_BACKFILL_MAX_RESULTS} Urteile) "
+            f"über den dedizierten BGH-Backfill-Crawler..."
         )
         try:
-            bgh_backfill_chunks = self.openjur_crawler.crawl_decisions(
+            bgh_backfill_chunks = self.bgh_backfill_crawler.crawl_decisions(
                 days=BGH_BACKFILL_DAYS,
                 max_results=BGH_BACKFILL_MAX_RESULTS,
                 limit=limit_per_source,
