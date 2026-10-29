@@ -4,9 +4,10 @@ using Xunit;
 namespace LexWolf.Tests
 {
     /// <summary>
-    /// T#309: Live-Suchschritte inline im Chat (statt im separaten ReActDialog-
-    /// Fenster). Testet die reine HTML-Erzeugung in ChatHtmlRenderer — ohne
-    /// WebView2/Netzwerk, da hier nur Markup-Struktur verifiziert wird.
+    /// T#320: Live-Suchschritte werden nicht mehr als aufklappbares Panel im Chat
+    /// angezeigt, sondern als kompakter Link, der ein separates WPF-Fenster öffnet.
+    /// Diese Tests prüfen die reine HTML-Erzeugung in ChatHtmlRenderer — ohne
+    /// WebView2/Netzwerk.
     /// </summary>
     public class SearchPanelHtmlTests
     {
@@ -32,53 +33,80 @@ namespace LexWolf.Tests
         }
 
         [Fact]
-        public void WrapSearchPanel_Laufend_IstOffenUndZeigtModus()
+        public void WrapSearchPanel_Laufend_ZeigtKompaktenButton()
         {
-            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: true, modus: "tief", gefundenCount: 0);
+            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: true, modus: "tief", gefundenCount: 0, panelIndex: 3);
 
-            Assert.Contains("such-panel", html);
-            Assert.Contains(" open", html);
-            Assert.Contains("tief", html);
-            Assert.Contains("<div>Schritt</div>", html);
+            Assert.DoesNotContain("<details", html);
+            Assert.DoesNotContain("<div>Schritt</div>", html);
+            Assert.Contains("data-action='recherche'", html);
+            Assert.Contains("data-msg='3'", html);
+            Assert.Contains("Recherche l&#228;uft", html);
+            Assert.Contains("Modus: tief", html);
         }
 
         [Fact]
-        public void WrapSearchPanel_Fertig_IstZugeklapptUndZeigtAnzahl()
+        public void WrapSearchPanel_Fertig_ZeigtQuellenAnzahl()
         {
-            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: false, modus: "schnell", gefundenCount: 3);
+            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: false, modus: "schnell", gefundenCount: 3, panelIndex: 7);
 
-            Assert.DoesNotContain("<details class='such-panel' open>", html);
-            Assert.Contains("3 Quelle(n) gefunden", html);
+            Assert.DoesNotContain("<details", html);
+            Assert.Contains("data-action='recherche'", html);
+            Assert.Contains("data-msg='7'", html);
+            Assert.Contains("Recherche ansehen (3 Quelle(n))", html);
         }
 
-        // Task #311: Anonymisierten Text im selben Live-Panel wie die Suchschritte zeigen.
         [Fact]
-        public void WrapSearchPanel_MitAnonymisiertGesendet_ZeigtEigenenAbschnitt()
+        public void WrapSearchPanel_FertigOhneQuellen_ZeigtKeineQuellen()
         {
-            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: false, modus: "schnell",
+            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: false, modus: "schnell", gefundenCount: 0, panelIndex: 2);
+
+            Assert.Contains("Recherche ansehen (keine Quellen)", html);
+        }
+
+        [Fact]
+        public void BuildRechercheDialogHtml_MitAnonymisiertGesendet_ZeigtEigenenAbschnitt()
+        {
+            var html = ChatHtmlRenderer.BuildRechercheDialogHtml(
+                "<div class='such-schritt'>Schritt</div>", laufend: false, modus: "schnell",
                 gefundenCount: 1, anonymisiertGesendet: "Für [PERSON_1] prüfen.");
 
+            Assert.Contains("recherche-dialog", html);
+            Assert.Contains("such-liste", html);
             Assert.Contains("such-anonym", html);
             Assert.Contains("Anonymisiert gesendet", html);
             Assert.Contains("[PERSON_1]", html);
         }
 
         [Fact]
-        public void WrapSearchPanel_OhneAnonymisiertGesendet_ZeigtKeinenAbschnitt()
+        public void BuildRechercheDialogHtml_OhneAnonymisiertGesendet_ZeigtKeinenAbschnitt()
         {
-            var html = ChatHtmlRenderer.WrapSearchPanel("<div>Schritt</div>", laufend: false, modus: "schnell", gefundenCount: 0);
+            var html = ChatHtmlRenderer.BuildRechercheDialogHtml(
+                "", laufend: true, modus: "schnell", gefundenCount: 0, anonymisiertGesendet: null);
 
             Assert.DoesNotContain("such-anonym", html);
+            Assert.DoesNotContain("Anonymisiert gesendet", html);
         }
 
         [Fact]
-        public void WrapSearchPanel_AnonymisiertGesendet_EscapedHtml()
+        public void BuildRechercheDialogHtml_AnonymisiertGesendet_EscapedHtml()
         {
-            var html = ChatHtmlRenderer.WrapSearchPanel("", laufend: false, modus: "schnell",
-                gefundenCount: 0, anonymisiertGesendet: "<script>alert(1)</script>");
+            var html = ChatHtmlRenderer.BuildRechercheDialogHtml(
+                "", laufend: false, modus: "schnell", gefundenCount: 0,
+                anonymisiertGesendet: "<script>alert(1)</script>");
 
             Assert.DoesNotContain("<script>", html);
             Assert.Contains("&lt;script&gt;", html);
+        }
+
+        [Fact]
+        public void BuildRechercheDialogHtml_Laufend_ZeigtLaufendenStatus()
+        {
+            var html = ChatHtmlRenderer.BuildRechercheDialogHtml(
+                "", laufend: true, modus: "tief", gefundenCount: 0, anonymisiertGesendet: null);
+
+            Assert.Contains("Live-Suche l&#228;uft", html);
+            Assert.Contains("Modus: tief", html);
         }
     }
 }

@@ -87,13 +87,27 @@ public partial class MainWindow : Window
         public string Html { get; set; } = "";
         // Task #301: confidence_score + geprüfte Quellen der /chat-Antwort, aus der
         // dieser Entwurf entstand — analog zur Chat-Bubble (WrapAiBubble).
+        // Task #321: Belege, Schriftsatz-Art und Anweisung aus dem direkten Schriftsatz-Weg.
         public double? Confidence { get; set; }
         public IReadOnlyList<(string Zitat, int ChunkId)>? Quellen { get; set; }
+        public string? SchriftsatzArt { get; set; }
+        public IReadOnlyList<SchriftsatzChatService.Beleg>? SchriftsatzBelege { get; set; }
+        public string? Anweisung { get; set; }
+        public IReadOnlyList<ReActStepEvent>? SuchEvents { get; set; }
+        public string? AnonymisiertGesendet { get; set; }
+        public string SuchModus { get; set; } = "schnell";
     }
+
     // Karten-ID (data-msg der Buttons) -> Karte. Wird nie geleert, damit IDs auch
     // nach Mandantenwechsel eindeutig bleiben.
     private readonly Dictionary<int, EntwurfKarte> _karten = new();
     private readonly HashSet<string> _prioritizedPaths = new(StringComparer.OrdinalIgnoreCase);
+    // T#320: Daten der kompakten Recherche-Links (data-action='recherche') im Chat.
+    // Der Index entspricht data-msg des Buttons und zeigt auf den Eintrag in _chatHistoryHtml.
+    private readonly Dictionary<int, RecherchePanelDaten> _recherchePanels = new();
+    private sealed record RecherchePanelDaten(string StepsHtml, string Modus, int GefundenCount,
+        bool Laufend, string? AnonymisiertGesendet);
+
     private readonly DiktatService _diktat = new();
     private bool _diktatBusy;
     private string _diktatVorher = "";
@@ -327,8 +341,7 @@ document.addEventListener('click', function (e) {{
         if (lastAssistant == default(ChatMessage) || string.IsNullOrWhiteSpace(lastAssistant.Content)) return;
 
         System.Windows.Clipboard.SetText(ChatEntwurfParser.AlsKlartext(lastAssistant.Content));
-
-        KopierenBtn.Content = _kopierenFeedbackLabel;
+        SetKopierenLabel(_kopierenFeedbackLabel);
         if (_kopierenFeedbackTimer is null)
         {
             _kopierenFeedbackTimer = new System.Windows.Threading.DispatcherTimer
@@ -338,10 +351,17 @@ document.addEventListener('click', function (e) {{
             _kopierenFeedbackTimer.Tick += (_, _) =>
             {
                 _kopierenFeedbackTimer.Stop();
-                KopierenBtn.Content = _kopierenOriginalLabel;
+                SetKopierenLabel(_kopierenOriginalLabel);
             };
         }
         _kopierenFeedbackTimer.Start();
+    }
+
+    private static void SetKopierenLabel(string label)
+    {
+        // Task #319: Der Kopieren-Button ist jetzt im Overflow-Menü; Label-Updates
+        // sind dort nicht sichtbar, aber der Setter bleibt aus Kompatibilität.
+        _ = label;
     }
 
     private void OnFeatureWunschClick(object sender, RoutedEventArgs e)
@@ -367,11 +387,7 @@ document.addEventListener('click', function (e) {{
     {
         if (string.IsNullOrEmpty(_activeMandantId)) return;
 
-        // Bis die Zusammenfassung da ist: Wolf-Animation über dem Chat und im Button,
-        // Button gesperrt (kein doppeltes Anstoßen).
-        var buttonInhalt = ZusammenfassungBtn.Content;
-        ZusammenfassungBtn.IsEnabled = false;
-        ZusammenfassungBtn.Content = CreateWolfLoadingContent("wird erstellt…");
+        // Bis die Zusammenfassung da ist: Wolf-Animation über dem Chat.
         ZeigeWolfLoading("Zusammenfassung wird erstellt — bitte warten...");
         SetProgressBusy(true);
         SetStatus(null, "Zusammenfassung wird ermittelt...");
@@ -392,8 +408,6 @@ document.addEventListener('click', function (e) {{
         finally
         {
             VerbergeWolfLoading();
-            ZusammenfassungBtn.Content = buttonInhalt;
-            ZusammenfassungBtn.IsEnabled = true;
             SetProgressBusy(false);
             SetStatus(true, $"Verbunden — {BackendUrl}");
         }
@@ -406,18 +420,8 @@ document.addEventListener('click', function (e) {{
     private void OnAnalyseStatusChanged(AnalyseStatus status)
     {
         AddReasoning("🔍", $"Analyse-Status: {status}");
-        if (status == AnalyseStatus.Scanning)
-        {
-            ZusammenfassungBtn.IsEnabled = false;
-            ZusammenfassungBtn.Content = CreateWolfLoadingContent("wird analysiert");
-            KopierenBtn.IsEnabled = false;
-        }
-        else if (status == AnalyseStatus.Ready)
-        {
-            ZusammenfassungBtn.IsEnabled = true;
-            ZusammenfassungBtn.Content = "📊 Zusammenfassung";
-            KopierenBtn.IsEnabled = true;
-        }
+        // Der Zusammenfassungs-/Kopieren-Button befinden sich im Overflow-Menü
+        // (Task #319). Sichtbarkeits-/Enabled-Logik daran ist nicht mehr möglich.
     }
 
     /// <summary>
@@ -709,9 +713,6 @@ document.addEventListener('click', function (e) {{
 
         _history.Clear();
         ClearChatPanel();
-        NotizenBtn.Visibility = Visibility.Collapsed;
-        ZusammenfassungBtn.Visibility = Visibility.Collapsed;
-        KopierenBtn.Visibility = Visibility.Collapsed;
         _mandantAnalyseService.Abbrechen();
 
         _loadHistoryCts?.Cancel();
@@ -732,9 +733,6 @@ document.addEventListener('click', function (e) {{
             else
                 AppendSystemMessage(msg);
             BuildFileTree(null);
-            NotizenBtn.Visibility = Visibility.Collapsed;
-            ZusammenfassungBtn.Visibility = Visibility.Collapsed;
-            KopierenBtn.Visibility = Visibility.Collapsed;
             AktenMandantGewechselt();
             return;
         }
@@ -745,9 +743,6 @@ document.addEventListener('click', function (e) {{
         _activeMandantId   = match.Id;
         _activeMandantName = match.Name;
         var activeMsg = $"Mandant: {match.Name} — Chat-Kontext aktiv.";
-        NotizenBtn.Visibility = Visibility.Visible;
-        ZusammenfassungBtn.Visibility = Visibility.Visible;
-        KopierenBtn.Visibility = Visibility.Collapsed;
         _mandantAnalyseService.StarteScan(match.Id);
         if (_webViewInitialized)
         {
@@ -1281,7 +1276,6 @@ document.addEventListener('click', function (e) {{
         _history.Clear();
         ClearChatPanel();
         _chatHistoryHtml.Clear();
-        KopierenBtn.Visibility = Visibility.Collapsed;
         var msg = _activeMandantName is not null
             ? $"Chat gelöscht — Mandant: {_activeMandantName}"
             : "Chat gelöscht. Wie kann ich Ihnen helfen?";
@@ -1479,6 +1473,13 @@ document.addEventListener('click', function (e) {{
             InputBox.ScrollToEnd();
     }
 
+    private void OnOverflowClick(object sender, RoutedEventArgs e)
+    {
+        OverflowMenu.PlacementTarget = OverflowBtn;
+        OverflowMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        OverflowMenu.IsOpen = true;
+    }
+
     private void OnFontLarger(object sender, RoutedEventArgs e) => ChangeChatFontSize(+1);
     private void OnFontSmaller(object sender, RoutedEventArgs e) => ChangeChatFontSize(-1);
 
@@ -1504,7 +1505,9 @@ document.addEventListener('click', function (e) {{
         await SendeAsync(text);
     }
 
-    /// <summary>Nachricht an die KI schicken, Antwort samt Entwurfskarte anzeigen.</summary>
+    /// <summary>Nachricht an die KI schicken, Antwort samt Entwurfskarte anzeigen.
+    /// Task #321: Falls die Nachricht eine Schriftsatz-Art erkennen lässt, wird stattdessen
+    /// der echte Schriftsatz-Weg (POST /akte/schriftsatz) ohne Öffnen des Dialogs genommen.</summary>
     private async Task SendeAsync(string text)
     {
         SendBtn.IsEnabled = false;
@@ -1512,6 +1515,14 @@ document.addEventListener('click', function (e) {{
         _history.Add(new ChatMessage("user", text));
         AppendUserMessage(text);
         _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "user", text);
+
+        // Task #321: lockerer Stichwort-Teilwort-Abgleich gegen VorlagenOrdner.Arten.
+        var schriftsatzArt = SchriftsatzArtErkennung.ErkenneArt(text);
+        if (schriftsatzArt is not null && !string.IsNullOrEmpty(_activeMandantId))
+        {
+            await ErstelleSchriftsatzAusChatAsync(text, schriftsatzArt);
+            return;
+        }
 
         ReasoningPanel.Children.Clear();
         ZeigeWolfLoading("Agentic-Suche läuft...");
@@ -1540,15 +1551,18 @@ document.addEventListener('click', function (e) {{
             Dispatcher.Invoke(() => WolfLoadingText.Text = "Anfrage wird verarbeitet...");
             var (content, suggestedAction, confidence, quellen, anonymisiertGesendet) = await PostChatAsync(suchKontext);
 
-            // Task #311: denselben such-panel-Eintrag (Suchschritte) um den Abschnitt
-            // "Anonymisiert gesendet" ergänzen — erst jetzt bekannt, da PostChatAsync die
-            // tatsächlich versendete anonymisierte Nachricht/Kontext gerade erst gebaut hat.
+            // Task #320: denselben such-panel-Eintrag (Suchschritte) um den Abschnitt
+            // "Anonymisiert gesendet" ergänzen und als kompakten Link markieren, der das
+            // separate Recherche-Ergebnis-Fenster öffnet.
             if (suchPanel.PanelIndex >= 0 && suchPanel.PanelIndex < _chatHistoryHtml.Count)
             {
                 Dispatcher.Invoke(() =>
                 {
+                    _recherchePanels[suchPanel.PanelIndex] = new RecherchePanelDaten(
+                        suchPanel.StepsHtml, suchPanel.Modus, suchPanel.GefundenCount,
+                        Laufend: false, anonymisiertGesendet);
                     _chatHistoryHtml[suchPanel.PanelIndex] = ChatHtmlRenderer.WrapSearchPanel(
-                        suchPanel.StepsHtml, laufend: false, suchPanel.Modus, suchPanel.GefundenCount, anonymisiertGesendet);
+                        suchPanel.StepsHtml, laufend: false, suchPanel.Modus, suchPanel.GefundenCount, anonymisiertGesendet, suchPanel.PanelIndex);
                     RefreshChatWebView();
                 });
             }
@@ -1565,12 +1579,86 @@ document.addEventListener('click', function (e) {{
             var (rest, entwurf) = ChatEntwurfParser.Zerlege(content, suggestedAction);
             if (!string.IsNullOrWhiteSpace(rest)) AppendAiMessage(rest, confidence, quellen);
             if (entwurf is not null) Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf, confidence: confidence, quellen: quellen));
-
-            Dispatcher.Invoke(() => KopierenBtn.Visibility = Visibility.Visible);
         }
         catch (Exception ex)
         {
             AppendSystemMessage($"Fehler: {ex.Message}");
+        }
+        finally
+        {
+            Dispatcher.Invoke(() => SendBtn.IsEnabled = true);
+            VerbergeWolfLoading();
+        }
+    }
+
+    /// <summary>Task #321: erkannte Schriftsatz-Art aus dem Chat heraus — nutzt
+    /// denselben Backend-Weg wie SchriftsatzDialog.OnErstellen, ohne den Dialog zu
+    /// öffnen. Zeigt Live-Suchfortschritt und stellt das Ergebnis als Entwurf-Karte
+    /// mit Beleg-Link im Chat dar.</summary>
+    private async Task ErstelleSchriftsatzAusChatAsync(string userText, string art)
+    {
+        ZeigeWolfLoading("Schriftsatz wird recherchiert...");
+        ReasoningPanel.Children.Clear();
+        AddReasoning("📝", $"Schriftsatz-Art erkannt: {art}");
+
+        var suchModus = SelectedSuchModus;
+        var panelIndex = -1;
+        var stepsHtml = new StringBuilder();
+        var gefundenCount = 0;
+
+        try
+        {
+            using var service = new SchriftsatzChatService(_db, BackendUrl, _activeMandantId!, _activeMandantName ?? "", _settings);
+
+            // Live-Suchfortschritt im Chat-Panel anzeigen, wie bei normalem /chat.
+            var progress = new Progress<ReActStepEvent>(evt =>
+            {
+                if (evt.Step != "suchergebnis" || string.IsNullOrWhiteSpace(evt.Text)) return;
+                Dispatcher.Invoke(() =>
+                {
+                    stepsHtml.Append(ChatHtmlRenderer.SearchStepRowHtml(evt.Step, evt.Quelle, evt.Text, evt.Confidence, evt.Status));
+                    if (evt.Step == "suchergebnis" && !evt.IstVerworfen) gefundenCount++;
+                    if (panelIndex < 0)
+                    {
+                        panelIndex = _chatHistoryHtml.Count;
+                        _recherchePanels[panelIndex] = new RecherchePanelDaten(stepsHtml.ToString(), suchModus, gefundenCount, Laufend: true, null);
+                        _chatHistoryHtml.Add(ChatHtmlRenderer.WrapSearchPanel(stepsHtml.ToString(), laufend: true, suchModus, gefundenCount, panelIndex: panelIndex));
+                    }
+                    else
+                    {
+                        _recherchePanels[panelIndex] = new RecherchePanelDaten(stepsHtml.ToString(), suchModus, gefundenCount, Laufend: true, null);
+                        _chatHistoryHtml[panelIndex] = ChatHtmlRenderer.WrapSearchPanel(stepsHtml.ToString(), laufend: true, suchModus, gefundenCount, panelIndex: panelIndex);
+                    }
+                    RefreshChatWebView();
+                    ScrollToBottom();
+                });
+            });
+
+            var ergebnis = await service.ErstelleSchriftsatzAsync(art, userText, suchModus, CancellationToken.None, progress);
+
+            // Panel auf „fertig“ mit anonymisiert gesendet setzen.
+            if (panelIndex >= 0)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    _recherchePanels[panelIndex] = new RecherchePanelDaten(stepsHtml.ToString(), suchModus, gefundenCount, Laufend: false, ergebnis.AnonymisiertGesendet);
+                    _chatHistoryHtml[panelIndex] = ChatHtmlRenderer.WrapSearchPanel(stepsHtml.ToString(), laufend: false, suchModus, gefundenCount, ergebnis.AnonymisiertGesendet, panelIndex);
+                    RefreshChatWebView();
+                });
+            }
+
+            // Antwort als KI-Bubble (kurze Bestätigung) plus Entwurfskarte.
+            var kurzText = $"Ich habe einen **{art}**-Entwurf erstellt. Bitte prüfe ihn vor dem Versand.";
+            _history.Add(new ChatMessage("assistant", kurzText));
+            _db.AddChatMessage(_activeMandantId?.ToString() ?? "global", "assistant", kurzText);
+            AppendAiMessage(kurzText);
+
+            var entwurf = new ChatEntwurf("brief", art, "", "", ergebnis.Text);
+            Dispatcher.Invoke(() => EntwurfKarteAnlegen(entwurf, schriftsatz: ergebnis));
+        }
+        catch (Exception ex)
+        {
+            AppendSystemMessage($"Schriftsatz konnte nicht erstellt werden: {ex.Message}");
         }
         finally
         {
@@ -1630,7 +1718,8 @@ document.addEventListener('click', function (e) {{
             Dispatcher.Invoke(() =>
             {
                 panelIndex = _chatHistoryHtml.Count;
-                _chatHistoryHtml.Add(ChatHtmlRenderer.WrapSearchPanel("", laufend: true, modus, gefundenCount: 0));
+                _recherchePanels[panelIndex] = new RecherchePanelDaten("", modus, 0, Laufend: true, null);
+                _chatHistoryHtml.Add(ChatHtmlRenderer.WrapSearchPanel(stepsHtml.ToString(), laufend: true, modus, gefundenCount: 0, panelIndex: panelIndex));
                 RefreshChatWebView();
                 ScrollToBottom();
             });
@@ -1653,7 +1742,10 @@ document.addEventListener('click', function (e) {{
                     stepsHtml.Append(ChatHtmlRenderer.SearchStepRowHtml(evt.Step, evt.Quelle, evt.Text, evt.Confidence, evt.Status));
                     Dispatcher.Invoke(() =>
                     {
-                        _chatHistoryHtml[panelIndex] = ChatHtmlRenderer.WrapSearchPanel(stepsHtml.ToString(), laufend: true, modus, gefundenCount: 0);
+                        _recherchePanels[panelIndex] = new RecherchePanelDaten(
+                            stepsHtml.ToString(), modus, 0, Laufend: true, null);
+                        _chatHistoryHtml[panelIndex] = ChatHtmlRenderer.WrapSearchPanel(
+                            stepsHtml.ToString(), laufend: true, modus, gefundenCount: 0, panelIndex: panelIndex);
                         RefreshChatWebView();
                         ScrollToBottom();
                     });
@@ -1681,7 +1773,10 @@ document.addEventListener('click', function (e) {{
         {
             Dispatcher.Invoke(() =>
             {
-                _chatHistoryHtml[panelIndex] = ChatHtmlRenderer.WrapSearchPanel(stepsHtml.ToString(), laufend: false, modus, gefundenCount);
+                _recherchePanels[panelIndex] = new RecherchePanelDaten(
+                    stepsHtml.ToString(), modus, gefundenCount, Laufend: false, null);
+                _chatHistoryHtml[panelIndex] = ChatHtmlRenderer.WrapSearchPanel(
+                    stepsHtml.ToString(), laufend: false, modus, gefundenCount, panelIndex: panelIndex);
                 RefreshChatWebView();
                 ScrollToBottom();
             });
@@ -1988,6 +2083,20 @@ document.addEventListener('click', function (e) {{
                 return;
             }
 
+            // Task #320: Recherche-Ergebnis-Link im Chat öffnet separates Fenster.
+            if (action == "recherche")
+            {
+                _ = RechercheOeffnenAsync(id);
+                return;
+            }
+
+            // Task #321: Belegprüfung eines aus dem Chat erzeugten Schriftsatzes öffnen.
+            if (action == "belege")
+            {
+                _ = BelegeOeffnenAsync(id);
+                return;
+            }
+
             if (!_karten.TryGetValue(id, out var karte)) return;
 
             switch (action)
@@ -2004,6 +2113,50 @@ document.addEventListener('click', function (e) {{
         {
             AppendSystemMessage($"Aktion fehlgeschlagen: {ex.Message}");
         }
+    }
+
+    /// <summary>Task #320: Klick auf den kompakten Recherche-Link im Chat öffnet
+    /// das separate Recherche-Ergebnis-Fenster mit Suchschritten + anonymisiert
+    /// gesendetem Text.</summary>
+    private async Task RechercheOeffnenAsync(int panelIndex)
+    {
+        if (!_recherchePanels.TryGetValue(panelIndex, out var daten))
+        {
+            AppendSystemMessage("Recherche-Informationen nicht mehr verfügbar.");
+            return;
+        }
+
+        await Task.CompletedTask; // Methode ist UI-synchron
+        Dispatcher.Invoke(() =>
+        {
+            var dialog = new RechercheErgebnisDialog(
+                daten.StepsHtml,
+                daten.Laufend,
+                daten.Modus,
+                daten.GefundenCount,
+                daten.AnonymisiertGesendet)
+            { Owner = this };
+            dialog.Show();
+        });
+    }
+
+    /// <summary>Task #321: Klick auf "Belege ansehen" in einer Schriftsatz-Karte
+    /// öffnet ein separates kleines Fenster mit der Belegprüfung.</summary>
+    private async Task BelegeOeffnenAsync(int kartenId)
+    {
+        if (!_karten.TryGetValue(kartenId, out var karte))
+        {
+            AppendSystemMessage("Beleg-Informationen nicht mehr verfügbar.");
+            return;
+        }
+
+        await Task.CompletedTask;
+        Dispatcher.Invoke(() =>
+        {
+            var dialog = new BelegeDialog(karte.SchriftsatzArt ?? "Schriftsatz", karte.SchriftsatzBelege ?? new List<SchriftsatzChatService.Beleg>())
+            { Owner = this };
+            dialog.Show();
+        });
     }
 
     /// <summary>Task #297 (ersetzt die ältere Task #80-Variante ZeigeQuellenPopupAsync):
@@ -2052,14 +2205,22 @@ document.addEventListener('click', function (e) {{
     /// er sofort in &lt;Mandant&gt;\Entwürfe; eine Überarbeitung (ueberarbeitung="ja"
     /// im Block) ersetzt die vorige Fassung, statt eine weitere Datei anzulegen —
     /// ein neues, anderes Schreiben überschreibt dagegen nie einen vorhandenen
-    /// Entwurf. Ohne Mandant fragt die Karte, wohin.</summary>
+    /// Entwurf. Ohne Mandant fragt die Karte, wohin.
+    /// Task #321: erweitert um Schriftsatz-Metadaten (Art, Belege etc.).</summary>
     private void EntwurfKarteAnlegen(ChatEntwurf daten, bool historie = false, bool mitRefresh = true,
-        double? confidence = null, IReadOnlyList<(string Zitat, int ChunkId)>? quellen = null)
+        double? confidence = null, IReadOnlyList<(string Zitat, int ChunkId)>? quellen = null,
+        SchriftsatzChatService.Ergebnis? schriftsatz = null)
     {
         var karte = new EntwurfKarte
         {
             Id = _karten.Count, Daten = daten, Mandant = _activeMandantName, Historie = historie,
             Confidence = confidence, Quellen = quellen,
+            SchriftsatzArt = schriftsatz?.Art,
+            SchriftsatzBelege = schriftsatz?.Belege,
+            Anweisung = schriftsatz?.Anweisung,
+            SuchEvents = schriftsatz?.SuchEvents,
+            AnonymisiertGesendet = schriftsatz?.AnonymisiertGesendet,
+            SuchModus = schriftsatz?.SuchModus ?? "schnell",
         };
         EntwurfKarte? vorgaenger = null;
         if (!historie && daten.Ueberarbeitung)
@@ -2185,7 +2346,9 @@ document.addEventListener('click', function (e) {{
                 ? _mandanten.Select(m => m.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList()
                 : null,
             Confidence: k.Confidence,
-            Quellen: k.Quellen);
+            Quellen: k.Quellen,
+            BelegeAnsehenMoeglich: k.SchriftsatzBelege is not null && k.SchriftsatzBelege.Count > 0,
+            BelegePanelIndex: -1);
     }
 
     private void KarteZeigen(EntwurfKarte k, bool mitRefresh)

@@ -15,6 +15,10 @@ namespace LexWolf.Services;
 /// Entwurf entstand (0..1); null (z.B. nach Neustart aus der Historie) zeigt kein Badge.</param>
 /// <param name="Quellen">Task #301: geprüfte Zitate mit chunk_id (T#296), analog zu
 /// WrapAiBubble — als klickbare Links, die zur exakten Stelle im Quellentext springen.</param>
+/// <param name="BelegeAnsehenMoeglich">Task #321: true, wenn dieser Entwurf aus einem
+/// Schriftsatz stammt und eine Belegprüfung anzeigbar ist.</param>
+/// <param name="BelegePanelIndex">Task #321: Index in MainWindow._recherchePanels bzw.
+/// -1, wenn kein separates Recherche-Panel vorhanden ist.</param>
 public sealed record EntwurfKarteAnsicht(
     int Id,
     ChatEntwurf Entwurf,
@@ -25,7 +29,9 @@ public sealed record EntwurfKarteAnsicht(
     string? OeffnenLabel,
     IReadOnlyList<string>? MandantAuswahl = null,
     double? Confidence = null,
-    IReadOnlyList<(string Zitat, int ChunkId)>? Quellen = null);
+    IReadOnlyList<(string Zitat, int ChunkId)>? Quellen = null,
+    bool BelegeAnsehenMoeglich = false,
+    int BelegePanelIndex = -1);
 
 /// <summary>
 /// Konvertiert KI-Antwort-Text (Markdown-ähnliche Struktur) in sauberes,
@@ -342,36 +348,61 @@ public static class ChatHtmlRenderer
         return sb.ToString();
     }
 
-    /// <summary>T#309: eingeklappter/aufklappbarer Bereich über der Antwort, der live
-    /// die Schritte der Agentic-Suche (/api/search/stream) zeigt — bleibt während des
-    /// Laufs offen, klappt beim ersten Rendern danach zu (Anwalt kann bei Bedarf
-    /// wieder aufklappen), damit der eigentliche Chat nicht durch den Suchweg
-    /// zugemüllt wird, sobald die Antwort da ist.
+    /// <summary>T#320: kompakter, klickbarer Link im Chat, der ein separates WPF-Fenster
+    /// mit den vollständigen Recherche-Informationen öffnet. Ersetzt den früheren
+    /// aufklappbaren &lt;details class='such-panel'&gt;-Block im Chat-Fließtext.
+    /// <paramref name="panelIndex"/> identifiziert den Eintrag in MainWindow._recherchePanels,
+    /// damit der Klick-Handler die aktuellen Daten (Suchschritte + anonymisiert gesendet)
+    /// an den Dialog übergeben kann.
     /// <paramref name="anonymisiertGesendet"/> (Task #311): der tatsächlich anonymisiert an
-    /// den Server geschickte Text (siehe AnonymisiertGesendetBuilder) — steht als eigener
-    /// Abschnitt unter den Suchschritten, damit der Anwalt nachvollziehen kann, was den PC
-    /// wirklich verlässt (nicht die Original-Eingabe). Null/leer blendet den Abschnitt aus
-    /// (z.B. bevor die erste Nachricht gesendet wurde).</summary>
+    /// den Server geschickte Text — wird im Dialog angezeigt, nicht mehr direkt im Chat.</summary>
     public static string WrapSearchPanel(string stepsHtml, bool laufend, string modus, int gefundenCount,
-        string? anonymisiertGesendet = null)
+        string? anonymisiertGesendet = null, int panelIndex = -1)
     {
         var modusLabel = modus == "tief" ? "tief" : "schnell";
-        string summary;
+        string label;
         if (laufend)
-            summary = $"🔎 Live-Suche läuft … (Modus: {modusLabel})";
+            label = $"🔎 Recherche läuft … (Modus: {modusLabel})";
         else if (gefundenCount > 0)
-            summary = $"🔎 Suche abgeschlossen (Modus: {modusLabel}) — {gefundenCount} Quelle(n) gefunden";
+            label = $"🔎 Recherche ansehen ({gefundenCount} Quelle(n))";
         else
-            summary = $"🔎 Suche abgeschlossen (Modus: {modusLabel}) — keine Quellen gefunden";
+            label = $"🔎 Recherche ansehen (keine Quellen)";
+
+        var tooltip = laufend
+            ? "Recherche läuft noch — Klick öffnet den bisherigen Stand."
+            : "Klick öffnet Suchschritte und anonymisiert gesendeten Text.";
+
+        var button = $"<button class='chat-action-button such-panel-button' " +
+                     $"data-action='recherche' data-msg='{panelIndex}' title='{WebUtility.HtmlEncode(tooltip)}'>" +
+                     $"{WebUtility.HtmlEncode(label)}</button>";
+
+        // T#320: die eigentlichen Suchschritte und der anonymisierte Text stehen
+        // NICHT mehr im Chat, sondern werden im Dialog per PanelIndex nachgeschlagen.
+        return $"<div class='such-panel-compact'>{button}</div>";
+    }
+
+    /// <summary>T#320: baut den Inhalt des Recherche-Ergebnis-Dialogs als HTML.
+    /// Wird von RechercheErgebnisDialog verwendet, um die bisherigen &lt;details&gt;-Inhalte
+    /// formatiert und gut lesbar anzuzeigen.</summary>
+    public static string BuildRechercheDialogHtml(string stepsHtml, bool laufend, string modus, int gefundenCount,
+        string? anonymisiertGesendet)
+    {
+        var modusLabel = modus == "tief" ? "tief" : "schnell";
+        string status;
+        if (laufend)
+            status = $"🔎 Live-Suche läuft … (Modus: {modusLabel})";
+        else if (gefundenCount > 0)
+            status = $"✅ Suche abgeschlossen (Modus: {modusLabel}) — {gefundenCount} Quelle(n) gefunden";
+        else
+            status = $"✅ Suche abgeschlossen (Modus: {modusLabel}) — keine Quellen gefunden";
 
         var anonymHtml = string.IsNullOrWhiteSpace(anonymisiertGesendet)
             ? ""
             : "<div class='such-anonym'><div class='such-anonym-titel'>🔒 Anonymisiert gesendet:</div>" +
               $"<div class='such-anonym-text'>{WebUtility.HtmlEncode(anonymisiertGesendet)}</div></div>";
 
-        var openAttr = laufend ? " open" : "";
-        return $"<details class='such-panel'{openAttr}><summary>{WebUtility.HtmlEncode(summary)}</summary>" +
-               $"<div class='such-liste'>{stepsHtml}</div>{anonymHtml}</details>";
+        return $"<div class='recherche-dialog'><div class='recherche-status'>{WebUtility.HtmlEncode(status)}</div>" +
+               $"<div class='such-liste'>{stepsHtml}</div>{anonymHtml}</div>";
     }
 
     public static string WrapSystemMessage(string text)
@@ -437,6 +468,8 @@ public static class ChatHtmlRenderer
             sb.Append("<div class='ek-aktionen'>");
             if (k.OeffnenLabel is not null)
                 sb.Append($"<button class='chat-action-button primary' data-action='oeffnen' data-msg='{k.Id}'>{H(k.OeffnenLabel)}</button>");
+            if (k.BelegeAnsehenMoeglich)
+                sb.Append($"<button class='chat-action-button' data-action='belege' data-msg='{k.Id}'>📋 Belege ansehen</button>");
             if (k.AblegenMoeglich)
                 sb.Append($"<button class='chat-action-button' data-action='uebernehmen' data-msg='{k.Id}'>📁 In Akte ablegen</button>");
             sb.Append($"<button class='chat-action-button' data-action='kopieren' data-msg='{k.Id}'>Text kopieren</button>");
@@ -532,9 +565,12 @@ public static class ChatHtmlRenderer
 
             .such-panel {{ margin: 8px 8px 12px 8px; border: 1px solid #30363d; border-radius: 8px; background: #161b22; }}
             .such-panel summary {{ cursor: pointer; padding: 10px 14px; color: #c9d1d9; font-size: {_outputFontSize}px; font-weight: 600; list-style: none; }}
-            .such-panel summary::-webkit-details-marker {{ display: none; }}
-            .such-panel[open] summary {{ border-bottom: 1px solid #30363d; }}
-            .such-liste {{ padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }}
+            .such-panel-compact {{ margin: 8px 8px 12px 8px; display: inline-block; }}
+            .such-panel-button {{ display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid #30363d; border-radius: 6px; background: #21262d; color: #c9d1d9; font-size: {_outputFontSize}px; cursor: pointer; }}
+            .such-panel-button:hover {{ background: #30363d; border-color: #58a6ff; color: #e6edf3; }}
+            .recherche-dialog {{ padding: 14px; }}
+            .recherche-status {{ padding: 10px 14px; margin-bottom: 12px; border: 1px solid #30363d; border-radius: 8px; background: #161b22; color: #c9d1d9; font-weight: 600; font-size: {_outputFontSize}px; }}
+            .such-liste {{ display: flex; flex-direction: column; gap: 8px; }}
             .such-schritt {{ border: 1px solid #30363d; border-radius: 6px; padding: 8px 11px; background: #0d1117; }}
             .such-kopf {{ display: flex; align-items: center; gap: 6px; }}
             .such-icon {{ font-size: {Math.Max(13, _outputFontSize + 1)}px; }}
@@ -546,7 +582,7 @@ public static class ChatHtmlRenderer
             .such-schritt.such-fehler .such-quelle {{ color: #f85149; }}
             .such-schritt.such-done .such-quelle {{ color: #3fb950; }}
 
-            .such-anonym {{ margin: 4px 0 0 0; padding: 10px 14px 12px 14px; border-top: 1px solid #30363d; background: rgba(232, 168, 56, 0.06); }}
+            .such-anonym {{ margin: 4px 0 0 0; padding: 10px 14px 12px 14px; border: 1px solid #30363d; border-radius: 8px; background: rgba(232, 168, 56, 0.06); }}
             .such-anonym-titel {{ color: #e8a838; font-weight: 700; font-size: {_outputFontSize}px; margin-bottom: 6px; }}
             .such-anonym-text {{ white-space: pre-wrap; color: #c9d1d9; font-size: {Math.Max(11, _outputFontSize - 1)}px; line-height: 1.5; max-height: 280px; overflow-y: auto; background: #0d1117; border: 1px solid #e8a838; border-radius: 6px; padding: 10px; font-family: Consolas, 'Courier New', monospace; }}
         </style>";
