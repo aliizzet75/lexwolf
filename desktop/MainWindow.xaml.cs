@@ -115,6 +115,11 @@ public partial class MainWindow : Window
     private string? _diktatErwartet;
     private CancellationTokenSource? _loadHistoryCts;
     private System.Collections.ObjectModel.ObservableCollection<Models.FileTreeNode> _fileTreeRoots = new();
+    // T#323: Vom Anwalt im Chat gezielt für die aktuelle Frage ausgewählte Dokumente.
+    private readonly HashSet<string> _chatSelectedPaths = new(StringComparer.OrdinalIgnoreCase);
+    // T#323: Text-Inhalte der ausgewählten Dokumente/Vorlagen, damit auch Einträge,
+    // die nicht in GetDokumenteForMandant enthalten sind (z.B. Vorlagen), eingebaut werden können.
+    private readonly Dictionary<string, string> _chatSelectedText = new(StringComparer.OrdinalIgnoreCase);
 
     public MainWindow()
     {
@@ -1831,9 +1836,25 @@ document.addEventListener('click', function (e) {{
                 // Dokumenten, wo nicht alles gleich relevant für die aktuelle
                 // Frage ist, ohne die übrigen Dokumente komplett auszuschließen.
                 var prioritized = dokumente.Where(d => _prioritizedPaths.Contains(d.Pfad)).ToList();
-                var rest = dokumente.Where(d => !_prioritizedPaths.Contains(d.Pfad)).ToList();
+                var rest = dokumente.Where(d => !_prioritizedPaths.Contains(d.Pfad) && !_chatSelectedPaths.Contains(d.Pfad)).ToList();
+
+                // T#323: Im Chat gezielt ausgewählte Dokumente bekommen einen eigenen,
+                // besonders markierten Abschnitt und ergänzen damit _prioritizedPaths sowie
+                // die restliche Akte — nicht als Ersatz, sondern zusätzlich.
+                var auswahl = dokumente.Where(d => _chatSelectedPaths.Contains(d.Pfad)).ToList();
+                var ausgewaehlteNichtMandanten = _chatSelectedPaths
+                    .Where(p => !dokumente.Any(d => StringComparer.OrdinalIgnoreCase.Equals(d.Pfad, p)))
+                    .Select(p => new { Pfad = p, Titel = Path.GetFileName(p), Text = _chatSelectedText.GetValueOrDefault(p, "") })
+                    .ToList();
 
                 var sections = new List<string>();
+                if (auswahl.Count > 0 || ausgewaehlteNichtMandanten.Count > 0)
+                {
+                    var parts = auswahl.Select(d => $"[{d.Titel}]\n{d.Text}")
+                        .Concat(ausgewaehlteNichtMandanten.Select(d => $"[{d.Titel}]\n{d.Text}"));
+                    sections.Add("Für diese Chat-Frage vom Anwalt ausgewählt:\n\n" +
+                                 string.Join("\n\n---\n\n", parts));
+                }
                 if (prioritized.Count > 0)
                 {
                     var parts = prioritized.Select(d => $"[{d.Titel}]\n{d.Text}");
@@ -2685,6 +2706,40 @@ document.addEventListener('click', function (e) {{
         return parts.Count > 0 ? string.Join("\n\n", parts) : null;
     }
 
+    /// <summary>T#323: Öffnet den Dokumente-Auswahl-Dialog. Ohne aktiven Mandanten
+    /// oder ohne Dokumente passiert nichts.
+    /// Die aktuelle Vorlage (mittels VorlagenOrdner.FindeVorlagenPfad aufgelöst) wird
+    /// optional als separater Eintrag angeboten, falls sie existiert.</summary>
+    private void OnDokumenteAuswahlClick(object sender, RoutedEventArgs e)
+    {
+        if (_activeMandantId is null || _activeMandantId.Length == 0 || _activeMandantName is null)
+        {
+            AppendSystemMessage("Bitte zuerst einen Mandanten auswählen.");
+            return;
+        }
+
+        var gewaehlt = _db.GetLetzteVorlageGlobal();
+        string? vorlagenPfad = gewaehlt is null
+            ? null
+            : VorlagenOrdner.FindeVorlagenPfad(_settings.DokumentePfad, gewaehlt.Value.SchriftsatzTyp, gewaehlt.Value.VorlagePfad);
+
+        var dialog = new DokumenteAuswahlDialog(_db, _activeMandantId, _activeMandantName, vorlagenPfad) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+
+        _chatSelectedPaths.Clear();
+        _chatSelectedText.Clear();
+        foreach (var d in dialog.AusgewaehlteDokumente)
+        {
+            _chatSelectedPaths.Add(d.Pfad);
+            _chatSelectedText[d.Pfad] = d.Text;
+        }
+
+        var zaehler = _chatSelectedPaths.Count;
+        AppendSystemMessage(zaehler == 0
+            ? "Keine zusätzlichen Dokumente für diese Frage ausgewählt."
+            : $"{zaehler} Dokument(e) für diese Chat-Frage ausgewählt.");
+    }
+
     // Task #304/#305: Da der allgemeine Chat hier keinen konkreten Schriftsatz-Typ kennt,
     // wird der Typ aus der über alle Typen hinweg zuletzt bewusst gewählten Vorlage
     // übernommen (GetLetzteVorlageGlobal). Existiert deren Datei nicht mehr (verschoben/
@@ -2701,7 +2756,11 @@ document.addEventListener('click', function (e) {{
             : VorlagenOrdner.FindeVorlagenPfad(_settings.DokumentePfad, gewaehlt.Value.SchriftsatzTyp, gewaehlt.Value.VorlagePfad);
         if (pfad is null) return null;
 
-        var content = File.ReadAllText(pfad, Encoding.UTF8);
+        // Task #323: Das rohe Einlesen kann einen Fehler werfen, wenn die Datei gerade z.B. in
+        // Word offen ist oder von VorlageSpeichernDialog geschrieben wird — VorlagenOrdner.
+        // LiesInhaltOderNull fängt das ab und liefert null statt bis zum globalen
+        // Exception-Handler (App.xaml.cs) durchzulaufen.
+        var content = VorlagenOrdner.LiesInhaltOderNull(pfad);
         return string.IsNullOrWhiteSpace(content) ? null : $"Aktuelle Vorlage auf dem Rechner:\n{content}";
     }
 

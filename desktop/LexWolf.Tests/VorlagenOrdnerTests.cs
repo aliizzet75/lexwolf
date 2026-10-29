@@ -113,6 +113,47 @@ public sealed class VorlagenOrdnerTests : IDisposable
         Assert.Null(fehler);
     }
 
+    // Task #323: GetLatestTemplateContext() rief bislang ungeschützt File.ReadAllText auf —
+    // ist die Vorlagen-Datei z.B. gerade in Word offen oder wird exklusiv geschrieben, wirft
+    // das eine IOException, die ungefangen bis zum globalen Exception-Handler durchlief statt
+    // einer normalen Chat-Antwort ohne Vorlagen-Kontext.
+
+    [Fact]
+    public void LiesInhaltOderNull_Gibt_Inhalt_Zurueck_Wenn_Datei_Lesbar_Ist()
+    {
+        Directory.CreateDirectory(_tmp);
+        var pfad = Path.Combine(_tmp, "lesbar.txt");
+        File.WriteAllText(pfad, "Hallo Vorlage");
+
+        Assert.Equal("Hallo Vorlage", VorlagenOrdner.LiesInhaltOderNull(pfad));
+    }
+
+    [Fact]
+    public void LiesInhaltOderNull_Gibt_Null_Zurueck_Wenn_Datei_Exklusiv_Gesperrt_Ist()
+    {
+        Directory.CreateDirectory(_tmp);
+        var pfad = Path.Combine(_tmp, "gesperrt.txt");
+        File.WriteAllText(pfad, "Inhalt");
+
+        // Simuliert eine Datei, die gerade von Word oder VorlageSpeichernDialog exklusiv
+        // offen gehalten wird (keine gemeinsame Lese-Freigabe) — File.ReadAllText würde hier
+        // eine IOException werfen, wenn sie nicht abgefangen wird.
+        using var exklusiverStream = new FileStream(
+            pfad, FileMode.Open, FileAccess.Read, FileShare.None);
+
+        var ergebnis = VorlagenOrdner.LiesInhaltOderNull(pfad);
+
+        Assert.Null(ergebnis);
+    }
+
+    [Fact]
+    public void LiesInhaltOderNull_Gibt_Null_Zurueck_Wenn_Datei_Nicht_Existiert()
+    {
+        var pfad = Path.Combine(_tmp, "existiert-nicht.txt");
+
+        Assert.Null(VorlagenOrdner.LiesInhaltOderNull(pfad));
+    }
+
     [Fact]
     public void AlsVorlageSpeichern_End_To_End_Schreibt_Datei_Im_Typ_Ordner_Und_Setzt_Letzte_Vorlage()
     {

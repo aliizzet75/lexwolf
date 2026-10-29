@@ -341,6 +341,23 @@
                                 <ProgressBar x:Name="ModellLadeBalken" Height="4" Minimum="0" Maximum="1" Margin="0,4,0,0"
                                              Background="#21262d" BorderThickness="0" Foreground="#e8a838"/>
                             </StackPanel>
+                            <!-- T#323: Dokumente für die aktuelle Frage im Chat
+                                 direkt auswählen — zusätzlich zur automatischen
+                                 Priorisierung per Rechtsklick im Dateibaum. -->
+                            <Button x:Name="ChatDokumenteBtn" Content="📎"
+                                    DockPanel.Dock="Right"
+                                    MinWidth="44"
+                                    Height="36"
+                                    VerticalAlignment="Bottom"
+                                    Click="OnDokumenteAuswahlClick"
+                                    Background="#21262d"
+                                    Foreground="#c9d1d9"
+                                    BorderBrush="#30363d"
+                                    BorderThickness="1"
+                                    FontSize="15"
+                                    Padding="8,5"
+                                    Margin="0,0,8,0"
+                                    ToolTip="Dokumente des Mandanten für diese Chat-Frage auswählen"/>
                             <!-- SendBtn zuerst + Dock=Right, damit InputBox als letztes Kind
                                  (DockPanel-Default LastChildFill=True) den Rest ausfüllt.
                                  Umgekehrte Reihenfolge machte InputBox faktisch unsichtbar,
