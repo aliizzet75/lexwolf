@@ -125,6 +125,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.73.0",
         "Aus Codex-Qualitäts-Review der Suche/RAG-Pipeline, von Claude Code im echten Repo (nicht der alten codex.disabled-Kopie) nachgeprüft und priorisiert. Scope: Testanwalt-Phase, noch keine Kanzlei-/Accou",
     ),
+    (
+        "0.74.0",
+        "Nutzer-Anfrage (2026-10-27): Dark Mode, bewusst einfach gehalten als erster Test fuer den neuen codex_autark-Modus. WICHTIG: LexWolf ist aktuell komplett FEST auf Dunkel-Farben codiert (Hex-Werte dire",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
