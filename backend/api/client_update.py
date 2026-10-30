@@ -145,6 +145,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.78.0",
         "Dokumente: jetzt auch ein ganzer Ordner auswaehlbar, der Inhalt (inkl. Unterordner) wird wie einzeln ausgewaehlte Dateien ins Aktenverzeichnis des Mandanten gelegt. Ausserdem: Dokumente-Auswahl-Fenster hatte noch feste Dunkel-Farben, jetzt auch im Hell-Modus lesbar.",
     ),
+    (
+        "0.79.0",
+        "Tagesueberblick (Fristen/Vorschlaege/Eingaenge) ist jetzt ein eigenes, schliessbares Fenster statt einer dauerhaften Zeile ueber dem Chat. Der Chat-Bereich nutzt jetzt die volle Hoehe bis ganz oben, wenn gerade nichts anderes anzuzeigen ist.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]

@@ -13,7 +13,7 @@
     <RootNamespace>LexWolf</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Version>0.78.0</Version>
+    <Version>0.79.0</Version>
     <ApplicationIcon>Assets\lexwolf.ico</ApplicationIcon>
     <!-- Ermöglicht den Build auf Nicht-Windows-Systemen (Linux-Container/CI). -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
