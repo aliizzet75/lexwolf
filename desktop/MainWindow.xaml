@@ -34,6 +34,7 @@
                                      Foreground="{DynamicResource LwText}">
                             <MenuItem Header="⚙ Einstellungen" Click="OnOpenSettings"/>
                             <MenuItem Header="? Hilfe / Info" Click="OnShowInfo"/>
+                            <MenuItem Header="🔄 Auf Update prüfen" Click="OnUpdatePruefenClick"/>
                             <Separator Background="{DynamicResource LwBorder}"/>
                             <MenuItem Header="🗳️ Features" Click="OnFeatureUebersichtClick"
                                       ToolTip="Eigene Feature-Wünsche und laufende Entwicklungen anzeigen"/>

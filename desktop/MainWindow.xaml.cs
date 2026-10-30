@@ -109,6 +109,7 @@ public partial class MainWindow : Window
     private sealed record RecherchePanelDaten(string StepsHtml, string Modus, int GefundenCount,
         bool Laufend, string? AnonymisiertGesendet);
 
+    private bool _zusammenfassungBusy;
     private readonly DiktatService _diktat = new();
     private bool _diktatBusy;
     private string _diktatVorher = "";
@@ -232,11 +233,21 @@ document.addEventListener('click', function (e) {{
         ChatWebView.NavigateToString(GetChatBaseHtml(sb.ToString()));
     }
 
-    private async Task CheckForUpdateAsync()
+    private async Task CheckForUpdateAsync(bool manuell = false)
     {
         var checker = new UpdateChecker(BackendUrl, _http);
         var update = await checker.CheckForUpdateAsync();
-        if (update is null) return;
+        if (update is null)
+        {
+            // Beim automatischen Check beim Start einfach nichts tun; bei einem bewusst
+            // ausgelösten "Auf Update prüfen" im Menü braucht es eine Rückmeldung — sonst
+            // sieht ein Klick ohne sichtbare Reaktion wie ein Fehler aus.
+            if (manuell)
+                Dispatcher.Invoke(() => System.Windows.MessageBox.Show(
+                    this, "Sie verwenden bereits die aktuelle Version.", "Auf Update prüfen",
+                    MessageBoxButton.OK, MessageBoxImage.Information));
+            return;
+        }
 
         var proceed = false;
         Dispatcher.Invoke(() =>
@@ -390,6 +401,11 @@ document.addEventListener('click', function (e) {{
     private async void OnZusammenfassungClick(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_activeMandantId)) return;
+        // Ohne diese Sperre startete ein zweiter, ungeduldiger Klick während der KI-Anfrage
+        // (die durchaus 1-2 Minuten dauern kann) einen zweiten, parallelen Lauf — wirkte dann
+        // so, als hätte erst der zweite Klick "etwas gebracht".
+        if (_zusammenfassungBusy) return;
+        _zusammenfassungBusy = true;
 
         // Bis die Zusammenfassung da ist: Wolf-Animation über dem Chat.
         ZeigeWolfLoading("Zusammenfassung wird erstellt — bitte warten...");
@@ -411,6 +427,7 @@ document.addEventListener('click', function (e) {{
         }
         finally
         {
+            _zusammenfassungBusy = false;
             VerbergeWolfLoading();
             SetProgressBusy(false);
             SetStatus(true, "Verbunden");
@@ -1498,6 +1515,8 @@ document.addEventListener('click', function (e) {{
         if (InputBox.CaretIndex == InputBox.Text.Length)
             InputBox.ScrollToEnd();
     }
+
+    private void OnUpdatePruefenClick(object sender, RoutedEventArgs e) => _ = CheckForUpdateAsync(manuell: true);
 
     private void OnOverflowClick(object sender, RoutedEventArgs e)
     {

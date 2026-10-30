@@ -56,8 +56,12 @@ public class MandantZusammenfassungService
         }
 
         var zusammenfassung = await GeneriereZusammenfassungAsync(kontext, token).ConfigureAwait(false);
+        // Bei einem Fehlschlag (Timeout, leere KI-Antwort) NICHT cachen — sonst liefert der
+        // nächste Klick bei unveränderten Quellen sofort wieder diesen Fehlertext zurück statt
+        // es noch einmal zu versuchen, und der Anwalt müsste erst Inhalt ändern, um überhaupt
+        // eine echte Zusammenfassung zu bekommen.
         if (string.IsNullOrWhiteSpace(zusammenfassung))
-            zusammenfassung = "Zusammenfassung konnte nicht erzeugt werden.";
+            return "Zusammenfassung konnte nicht erzeugt werden — bitte erneut versuchen.";
 
         await Task.Run(() => _db.UpsertMandantZusammenfassung(mandantId, zusammenfassung, quellenHash), token).ConfigureAwait(false);
         return zusammenfassung;
