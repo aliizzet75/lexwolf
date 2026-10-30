@@ -185,6 +185,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.88.0",
         "Tagesueberblick beim Start deaktiviert. KI-Modell-Einstellung: kein API-Key-Feld mehr, wird jetzt mit Speichern statt eigenem Uebernehmen-Knopf gesichert.",
     ),
+    (
+        "0.89.0",
+        "Zusammenfassung ruft die KI jetzt direkt auf (neuer Endpunkt /akte/zusammenfassung) statt ueber /chat mit kompletter Rechtsrecherche -- schneller und schlug beim ersten Aufruf nach Backend-Neustart nicht mehr fehl.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
