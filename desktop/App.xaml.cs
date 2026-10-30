@@ -22,10 +22,31 @@ public partial class App : WpfApplication
     {
         if (Current is null) return;
         var t = LexWolf.Services.Theme.Aus(dunkel);
+
         Current.Resources["LwFensterHintergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Hintergrund));
         Current.Resources["LwVordergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Vordergrund));
         Current.Resources["LwOberflaeche"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Oberflaeche));
         Current.Resources["LwAkzent"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Akzent));
+        Current.Resources["LwAccent"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Akzent));
+
+        Current.Resources["LwBg"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Bg));
+        Current.Resources["LwPanel"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Panel));
+        Current.Resources["LwRaised"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Raised));
+        Current.Resources["LwBorder"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Border));
+        Current.Resources["LwText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Text));
+        Current.Resources["LwTextStrong"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.TextStrong));
+        Current.Resources["LwMuted"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Muted));
+        Current.Resources["LwRed"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Red));
+        Current.Resources["LwOrange"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Orange));
+        Current.Resources["LwGreen"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Green));
+        Current.Resources["LwBlue"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Blue));
+
+        Current.Resources["LwHerkunftLexWolf"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftLexWolf));
+        Current.Resources["LwHerkunftLexWolfHintergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftLexWolfHintergrund));
+        Current.Resources["LwHerkunftLexWolfText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftLexWolfText));
+        Current.Resources["LwHerkunftAnwalt"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftAnwalt));
+        Current.Resources["LwHerkunftAnwaltHintergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftAnwaltHintergrund));
+        Current.Resources["LwHerkunftAnwaltText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftAnwaltText));
     }
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)

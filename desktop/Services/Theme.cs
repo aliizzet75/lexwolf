@@ -1,15 +1,77 @@
 namespace LexWolf.Services;
 
 /// <summary>
-/// Die vier Kernfarben der Oberfläche für Hell/Dunkel. Landen als Ressourcen
-/// LwFensterHintergrund/LwVordergrund/LwOberflaeche/LwAkzent in App.xaml und
-/// werden per DynamicResource verwendet (App.SetzeTheme setzt sie um).
+/// Vollständige Farbpalette der Oberfläche für Hell/Dunkel. Landen als Ressourcen
+/// in App.xaml und werden per DynamicResource verwendet (App.SetzeTheme setzt sie um).
 /// Bewusst nur Hex-Strings statt System.Windows.Media.Color, damit diese Datei
 /// ohne WPF-Referenz testbar bleibt (wie Schriftgroessen.cs).
 /// </summary>
-public readonly record struct Theme(string Hintergrund, string Vordergrund, string Oberflaeche, string Akzent)
+public readonly record struct Theme(
+    string Hintergrund,
+    string Vordergrund,
+    string Oberflaeche,
+    string Akzent,
+    string Bg,
+    string Panel,
+    string Raised,
+    string Border,
+    string Text,
+    string TextStrong,
+    string Muted,
+    string Red,
+    string Orange,
+    string Green,
+    string Blue,
+    string HerkunftLexWolf,
+    string HerkunftLexWolfHintergrund,
+    string HerkunftLexWolfText,
+    string HerkunftAnwalt,
+    string HerkunftAnwaltHintergrund,
+    string HerkunftAnwaltText)
 {
     public static Theme Aus(bool dunkel) => dunkel
-        ? new Theme(Hintergrund: "#0d1117", Vordergrund: "#c9d1d9", Oberflaeche: "#161b22", Akzent: "#e8a838")
-        : new Theme(Hintergrund: "#ffffff", Vordergrund: "#1b1f24", Oberflaeche: "#f0f2f5", Akzent: "#b36b0f");
+        ? new Theme(
+            Hintergrund: "#0d1117",
+            Vordergrund: "#c9d1d9",
+            Oberflaeche: "#161b22",
+            Akzent: "#e8a838",
+            Bg: "#0d1117",
+            Panel: "#161b22",
+            Raised: "#21262d",
+            Border: "#30363d",
+            Text: "#c9d1d9",
+            TextStrong: "#e6edf3",
+            Muted: "#8b949e",
+            Red: "#f85149",
+            Orange: "#d29922",
+            Green: "#3fb950",
+            Blue: "#58a6ff",
+            HerkunftLexWolf: "#c48f2c",
+            HerkunftLexWolfHintergrund: "#2a2111",
+            HerkunftLexWolfText: "#e8a838",
+            HerkunftAnwalt: "#3b7dd8",
+            HerkunftAnwaltHintergrund: "#0f1c30",
+            HerkunftAnwaltText: "#79b8ff")
+        : new Theme(
+            Hintergrund: "#ffffff",
+            Vordergrund: "#1b1f24",
+            Oberflaeche: "#f0f2f5",
+            Akzent: "#b36b0f",
+            Bg: "#ffffff",
+            Panel: "#f6f8fa",
+            Raised: "#eef1f4",
+            Border: "#d1d9e0",
+            Text: "#1f2328",
+            TextStrong: "#0d1117",
+            Muted: "#59636e",
+            Red: "#cf222e",
+            Orange: "#9a6700",
+            Green: "#1a7f37",
+            Blue: "#0969da",
+            HerkunftLexWolf: "#9e6a03",
+            HerkunftLexWolfHintergrund: "#fff8c5",
+            HerkunftLexWolfText: "#7a4f08",
+            HerkunftAnwalt: "#0550ae",
+            HerkunftAnwaltHintergrund: "#ddf4ff",
+            HerkunftAnwaltText: "#0969da");
 }
