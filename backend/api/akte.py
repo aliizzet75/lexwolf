@@ -151,6 +151,33 @@ async def analyse(req: AnalyseRequest):
     return daten
 
 
+# ----------------------------------------------------------------- Mandanten-Zusammenfassung
+
+class ZusammenfassungRequest(BaseModel):
+    kontext: str
+
+
+@router.post("/zusammenfassung")
+async def zusammenfassung(req: ZusammenfassungRequest):
+    """Direkter ask_llm()-Aufruf ohne die Suche/RAG-Pipeline und den LLM-Judge aus /chat
+    (HybridSearchService, Belegprüfung, Qualitätsbewertung) — der Kontext (Chat, Notizen,
+    Dokumente) liegt hier bereits vollständig vor, eine Rechtsrecherche ist nicht nötig.
+    Über /chat dauerte eine Zusammenfassung dadurch unnötig lange und schlug beim ersten
+    Aufruf nach einem Backend-Neustart teils fehl, weil dort zusätzlich die Suchmodelle
+    (Embeddings, Reranker) sowie die Neo4j-Verbindung erst kalt initialisiert wurden."""
+    prompt = (
+        "Erstelle eine übersichtliche, aber vollständige Zusammenfassung für den Anwalt "
+        "aus folgenden Quellen (Chat, Notizen, Dokumente). "
+        "Struktur: 1) Aktueller Stand, 2) Offene Punkte, 3) Nächste Schritte.\n\n" + req.kontext
+    )
+    try:
+        content = await asyncio.to_thread(ask_llm, prompt, max_tokens=2000, rolle="chat")
+    except Exception as e:
+        logger.error(f"Zusammenfassung fehlgeschlagen: {e}")
+        raise HTTPException(status_code=502, detail="KI-Zusammenfassung fehlgeschlagen")
+    return {"content": content}
+
+
 # ----------------------------------------------------------------- Belegprüfung
 
 _PARAGRAPH_ZITAT = re.compile(

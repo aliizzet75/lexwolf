@@ -151,22 +151,15 @@ public class MandantZusammenfassungService
     {
         try
         {
-            var payload = JsonSerializer.Serialize(new
-            {
-                messages = new[]
-                {
-                    new
-                    {
-                        role = "user",
-                        content = "Erstelle eine übersichtliche, aber vollständige Zusammenfassung für den Anwalt " +
-                                   "aus folgenden Quellen (Chat, Notizen, Dokumente). " +
-                                   "Struktur: 1) Aktueller Stand, 2) Offene Punkte, 3) Nächste Schritte.\n\n" + kontext
-                    }
-                }
-            });
+            // /akte/zusammenfassung statt /chat: ruft die KI direkt ohne Rechtsrecherche
+            // (Suche, Neo4j, LLM-Judge) auf — der Kontext liegt hier schon vollständig vor.
+            // Über /chat dauerte das unnötig lange und schlug beim ersten Aufruf nach einem
+            // Backend-Neustart öfter fehl, weil zusätzlich die Suchmodelle und die
+            // Neo4j-Verbindung kalt initialisiert werden mussten.
+            var payload = JsonSerializer.Serialize(new { kontext });
             using var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
 
-            var response = await _http.PostAsync($"{_backendUrl}/chat", httpContent, token).ConfigureAwait(false);
+            var response = await _http.PostAsync($"{_backendUrl}/akte/zusammenfassung", httpContent, token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
 
