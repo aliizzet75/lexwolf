@@ -137,6 +137,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.76.0",
         "Analyse-Status sammelte sich unbegrenzt ueber dem Chat an - jetzt wird nur der laufende Scan kurz angezeigt, 'fertig' erscheint gar nicht mehr. Recherche-Fenster zeigte bei Fehlern/leeren Ergebnissen nur eine leere Flaeche ohne Hinweis - jetzt mit klarer Meldung.",
     ),
+    (
+        "0.77.0",
+        "Echtes Hell/Dunkel-Theme: alle Texte in beiden Modi lesbar - vollstaendige Farbpalette statt nur 4 Kernfarben, alle Dialoge umgestellt, Chat-Inhalt (WebView2) faerbt sich jetzt beim Umschalten sofort mit um statt dauerhaft dunkel zu bleiben.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
