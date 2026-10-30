@@ -1,27 +1,98 @@
-using System;
-using System.Drawing;
-
 namespace LexWolf.Services;
 
 /// <summary>
-/// Farbwerte der Oberfläche, abgeleitet aus dem gewählten Helligkeitsmodus.
-/// Die Werte landen als Ressourcen LwFensterHintergrund/LwVordergrund/LwOberflaeche/LwAkzent
-/// in App.xaml und werden per DynamicResource verwendet.
+/// Vollständige Farbpalette der Oberfläche für Hell/Dunkel. Landen als Ressourcen
+/// in App.xaml und werden per DynamicResource verwendet (App.SetzeTheme setzt sie um).
+/// Bewusst nur Hex-Strings statt System.Windows.Media.Color, damit diese Datei
+/// ohne WPF-Referenz testbar bleibt (wie Schriftgroessen.cs).
 /// </summary>
-public readonly record struct Theme(Color Hintergrund, Color Vordergrund, Color Oberflaeche, Color Akzent)
+public readonly record struct Theme(
+    string Hintergrund,
+    string Vordergrund,
+    string Oberflaeche,
+    string Akzent,
+    string Bg,
+    string Panel,
+    string Raised,
+    string Border,
+    string Text,
+    string TextStrong,
+    string Muted,
+    string Red,
+    string Orange,
+    string Green,
+    string Blue,
+    string HerkunftLexWolf,
+    string HerkunftLexWolfHintergrund,
+    string HerkunftLexWolfText,
+    string HerkunftAnwalt,
+    string HerkunftAnwaltHintergrund,
+    string HerkunftAnwaltText,
+    string StatusBadgeText,
+    string Primary,
+    string PrimaryHover,
+    string PrimaryPressed,
+    string DisabledText,
+    string AnonymisiertHintergrund,
+    string AnonymisiertText)
 {
-    public static Theme Aus(bool dunkel)
-    {
-        return dunkel
-            ? new Theme(
-                Hintergrund: ColorTranslator.FromHtml("#0d1117"),
-                Vordergrund: ColorTranslator.FromHtml("#c9d1d9"),
-                Oberflaeche: ColorTranslator.FromHtml("#161b22"),
-                Akzent: ColorTranslator.FromHtml("#e8a838"))
-            : new Theme(
-                Hintergrund: ColorTranslator.FromHtml("#ffffff"),
-                Vordergrund: ColorTranslator.FromHtml("#1b1f24"),
-                Oberflaeche: ColorTranslator.FromHtml("#f0f2f5"),
-                Akzent: ColorTranslator.FromHtml("#b36b0f"));
-    }
+    public static Theme Aus(bool dunkel) => dunkel
+        ? new Theme(
+            Hintergrund: "#0d1117",
+            Vordergrund: "#c9d1d9",
+            Oberflaeche: "#161b22",
+            Akzent: "#e8a838",
+            Bg: "#0d1117",
+            Panel: "#161b22",
+            Raised: "#21262d",
+            Border: "#30363d",
+            Text: "#c9d1d9",
+            TextStrong: "#e6edf3",
+            Muted: "#8b949e",
+            Red: "#f85149",
+            Orange: "#d29922",
+            Green: "#3fb950",
+            Blue: "#58a6ff",
+            HerkunftLexWolf: "#c48f2c",
+            HerkunftLexWolfHintergrund: "#2a2111",
+            HerkunftLexWolfText: "#e8a838",
+            HerkunftAnwalt: "#3b7dd8",
+            HerkunftAnwaltHintergrund: "#0f1c30",
+            HerkunftAnwaltText: "#79b8ff",
+            StatusBadgeText: "#0d1117",
+            Primary: "#1f6feb",
+            PrimaryHover: "#388bfd",
+            PrimaryPressed: "#1158c7",
+            DisabledText: "#6e7681",
+            AnonymisiertHintergrund: "#1a1608",
+            AnonymisiertText: "#ffffff")
+        : new Theme(
+            Hintergrund: "#ffffff",
+            Vordergrund: "#1b1f24",
+            Oberflaeche: "#f0f2f5",
+            Akzent: "#b36b0f",
+            Bg: "#ffffff",
+            Panel: "#f6f8fa",
+            Raised: "#eef1f4",
+            Border: "#d1d9e0",
+            Text: "#1f2328",
+            TextStrong: "#0d1117",
+            Muted: "#59636e",
+            Red: "#cf222e",
+            Orange: "#9a6700",
+            Green: "#1a7f37",
+            Blue: "#0969da",
+            HerkunftLexWolf: "#9e6a03",
+            HerkunftLexWolfHintergrund: "#fff8c5",
+            HerkunftLexWolfText: "#7a4f08",
+            HerkunftAnwalt: "#0550ae",
+            HerkunftAnwaltHintergrund: "#ddf4ff",
+            HerkunftAnwaltText: "#0969da",
+            StatusBadgeText: "#0d1117",
+            Primary: "#0969da",
+            PrimaryHover: "#4097ff",
+            PrimaryPressed: "#0757bd",
+            DisabledText: "#59636e",
+            AnonymisiertHintergrund: "#1a1608",
+            AnonymisiertText: "#ffffff");
 }

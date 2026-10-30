@@ -5,14 +5,14 @@
         Icon="/Assets/lexwolf.ico"
         Width="640" Height="620"
         MinWidth="480" MinHeight="440"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
 
     <Window.Resources>
         <Style x:Key="PrimaryBtn" TargetType="Button">
-            <Setter Property="Background"        Value="#1f6feb"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPrimary}"/>
             <Setter Property="Foreground"        Value="White"/>
             <Setter Property="BorderThickness"   Value="0"/>
             <Setter Property="Padding"           Value="16,7"/>
@@ -27,14 +27,14 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#388bfd"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1158c7"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="#30363d"/>
-                                <Setter Property="Foreground" Value="#6e7681"/>
+                                <Setter Property="Background" Value="{DynamicResource LwBorder}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwDisabledText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -44,8 +44,8 @@
 
         <Style x:Key="GhostBtn" TargetType="Button">
             <Setter Property="Background"        Value="Transparent"/>
-            <Setter Property="Foreground"        Value="#8b949e"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwMuted}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="16,7"/>
             <Setter Property="FontSize"          Value="12"/>
@@ -61,8 +61,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#c9d1d9"/>
+                                <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -71,21 +71,21 @@
         </Style>
 
         <Style x:Key="ChatInput" TargetType="TextBox">
-            <Setter Property="Background"        Value="#161b22"/>
-            <Setter Property="Foreground"        Value="#c9d1d9"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPanel}"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="10,8"/>
             <Setter Property="FontSize"          Value="13"/>
-            <Setter Property="CaretBrush"        Value="#c9d1d9"/>
+            <Setter Property="CaretBrush"        Value="{DynamicResource LwText}"/>
             <Setter Property="TextWrapping"      Value="Wrap"/>
             <Setter Property="AcceptsReturn"     Value="False"/>
         </Style>
 
         <Style x:Key="DarkComboBox" TargetType="ComboBox">
-            <Setter Property="Background"        Value="#161b22"/>
-            <Setter Property="Foreground"        Value="#c9d1d9"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPanel}"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="8,4"/>
             <Setter Property="FontSize"          Value="13"/>
@@ -103,9 +103,9 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,10">
-            <TextBlock Text="💬 Feedback / Fehler melden" Foreground="#e6edf3" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="💬 Feedback / Fehler melden" Foreground="{DynamicResource LwTextStrong}" FontSize="15" FontWeight="SemiBold"/>
             <TextBlock Text="Teile uns mit, was LexWolf besser machen kann — oder melde einen Fehler."
-                       Foreground="#8b949e" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                       Foreground="{DynamicResource LwMuted}" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,0,0,10">
@@ -113,7 +113,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="Typ:" Foreground="#8b949e" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBlock Grid.Column="0" Text="Typ:" Foreground="{DynamicResource LwMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
             <ComboBox x:Name="FeedbackTypBox" Grid.Column="1" Style="{StaticResource DarkComboBox}" SelectionChanged="OnFeedbackTypChanged">
                 <ComboBoxItem Content="Feature-Wunsch" Tag="feature" IsSelected="True"/>
                 <ComboBoxItem Content="Fehler melden" Tag="bug"/>
@@ -121,13 +121,13 @@
         </Grid>
 
         <StackPanel x:Name="BugFieldsPanel" Grid.Row="2" Margin="0,0,0,10" Visibility="Collapsed">
-            <TextBlock Text="🐞 Fehlerdetails" Foreground="#e6edf3" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="🐞 Fehlerdetails" Foreground="{DynamicResource LwTextStrong}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Client-Version:" Foreground="#8b949e" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Grid.Column="0" Text="Client-Version:" Foreground="{DynamicResource LwMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <TextBox x:Name="ClientVersionBox" Grid.Column="1" Style="{StaticResource ChatInput}" Padding="8,5"/>
             </Grid>
             <Grid Margin="0,0,0,8">
@@ -135,7 +135,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Betroffene Stelle:" Foreground="#8b949e" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Grid.Column="0" Text="Betroffene Stelle:" Foreground="{DynamicResource LwMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <ComboBox x:Name="AffectedUiBox" Grid.Column="1" Style="{StaticResource DarkComboBox}" IsEditable="True">
                     <ComboBoxItem Content="Dialog / Fenster"/>
                     <ComboBoxItem Content="Hauptfenster / Chat"/>
@@ -144,19 +144,19 @@
                     <ComboBoxItem Content="Sonstige Maske / View"/>
                 </ComboBox>
             </Grid>
-            <TextBlock Text="Reproduktionsschritte:" Foreground="#8b949e" FontSize="12" Margin="0,0,0,4"/>
+            <TextBlock Text="Reproduktionsschritte:" Foreground="{DynamicResource LwMuted}" FontSize="12" Margin="0,0,0,4"/>
             <TextBox x:Name="ReproStepsBox" Style="{StaticResource ChatInput}" Height="90"
                      AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                      ToolTip="Beschreibe Schritt für Schritt, wie der Fehler reproduziert werden kann"/>
 
-            <TextBlock Text="Screenshot:" Foreground="#8b949e" FontSize="12" Margin="0,12,0,4"/>
+            <TextBlock Text="Screenshot:" Foreground="{DynamicResource LwMuted}" FontSize="12" Margin="0,12,0,4"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                 <Button x:Name="PasteScreenshotBtn" Content="📋 Aus Zwischenablage einfügen (Strg+V)"
                         Style="{StaticResource GhostBtn}" Click="OnPasteScreenshot" Margin="0,0,8,0"/>
                 <Button x:Name="FileScreenshotBtn" Content="📁 Datei auswählen"
                         Style="{StaticResource GhostBtn}" Click="OnSelectScreenshotFile"/>
             </StackPanel>
-            <Border x:Name="ScreenshotPreviewBorder" Background="#161b22" BorderBrush="#30363d" BorderThickness="1"
+            <Border x:Name="ScreenshotPreviewBorder" Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1"
                     CornerRadius="8" Padding="6" Margin="0,0,0,8" Visibility="Collapsed">
                 <StackPanel>
                     <Grid>
@@ -166,7 +166,7 @@
                                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="4"
                                 Padding="8,4" FontSize="11"/>
                     </Grid>
-                    <TextBlock x:Name="ScreenshotInfo" Foreground="#8b949e" FontSize="11" Margin="4,4,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="ScreenshotInfo" Foreground="{DynamicResource LwMuted}" FontSize="11" Margin="4,4,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
         </StackPanel>
@@ -177,13 +177,13 @@
             <StackPanel x:Name="ChatPanel" Margin="0,0,4,0"/>
         </ScrollViewer>
 
-        <Border x:Name="SummaryPanel" Grid.Row="4" Background="#161b22"
-                BorderBrush="#30363d" BorderThickness="1" CornerRadius="8"
+        <Border x:Name="SummaryPanel" Grid.Row="4" Background="{DynamicResource LwPanel}"
+                BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" CornerRadius="8"
                 Padding="14,12" Margin="0,10,0,0" Visibility="Collapsed">
             <StackPanel>
-                <TextBlock Text="Zusammenfassung — passt das so?" Foreground="#e6edf3"
+                <TextBlock Text="Zusammenfassung — passt das so?" Foreground="{DynamicResource LwTextStrong}"
                            FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                <TextBlock x:Name="SummaryText" Foreground="#c9d1d9" FontSize="12"
+                <TextBlock x:Name="SummaryText" Foreground="{DynamicResource LwText}" FontSize="12"
                            TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="RejectSummaryBtn" Content="Nein, weiter klären"

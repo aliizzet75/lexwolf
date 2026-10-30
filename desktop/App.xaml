@@ -11,20 +11,52 @@
         <sys:Double x:Key="LwSchriftGross">15</sys:Double>
         <sys:Double x:Key="LwSchriftTitel">19</sys:Double>
 
-        <!-- Hauptfarben: werden beim Start und bei Theme-Umschaltung neu gesetzt
-             (App.SetzeTheme). Immer per DynamicResource verwenden. -->
+        <!-- Theme-Kernfarben: werden beim Start und beim Umschalten in den Einstellungen
+             aus AppSettings.DunkelModus neu gesetzt (App.SetzeTheme). Dunkel-Default hier,
+             damit bestehende Nutzer vor dem ersten Start kein Flackern sehen. Immer per
+             DynamicResource verwenden. -->
         <SolidColorBrush x:Key="LwFensterHintergrund" Color="#0d1117"/>
         <SolidColorBrush x:Key="LwVordergrund" Color="#c9d1d9"/>
         <SolidColorBrush x:Key="LwOberflaeche" Color="#161b22"/>
         <SolidColorBrush x:Key="LwAkzent" Color="#e8a838"/>
+
+        <!-- Vollständige Theme-Farbpalette: alle Werte werden von App.SetzeTheme überschrieben.
+             Die statischen Defaults unten dienen als Fallback vor dem ersten Theme-Set. -->
+        <SolidColorBrush x:Key="LwBg" Color="#0d1117"/>
+        <SolidColorBrush x:Key="LwPanel" Color="#161b22"/>
+        <SolidColorBrush x:Key="LwRaised" Color="#21262d"/>
+        <SolidColorBrush x:Key="LwBorder" Color="#30363d"/>
+        <SolidColorBrush x:Key="LwText" Color="#c9d1d9"/>
+        <SolidColorBrush x:Key="LwTextStrong" Color="#e6edf3"/>
+        <SolidColorBrush x:Key="LwMuted" Color="#8b949e"/>
+        <SolidColorBrush x:Key="LwRed" Color="#f85149"/>
+        <SolidColorBrush x:Key="LwOrange" Color="#d29922"/>
+        <SolidColorBrush x:Key="LwGreen" Color="#3fb950"/>
+        <SolidColorBrush x:Key="LwBlue" Color="#58a6ff"/>
+
+        <!-- Herkunfts-Farben werden ebenfalls theme-abhängig gesetzt, bleiben aber semantisch
+             als LexWolf-/Anwalt-Kennzeichnung erhalten. -->
+        <SolidColorBrush x:Key="LwHerkunftLexWolf" Color="#c48f2c"/>
+        <SolidColorBrush x:Key="LwHerkunftLexWolfHintergrund" Color="#2a2111"/>
+        <SolidColorBrush x:Key="LwHerkunftLexWolfText" Color="#e8a838"/>
+        <SolidColorBrush x:Key="LwHerkunftAnwalt" Color="#3b7dd8"/>
+        <SolidColorBrush x:Key="LwHerkunftAnwaltHintergrund" Color="#0f1c30"/>
+        <SolidColorBrush x:Key="LwHerkunftAnwaltText" Color="#79b8ff"/>
+        <SolidColorBrush x:Key="LwStatusBadgeText" Color="#0d1117"/>
+        <SolidColorBrush x:Key="LwPrimary" Color="#1f6feb"/>
+        <SolidColorBrush x:Key="LwPrimaryHover" Color="#388bfd"/>
+        <SolidColorBrush x:Key="LwPrimaryPressed" Color="#1158c7"/>
+        <SolidColorBrush x:Key="LwDisabledText" Color="#6e7681"/>
+        <SolidColorBrush x:Key="LwAnonymisiertHintergrund" Color="#1a1608"/>
+        <SolidColorBrush x:Key="LwAnonymisiertText" Color="#ffffff"/>
 
         <!-- Dark-Theme ComboBox: die Standard-Vorlage ignoriert Background/Foreground
              für Popup und Chrome weitgehend — ohne eigenes ControlTemplate wirkt sie
              auf dunklem Grund ausgegraut / kaum lesbar. Auf Application-Ebene, damit
              MainWindow und alle Dialogs (z.B. SettingsDialog) sie referenzieren können. -->
         <Style x:Key="DarkComboBoxItemStyle" TargetType="ComboBoxItem">
-            <Setter Property="Background" Value="#161b22"/>
-            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="Background" Value="{DynamicResource LwPanel}"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
             <Setter Property="Padding" Value="8,5"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -34,11 +66,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#30363d"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwBorder}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#e8a838"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwAkzent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -47,9 +79,9 @@
         </Style>
 
         <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
-            <Setter Property="Background" Value="#0d1117"/>
-            <Setter Property="Foreground" Value="#c9d1d9"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
             <Setter Property="Padding" Value="8,5"/>
@@ -80,7 +112,7 @@
                                 </ToggleButton.Template>
                             </ToggleButton>
 
-                            <TextBlock Grid.Column="1" Text="▾" Foreground="#8b949e" FontSize="{DynamicResource LwSchriftNormal}" Margin="4,0,8,0"
+                            <TextBlock Grid.Column="1" Text="▾" Foreground="{DynamicResource LwMuted}" FontSize="{DynamicResource LwSchriftNormal}" Margin="4,0,8,0"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        IsHitTestVisible="False"/>
 
@@ -108,7 +140,7 @@
                                    AllowsTransparency="True"
                                    Focusable="False"
                                    PopupAnimation="None">
-                                <Border Background="#161b22" BorderBrush="#30363d" BorderThickness="1"
+                                <Border Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1"
                                         MaxHeight="240"
                                         Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -130,29 +162,11 @@
 
         <!-- Gemeinsame Stile für Akten-Funktionen (Fristen, Eingang, Rechner …).
              Bewusst mit Schlüssel statt implizit, damit bestehende Fenster unverändert bleiben. -->
-        <SolidColorBrush x:Key="LwBg" Color="#0d1117"/>
-        <SolidColorBrush x:Key="LwPanel" Color="#161b22"/>
-        <SolidColorBrush x:Key="LwRaised" Color="#21262d"/>
-        <SolidColorBrush x:Key="LwBorder" Color="#30363d"/>
-        <SolidColorBrush x:Key="LwText" Color="#c9d1d9"/>
-        <SolidColorBrush x:Key="LwTextStrong" Color="#e6edf3"/>
-        <SolidColorBrush x:Key="LwMuted" Color="#8b949e"/>
-        <SolidColorBrush x:Key="LwAccent" Color="#e8a838"/>
-        <SolidColorBrush x:Key="LwRed" Color="#f85149"/>
-        <SolidColorBrush x:Key="LwOrange" Color="#d29922"/>
-        <SolidColorBrush x:Key="LwGreen" Color="#3fb950"/>
-        <SolidColorBrush x:Key="LwBlue" Color="#58a6ff"/>
-        <SolidColorBrush x:Key="LwHerkunftLexWolf" Color="#c48f2c"/>
-        <SolidColorBrush x:Key="LwHerkunftLexWolfHintergrund" Color="#2a2111"/>
-        <SolidColorBrush x:Key="LwHerkunftLexWolfText" Color="#e8a838"/>
-        <SolidColorBrush x:Key="LwHerkunftAnwalt" Color="#3b7dd8"/>
-        <SolidColorBrush x:Key="LwHerkunftAnwaltHintergrund" Color="#0f1c30"/>
-        <SolidColorBrush x:Key="LwHerkunftAnwaltText" Color="#79b8ff"/>
 
         <Style x:Key="LwButton" TargetType="Button">
-            <Setter Property="Background" Value="#21262d"/>
-            <Setter Property="Foreground" Value="#c9d1d9"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="14,7"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
@@ -168,7 +182,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#30363d"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwBorder}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
@@ -180,16 +194,16 @@
         </Style>
 
         <Style x:Key="LwPrimaryButton" TargetType="Button" BasedOn="{StaticResource LwButton}">
-            <Setter Property="Background" Value="#238636"/>
-            <Setter Property="BorderBrush" Value="#2ea043"/>
+            <Setter Property="Background" Value="{DynamicResource LwGreen}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwGreen}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
 
         <!-- Endgültige, gefährliche Aktion (Löschen) -->
         <Style x:Key="LwGefahrButton" TargetType="Button" BasedOn="{StaticResource LwButton}">
-            <Setter Property="Background" Value="#b62324"/>
-            <Setter Property="BorderBrush" Value="#f85149"/>
+            <Setter Property="Background" Value="{DynamicResource LwRed}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwRed}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
@@ -201,7 +215,7 @@
 
         <!-- Unauffälliger Text-Knopf, z. B. „alle / keine“ -->
         <Style x:Key="LwLinkButton" TargetType="Button">
-            <Setter Property="Foreground" Value="#58a6ff"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwBlue}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftKlein}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -219,10 +233,10 @@
         </Style>
 
         <Style x:Key="LwTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#0d1117"/>
-            <Setter Property="Foreground" Value="#e6edf3"/>
-            <Setter Property="CaretBrush" Value="#e6edf3"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwTextStrong}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource LwTextStrong}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
@@ -237,7 +251,7 @@
                     <Setter Property="BorderBrush" Value="{StaticResource LwHerkunftAnwalt}"/>
                 </Trigger>
                 <Trigger Property="IsKeyboardFocused" Value="True">
-                    <Setter Property="BorderBrush" Value="#e8a838"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource LwAkzent}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -259,31 +273,31 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-            <Setter Property="Background" Value="#161b22"/>
+            <Setter Property="Background" Value="{DynamicResource LwPanel}"/>
         </Style>
 
         <!-- Feldbeschriftung über einem Eingabefeld -->
         <Style x:Key="LwLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#9da7b3"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwMuted}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftKlein}"/>
             <Setter Property="Margin" Value="0,12,0,4"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
         <Style x:Key="LwHeading" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#e6edf3"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwTextStrong}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftGross}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
 
         <!-- Dialogkopf: Titel + darunter der Mandant -->
         <Style x:Key="LwDialogTitel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#e6edf3"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwTextStrong}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftTitel}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
         <Style x:Key="LwDialogUntertitel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#e8a838"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwAkzent}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
             <Setter Property="Margin" Value="0,2,0,0"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -291,7 +305,7 @@
 
         <!-- Abschnitt innerhalb eines Dialogs, z. B. „1  Was soll hinein?“ -->
         <Style x:Key="LwAbschnitt" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#e6edf3"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwTextStrong}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftGross}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -299,8 +313,8 @@
 
         <!-- Runde Schrittnummer vor einem Abschnittstitel -->
         <Style x:Key="LwSchritt" TargetType="Border">
-            <Setter Property="Background" Value="#3a2d12"/>
-            <Setter Property="BorderBrush" Value="#e8a838"/>
+            <Setter Property="Background" Value="{DynamicResource LwPanel}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwAkzent}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="11"/>
             <Setter Property="MinWidth" Value="24"/>
@@ -310,7 +324,7 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="LwSchrittText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#e8a838"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwAkzent}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftKlein}"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -319,7 +333,7 @@
 
         <!-- Kurzer, gut lesbarer Erklärtext -->
         <Style x:Key="LwHinweis" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#9da7b3"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwMuted}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftKlein}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="LineHeight" Value="{DynamicResource LwSchriftGross}"/>
@@ -327,15 +341,15 @@
 
         <!-- Normaler Fließtext in Listen und Karten -->
         <Style x:Key="LwFliesstext" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
         <!-- Karte: abgesetzte Fläche für einen Abschnitt -->
         <Style x:Key="LwKarte" TargetType="Border">
-            <Setter Property="Background" Value="#161b22"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwPanel}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="16,14"/>
@@ -343,8 +357,8 @@
 
         <!-- Eintrag in einer Liste innerhalb einer Karte -->
         <Style x:Key="LwEintrag" TargetType="Border">
-            <Setter Property="Background" Value="#0d1117"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="10,8"/>
@@ -353,26 +367,26 @@
 
         <!-- Zähler neben einer Überschrift, z. B. „3“ -->
         <Style x:Key="LwZaehler" TargetType="Border">
-            <Setter Property="Background" Value="#21262d"/>
+            <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
             <Setter Property="CornerRadius" Value="9"/>
             <Setter Property="Padding" Value="8,1"/>
             <Setter Property="Margin" Value="8,0,0,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="LwZaehlerText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#9da7b3"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwMuted}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftKlein}"/>
         </Style>
 
         <!-- Fußleiste eines Dialogs: Status links, Knöpfe rechts -->
         <Style x:Key="LwFussleiste" TargetType="Border">
-            <Setter Property="Background" Value="#161b22"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwPanel}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="0,1,0,0"/>
             <Setter Property="Padding" Value="24,12"/>
         </Style>
         <Style x:Key="LwStatus" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#9da7b3"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwMuted}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -381,7 +395,7 @@
 
         <!-- Dunkles Häkchen, wächst mit der Schrift (die Windows-Vorlage bleibt klein und weiß) -->
         <Style x:Key="LwCheckBox" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
             <Setter Property="Margin" Value="0,4"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -395,9 +409,9 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Border x:Name="Box" Width="{DynamicResource LwSchriftNormal}" Height="{DynamicResource LwSchriftNormal}"
-                                    Background="#0d1117" BorderBrush="#6e7681" BorderThickness="1.5" CornerRadius="3"
+                                    Background="{DynamicResource LwBg}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1.5" CornerRadius="3"
                                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Margin="0,2,0,2">
-                                <Path x:Name="Haken" Data="M 1,5 L 4,8 L 9,1" Stroke="#0d1117" StrokeThickness="2"
+                                <Path x:Name="Haken" Data="M 1,5 L 4,8 L 9,1" Stroke="{DynamicResource LwBg}" StrokeThickness="2"
                                       StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
                                       Stretch="Uniform" Margin="2.5" Visibility="Collapsed"/>
                             </Border>
@@ -412,11 +426,11 @@
                                 <Setter Property="Foreground" Value="{StaticResource LwHerkunftAnwaltText}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#e8a838"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource LwAkzent}"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Box" Property="Background" Value="#e8a838"/>
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#e8a838"/>
+                                <Setter TargetName="Box" Property="Background" Value="{DynamicResource LwAkzent}"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource LwAkzent}"/>
                                 <Setter TargetName="Haken" Property="Visibility" Value="Visible"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
@@ -429,7 +443,7 @@
         </Style>
 
         <Style x:Key="LwRadio" TargetType="RadioButton">
-            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
             <Setter Property="Margin" Value="0,4,24,4"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -444,8 +458,8 @@
                             </Grid.ColumnDefinitions>
                             <Grid Width="{DynamicResource LwSchriftNormal}" Height="{DynamicResource LwSchriftNormal}"
                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
-                                <Ellipse x:Name="Ring" Fill="#0d1117" Stroke="#6e7681" StrokeThickness="1.5"/>
-                                <Ellipse x:Name="Punkt" Fill="#e8a838" Margin="4" Visibility="Collapsed"/>
+                                <Ellipse x:Name="Ring" Fill="{DynamicResource LwBg}" Stroke="{DynamicResource LwBorder}" StrokeThickness="1.5"/>
+                                <Ellipse x:Name="Punkt" Fill="{DynamicResource LwAkzent}" Margin="4" Visibility="Collapsed"/>
                             </Grid>
                             <ContentPresenter Grid.Column="1" Margin="8,0,0,0" RecognizesAccessKey="True"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
@@ -458,10 +472,10 @@
                                 <Setter Property="Foreground" Value="{StaticResource LwHerkunftAnwaltText}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Ring" Property="Stroke" Value="#e8a838"/>
+                                <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource LwAkzent}"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Ring" Property="Stroke" Value="#e8a838"/>
+                                <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource LwAkzent}"/>
                                 <Setter TargetName="Punkt" Property="Visibility" Value="Visible"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -486,13 +500,13 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Thumb">
-                        <Border x:Name="Bd" Background="#30363d" CornerRadius="4"/>
+                        <Border x:Name="Bd" Background="{DynamicResource LwBorder}" CornerRadius="4"/>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#484f58"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwMuted}"/>
                             </Trigger>
                             <Trigger Property="IsDragging" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#6e7681"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -552,7 +566,7 @@
         </Style>
 
         <Style x:Key="LwTabItem" TargetType="TabItem">
-            <Setter Property="Foreground" Value="#8b949e"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwMuted}"/>
             <Setter Property="FontSize" Value="{DynamicResource LwSchriftNormal}"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -563,11 +577,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#e8a838"/>
-                                <Setter Property="Foreground" Value="#e6edf3"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource LwAkzent}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwTextStrong}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#21262d"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwRaised}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

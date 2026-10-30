@@ -52,6 +52,7 @@ public partial class SettingsDialog : Window
             ChatOutputFont = current.ChatOutputFont,
             ChatOutputFontSize = current.ChatOutputFontSize,
             Bundesland = current.Bundesland,
+            DunkelModus = current.DunkelModus,
             StilvorlagePfad = current.StilvorlagePfad,
             PostfachAktiv = current.PostfachAktiv,
             PostfachServer = current.PostfachServer,
@@ -67,7 +68,6 @@ public partial class SettingsDialog : Window
             VoskModellGross = current.VoskModellGross,
             VoskGrossBeimStart = current.VoskGrossBeimStart,
             VoskGrossLadezeitSek = current.VoskGrossLadezeitSek,
-            DunkelModus = current.DunkelModus,
             DiktatNachkorrektur = current.DiktatNachkorrektur,
             WhisperOrdner = current.WhisperOrdner,
             WhisperModell = current.WhisperModell,
@@ -228,7 +228,7 @@ public partial class SettingsDialog : Window
     {
         KiUebernehmenBtn.IsEnabled = false;
         KiStatusLabel.Text = "Wird übernommen …";
-        KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e));
+        KiStatusLabel.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwMuted"];
         try
         {
             var modus = (KiModusBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "localhost";

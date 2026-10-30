@@ -129,6 +129,14 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.74.0",
         "Nutzer-Anfrage (2026-10-27): Dark Mode, bewusst einfach gehalten als erster Test fuer den neuen codex_autark-Modus. WICHTIG: LexWolf ist aktuell komplett FEST auf Dunkel-Farben codiert (Hex-Werte dire",
     ),
+    (
+        "0.75.0",
+        "Chat-Oberflaeche aufgeraeumt: kompakte Kopfzeile mit Overflow-Menue statt zwei vollen Werkzeugleisten, Live-Suche oeffnet jetzt ein eigenes Fenster statt den Chat-Text zu ueberladen, Schriftsatz direkt im Chat anfordern (ohne den separaten Dialog zu oeffnen), Hinweis bei Mandantenwechsel mit Zusammenfassung/Timeline-Buttons, Dokumente direkt im Chat mitauswaehlen. Dabei Fehler behoben: gesperrte Vorlagendatei (z.B. gerade in Word offen) konnte zu einem Fehler im Chat fuehren.",
+    ),
+    (
+        "0.76.0",
+        "Analyse-Status sammelte sich unbegrenzt ueber dem Chat an - jetzt wird nur der laufende Scan kurz angezeigt, 'fertig' erscheint gar nicht mehr. Recherche-Fenster zeigte bei Fehlern/leeren Ergebnissen nur eine leere Flaeche ohne Hinweis - jetzt mit klarer Meldung.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]

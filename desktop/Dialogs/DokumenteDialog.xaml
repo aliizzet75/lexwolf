@@ -5,13 +5,13 @@
         Title="LexWolf — Dokumente zur Akte"
         Icon="/Assets/lexwolf.ico"
         Width="760" Height="680" MinWidth="560" MinHeight="460"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
     <DockPanel>
         <!-- Kopf -->
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="Dokumente zur Akte" Style="{StaticResource LwDialogTitel}"/>
                 <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>

@@ -5,14 +5,14 @@
         Icon="/Assets/lexwolf.ico"
         Width="760" Height="680"
         MinWidth="560" MinHeight="420"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
 
     <Window.Resources>
         <Style x:Key="PrimaryBtn" TargetType="Button">
-            <Setter Property="Background"        Value="#1f6feb"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPrimary}"/>
             <Setter Property="Foreground"        Value="White"/>
             <Setter Property="BorderThickness"   Value="0"/>
             <Setter Property="Padding"           Value="16,7"/>
@@ -27,11 +27,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#388bfd"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryHover}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="#30363d"/>
-                                <Setter Property="Foreground" Value="#6e7681"/>
+                                <Setter Property="Background" Value="{DynamicResource LwBorder}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwDisabledText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -41,8 +41,8 @@
 
         <Style x:Key="GhostBtn" TargetType="Button">
             <Setter Property="Background"        Value="Transparent"/>
-            <Setter Property="Foreground"        Value="#8b949e"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwMuted}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="16,7"/>
             <Setter Property="FontSize"          Value="12"/>
@@ -58,11 +58,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#c9d1d9"/>
+                                <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#484f58"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwDisabledText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -71,19 +71,19 @@
         </Style>
 
         <Style x:Key="ChatInput" TargetType="TextBox">
-            <Setter Property="Background"        Value="#161b22"/>
-            <Setter Property="Foreground"        Value="#c9d1d9"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPanel}"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="10,8"/>
             <Setter Property="FontSize"          Value="13"/>
-            <Setter Property="CaretBrush"        Value="#c9d1d9"/>
+            <Setter Property="CaretBrush"        Value="{DynamicResource LwText}"/>
         </Style>
 
         <Style x:Key="DarkComboBox" TargetType="ComboBox">
-            <Setter Property="Background"        Value="#161b22"/>
-            <Setter Property="Foreground"        Value="#c9d1d9"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPanel}"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="8,4"/>
             <Setter Property="FontSize"          Value="13"/>
@@ -99,9 +99,9 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,10">
-            <TextBlock Text="🧠 Live-Denkprozess" Foreground="#e6edf3" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="🧠 Live-Denkprozess" Foreground="{DynamicResource LwTextStrong}" FontSize="15" FontWeight="SemiBold"/>
             <TextBlock Text="Zeigt live, welche Quelle durchsucht wird, was gefunden/verworfen wurde und mit welcher Konfidenz — statt einer Black Box."
-                       Foreground="#8b949e" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                       Foreground="{DynamicResource LwMuted}" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,0,0,10">
@@ -125,12 +125,12 @@
             <ItemsControl x:Name="StepsList"/>
         </ScrollViewer>
 
-        <Border Grid.Row="3" Background="#161b22" BorderBrush="#30363d" BorderThickness="1"
+        <Border Grid.Row="3" Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1"
                 CornerRadius="8" Padding="12,10" Margin="0,10,0,0">
             <StackPanel>
-                <TextBlock Text="Antwort" Foreground="#e6edf3" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <TextBlock Text="Antwort" Foreground="{DynamicResource LwTextStrong}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="140">
-                    <TextBlock x:Name="AnswerText" Foreground="#c9d1d9" FontSize="12" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="AnswerText" Foreground="{DynamicResource LwText}" FontSize="12" TextWrapping="Wrap"/>
                 </ScrollViewer>
             </StackPanel>
         </Border>

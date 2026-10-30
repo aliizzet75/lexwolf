@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="780" Height="520"
         MinWidth="560" MinHeight="360"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -13,7 +13,7 @@
     <Window.Resources>
         <!-- Nav item style -->
         <Style x:Key="NavItem" TargetType="ListBoxItem">
-            <Setter Property="Foreground"        Value="#8b949e"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwMuted}"/>
             <Setter Property="Background"        Value="Transparent"/>
             <Setter Property="Padding"           Value="12,10"/>
             <Setter Property="FontSize"          Value="12"/>
@@ -27,11 +27,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#e6edf3"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwTextStrong}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#161b22"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwPanel}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -41,7 +41,7 @@
 
         <!-- Primary button -->
         <Style x:Key="PrimaryBtn" TargetType="Button">
-            <Setter Property="Background"        Value="#1f6feb"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPrimary}"/>
             <Setter Property="Foreground"        Value="White"/>
             <Setter Property="BorderThickness"   Value="0"/>
             <Setter Property="Padding"           Value="16,7"/>
@@ -56,10 +56,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#388bfd"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1158c7"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryPressed}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -70,8 +70,8 @@
         <!-- Ghost button -->
         <Style x:Key="GhostBtn" TargetType="Button">
             <Setter Property="Background"        Value="Transparent"/>
-            <Setter Property="Foreground"        Value="#8b949e"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwMuted}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="16,7"/>
             <Setter Property="FontSize"          Value="12"/>
@@ -87,8 +87,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#c9d1d9"/>
+                                <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -126,13 +126,13 @@
 
         <!-- Editor textbox -->
         <Style x:Key="NoteEditor" TargetType="TextBox">
-            <Setter Property="Background"        Value="#0d1117"/>
-            <Setter Property="Foreground"        Value="#c9d1d9"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Background"        Value="{DynamicResource LwBg}"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="12,10"/>
             <Setter Property="FontSize"          Value="13"/>
-            <Setter Property="CaretBrush"        Value="#c9d1d9"/>
+            <Setter Property="CaretBrush"        Value="{DynamicResource LwText}"/>
             <Setter Property="TextWrapping"      Value="Wrap"/>
             <Setter Property="AcceptsReturn"     Value="True"/>
             <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
@@ -154,34 +154,34 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left nav -->
-            <Border Grid.Column="0" Background="#161b22"
-                        BorderBrush="#30363d" BorderThickness="0,0,1,0">
+            <Border Grid.Column="0" Background="{DynamicResource LwPanel}"
+                        BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,1,0">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Padding="14,14,14,6">
-                        <TextBlock Text="Notizen" Foreground="#e6edf3"
+                        <TextBlock Text="Notizen" Foreground="{DynamicResource LwTextStrong}"
                                        FontSize="13" FontWeight="SemiBold"/>
                     </Border>
                     <Border DockPanel.Dock="Top" Padding="12,0,12,6">
-                        <TextBlock x:Name="NavSubtitle" Text="" Foreground="#8b949e"
+                        <TextBlock x:Name="NavSubtitle" Text="" Foreground="{DynamicResource LwMuted}"
                                        FontSize="11" TextTrimming="CharacterEllipsis"/>
                     </Border>
 
                     <Border DockPanel.Dock="Top" Padding="10,6,10,10"
-                            Background="#0d1117" CornerRadius="6" Margin="10,0,10,8">
+                            Background="{DynamicResource LwBg}" CornerRadius="6" Margin="10,0,10,8">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <TextBlock Text="KI-Zusammenfassung" Grid.Row="0"
-                                       Foreground="#8b949e" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource LwMuted}" FontSize="11" FontWeight="SemiBold"
                                        Margin="0,0,0,6"/>
                             <TextBlock x:Name="KISummaryText" Grid.Row="1"
-                                       Foreground="#c9d1d9" FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource LwText}" FontSize="11" TextWrapping="Wrap"
                                        MaxHeight="80" Text="Wird geladen..."/>
                             <ProgressBar x:Name="KISummaryProgress" Grid.Row="1"
                                          IsIndeterminate="True" Height="3"
-                                         Background="Transparent" Foreground="#1f6feb"
+                                         Background="Transparent" Foreground="{DynamicResource LwPrimary}"
                                          Visibility="Visible" VerticalAlignment="Top"
                                          Margin="0,0,0,4"/>
                         </Grid>
@@ -201,7 +201,7 @@
                                                                Foreground="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=Foreground}"
                                                                FontWeight="SemiBold" FontSize="12"/>
                                                     <TextBlock Text="{Binding TitelKurz}"
-                                                               Foreground="#8b949e" FontSize="11"
+                                                               Foreground="{DynamicResource LwMuted}" FontSize="11"
                                                                TextTrimming="CharacterEllipsis" MaxWidth="190"/>
                                                 </StackPanel>
                                             </DataTemplate>
@@ -219,14 +219,14 @@
             </Border>
 
             <!-- Right editor -->
-            <Border Grid.Column="1" Background="#0d1117" Padding="16,14">
+            <Border Grid.Column="1" Background="{DynamicResource LwBg}" Padding="16,14">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="Notiz bearbeiten" Foreground="#e6edf3"
+                    <TextBlock Grid.Row="0" Text="Notiz bearbeiten" Foreground="{DynamicResource LwTextStrong}"
                                FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
                     <TextBox x:Name="NoteEditorBox"
@@ -240,8 +240,8 @@
         </Grid>
 
         <!-- Footer: actions -->
-        <Border Grid.Row="1" Background="#161b22"
-                BorderBrush="#30363d" BorderThickness="0,1,0,0"
+        <Border Grid.Row="1" Background="{DynamicResource LwPanel}"
+                BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,1,0,0"
                 Padding="14,10">
             <DockPanel>
                 <TextBlock x:Name="StatusLabel" DockPanel.Dock="Left"

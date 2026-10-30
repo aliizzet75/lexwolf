@@ -5,15 +5,15 @@
         Icon="/Assets/lexwolf.ico"
         Width="1280" Height="820" MinWidth="980" MinHeight="580"
         WindowState="Maximized"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
     <Window.Resources>
         <!-- Kachel mit Zahl für die Belegprüfung -->
         <Style x:Key="Kachel" TargetType="Border">
-            <Setter Property="Background" Value="#0d1117"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="8,6"/>
@@ -30,7 +30,7 @@
 
     <DockPanel>
         <!-- Kopf -->
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="Schriftsatz entwerfen" Style="{StaticResource LwDialogTitel}"/>
                 <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
@@ -171,7 +171,7 @@
                     <TextBox x:Name="EntwurfBox" Style="{StaticResource LwEditor}" FontFamily="Segoe UI" TextChanged="OnEntwurfGeaendert"/>
                     <StackPanel x:Name="LeerHinweis" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
                                 MaxWidth="380">
-                        <TextBlock Text="📝" FontSize="{DynamicResource LwSchriftTitel}" Foreground="#30363d" HorizontalAlignment="Center"/>
+                        <TextBlock Text="📝" FontSize="{DynamicResource LwSchriftTitel}" Foreground="{DynamicResource LwBorder}" HorizontalAlignment="Center"/>
                         <TextBlock Style="{StaticResource LwHinweis}" TextAlignment="Center" Margin="0,8,0,0"
                                    Text="Links Art, Vorgaben und Dokumente wählen, dann „Entwurf erstellen“. Jede Tatsache bekommt eine Fundstelle wie [D2]."/>
                     </StackPanel>
@@ -221,7 +221,7 @@
                                     <DataTemplate>
                                         <Border Style="{StaticResource LwEintrag}">
                                             <StackPanel>
-                                                <TextBlock Style="{StaticResource LwFliesstext}" Foreground="#e6edf3">
+                                                <TextBlock Style="{StaticResource LwFliesstext}" Foreground="{DynamicResource LwTextStrong}">
                                                     <Run Text="{Binding Symbol, Mode=OneWay}" Foreground="{Binding Farbe, Mode=OneWay}" FontWeight="Bold"/>
                                                     <Run Text="{Binding Zitat, Mode=OneWay}"/>
                                                 </TextBlock>

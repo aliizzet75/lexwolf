@@ -27,8 +27,6 @@ public class AppSettings
 
     public string KanzleiKontodaten { get; set; } = "";
 
-    public bool DunkelModus { get; set; } = true;
-
     public bool FeedbackOptIn { get; set; } = false;
 
     public bool AbTestOptIn { get; set; } = false;
@@ -37,6 +35,9 @@ public class AppSettings
     public double ChatInputFontSize { get; set; } = 13;
     public string ChatOutputFont { get; set; } = "Segoe UI";
     public double ChatOutputFontSize { get; set; } = 13;
+
+    // Default true: bestehende Nutzer sehen bis zum aktiven Umschalten keine Änderung.
+    public bool DunkelModus { get; set; } = true;
 
     // Eigener Musterschriftsatz als Stilvorlage für Schriftsatz-Entwürfe (leer = keine)
     public string StilvorlagePfad { get; set; } = "";

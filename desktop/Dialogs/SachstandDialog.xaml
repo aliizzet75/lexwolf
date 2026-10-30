@@ -4,7 +4,7 @@
         Title="LexWolf — Sachstand"
         Icon="/Assets/lexwolf.ico"
         Width="1120" Height="780" MinWidth="820" MinHeight="560"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -17,7 +17,7 @@
                     <StackPanel Margin="4,0,0,0">
                         <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource LwSchriftNormal}">
                             <Run Text="{Binding Datum, Mode=OneWay}" Foreground="#e8a838" FontWeight="SemiBold"/>
-                            <Run Text="{Binding Titel, Mode=OneWay}" Foreground="#e6edf3" FontWeight="SemiBold"/>
+                            <Run Text="{Binding Titel, Mode=OneWay}" Foreground="{DynamicResource LwTextStrong}" FontWeight="SemiBold"/>
                         </TextBlock>
                         <TextBlock Text="{Binding Text}" Style="{StaticResource LwHinweis}" Margin="0,3,0,0"
                                    Visibility="{Binding TextSichtbar}"/>
@@ -29,7 +29,7 @@
 
     <DockPanel>
         <!-- Kopf -->
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="Sachstand an den Mandanten" Style="{StaticResource LwDialogTitel}"/>
                 <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
@@ -146,7 +146,7 @@
                     <TextBox x:Name="MitteilungBox" Style="{StaticResource LwEditor}" TextChanged="OnMitteilungGeaendert"/>
                     <StackPanel x:Name="LeerHinweis" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
                                 MaxWidth="360">
-                        <TextBlock Text="✉" FontSize="{DynamicResource LwSchriftTitel}" Foreground="#30363d" HorizontalAlignment="Center"/>
+                        <TextBlock Text="✉" FontSize="{DynamicResource LwSchriftTitel}" Foreground="{DynamicResource LwBorder}" HorizontalAlignment="Center"/>
                         <TextBlock Style="{StaticResource LwHinweis}" TextAlignment="Center" Margin="0,8,0,0"
                                    Text="Links auswählen und „Sachstand schreiben“ klicken. Die Mitteilung erscheint hier und lässt sich frei bearbeiten."/>
                     </StackPanel>

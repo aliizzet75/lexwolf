@@ -4,7 +4,7 @@
         Title="LexWolf — Aktenstamm"
         Icon="/Assets/lexwolf.ico"
         Width="1080" Height="740" MinWidth="820" MinHeight="540"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -20,7 +20,7 @@
 
     <DockPanel>
         <!-- Kopf -->
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="Aktenstamm" Style="{StaticResource LwDialogTitel}"/>
                 <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
@@ -56,7 +56,7 @@
                 <StackPanel>
                     <TextBlock Text="⚠ Mögliche Interessenkollision — bitte prüfen (§ 43a Abs. 4 BRAO)" Foreground="#f85149"
                                FontWeight="SemiBold" FontSize="{DynamicResource LwSchriftGross}" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="KollisionText" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3" Margin="0,6,0,0"/>
+                    <TextBlock x:Name="KollisionText" Style="{StaticResource LwFliesstext}" Foreground="{DynamicResource LwTextStrong}" Margin="0,6,0,0"/>
                 </StackPanel>
             </Border>
 
@@ -118,11 +118,11 @@
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="Rolle"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Background="#21262d" CornerRadius="10" Padding="10,2" HorizontalAlignment="Left"
+                                                <Border Background="{DynamicResource LwRaised}" CornerRadius="10" Padding="10,2" HorizontalAlignment="Left"
                                                         VerticalAlignment="Top" Margin="0,0,12,0">
                                                     <TextBlock Text="{Binding Rolle}" Style="{StaticResource LwZaehlerText}"/>
                                                 </Border>
-                                                <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource LwFliesstext}" Foreground="{DynamicResource LwTextStrong}"/>
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -156,7 +156,7 @@
                                                 <TextBlock Text="{Binding DatumText}" Foreground="#e8a838" FontWeight="SemiBold"
                                                            FontSize="{DynamicResource LwSchriftNormal}" Margin="0,0,0,14"/>
                                                 <!-- Linie mit Punkt -->
-                                                <Rectangle Grid.Column="1" Width="2" Fill="#30363d" HorizontalAlignment="Center"/>
+                                                <Rectangle Grid.Column="1" Width="2" Fill="{DynamicResource LwBorder}" HorizontalAlignment="Center"/>
                                                 <Ellipse Grid.Column="1" Width="10" Height="10" Fill="#e8a838" VerticalAlignment="Top"
                                                          HorizontalAlignment="Center" Margin="0,4,0,0"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding Beschreibung}" Style="{StaticResource LwFliesstext}"

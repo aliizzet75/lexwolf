@@ -4,13 +4,13 @@
         Title="LexWolf — Vorlage bearbeiten"
         Icon="/Assets/lexwolf.ico"
         Width="900" Height="700" MinWidth="520" MinHeight="400"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
     <DockPanel>
         <!-- Kopf -->
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="Vorlage bearbeiten" Style="{StaticResource LwDialogTitel}"/>
                 <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>

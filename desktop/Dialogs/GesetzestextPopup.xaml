@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="560" Height="480"
         MinWidth="420" MinHeight="320"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -22,11 +22,11 @@
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock x:Name="FundstelleText" Style="{StaticResource LwHinweis}"/>
-            <TextBlock Text="  ·  " Foreground="#8b949e"/>
+            <TextBlock Text="  ·  " Foreground="{DynamicResource LwMuted}"/>
             <TextBlock x:Name="DatumText" Style="{StaticResource LwHinweis}"/>
         </StackPanel>
 
-        <Border Grid.Row="2" Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="8" Padding="16">
+        <Border Grid.Row="2" Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" CornerRadius="8" Padding="16">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <TextBlock x:Name="GesetzestextText" Style="{StaticResource LwFliesstext}" TextWrapping="Wrap"/>
             </ScrollViewer>

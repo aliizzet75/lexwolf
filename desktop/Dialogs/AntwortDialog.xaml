@@ -4,7 +4,7 @@
         Title="LexWolf — Antwort entwerfen"
         Icon="/Assets/lexwolf.ico"
         Width="1000" Height="720" MinWidth="780" MinHeight="520"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -29,17 +29,17 @@
             <StackPanel DockPanel.Dock="Bottom">
                 <Button x:Name="ErstellenBtn" Content="✨ Entwurf schreiben" Style="{StaticResource LwPrimaryButton}"
                         Margin="0,10,0,0" Click="OnErstellen"/>
-                <TextBlock x:Name="StatusText" Foreground="#8b949e" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <TextBlock x:Name="StatusText" Foreground="{DynamicResource LwMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
             </StackPanel>
-            <Border Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="6" Padding="10">
+            <Border Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" CornerRadius="6" Padding="10">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBlock x:Name="DokumentText" Foreground="#c9d1d9" FontSize="11" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="DokumentText" Foreground="{DynamicResource LwText}" FontSize="11" TextWrapping="Wrap"/>
                 </ScrollViewer>
             </Border>
         </DockPanel>
 
         <DockPanel Grid.Column="2">
-            <TextBlock DockPanel.Dock="Top" Text="Entwurf (bearbeitbar)" Foreground="#e6edf3" FontWeight="SemiBold" FontSize="13"
+            <TextBlock DockPanel.Dock="Top" Text="Entwurf (bearbeitbar)" Foreground="{DynamicResource LwTextStrong}" FontWeight="SemiBold" FontSize="13"
                        Margin="0,0,0,6"/>
             <WrapPanel DockPanel.Dock="Bottom" HorizontalAlignment="Right" Margin="0,10,0,0">
                 <Button x:Name="ChatBtn" Content="💬 Im Chat weiterbearbeiten" Style="{StaticResource LwButton}" Click="OnChat"

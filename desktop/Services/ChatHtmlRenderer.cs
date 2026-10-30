@@ -15,6 +15,10 @@ namespace LexWolf.Services;
 /// Entwurf entstand (0..1); null (z.B. nach Neustart aus der Historie) zeigt kein Badge.</param>
 /// <param name="Quellen">Task #301: geprüfte Zitate mit chunk_id (T#296), analog zu
 /// WrapAiBubble — als klickbare Links, die zur exakten Stelle im Quellentext springen.</param>
+/// <param name="BelegeAnsehenMoeglich">Task #321: true, wenn dieser Entwurf aus einem
+/// Schriftsatz stammt und eine Belegprüfung anzeigbar ist.</param>
+/// <param name="BelegePanelIndex">Task #321: Index in MainWindow._recherchePanels bzw.
+/// -1, wenn kein separates Recherche-Panel vorhanden ist.</param>
 public sealed record EntwurfKarteAnsicht(
     int Id,
     ChatEntwurf Entwurf,
@@ -25,7 +29,9 @@ public sealed record EntwurfKarteAnsicht(
     string? OeffnenLabel,
     IReadOnlyList<string>? MandantAuswahl = null,
     double? Confidence = null,
-    IReadOnlyList<(string Zitat, int ChunkId)>? Quellen = null);
+    IReadOnlyList<(string Zitat, int ChunkId)>? Quellen = null,
+    bool BelegeAnsehenMoeglich = false,
+    int BelegePanelIndex = -1);
 
 /// <summary>
 /// Konvertiert KI-Antwort-Text (Markdown-ähnliche Struktur) in sauberes,
@@ -342,41 +348,77 @@ public static class ChatHtmlRenderer
         return sb.ToString();
     }
 
-    /// <summary>T#309: eingeklappter/aufklappbarer Bereich über der Antwort, der live
-    /// die Schritte der Agentic-Suche (/api/search/stream) zeigt — bleibt während des
-    /// Laufs offen, klappt beim ersten Rendern danach zu (Anwalt kann bei Bedarf
-    /// wieder aufklappen), damit der eigentliche Chat nicht durch den Suchweg
-    /// zugemüllt wird, sobald die Antwort da ist.
+    /// <summary>T#320: kompakter, klickbarer Link im Chat, der ein separates WPF-Fenster
+    /// mit den vollständigen Recherche-Informationen öffnet. Ersetzt den früheren
+    /// aufklappbaren &lt;details class='such-panel'&gt;-Block im Chat-Fließtext.
+    /// <paramref name="panelIndex"/> identifiziert den Eintrag in MainWindow._recherchePanels,
+    /// damit der Klick-Handler die aktuellen Daten (Suchschritte + anonymisiert gesendet)
+    /// an den Dialog übergeben kann.
     /// <paramref name="anonymisiertGesendet"/> (Task #311): der tatsächlich anonymisiert an
-    /// den Server geschickte Text (siehe AnonymisiertGesendetBuilder) — steht als eigener
-    /// Abschnitt unter den Suchschritten, damit der Anwalt nachvollziehen kann, was den PC
-    /// wirklich verlässt (nicht die Original-Eingabe). Null/leer blendet den Abschnitt aus
-    /// (z.B. bevor die erste Nachricht gesendet wurde).</summary>
+    /// den Server geschickte Text — wird im Dialog angezeigt, nicht mehr direkt im Chat.</summary>
     public static string WrapSearchPanel(string stepsHtml, bool laufend, string modus, int gefundenCount,
-        string? anonymisiertGesendet = null)
+        string? anonymisiertGesendet = null, int panelIndex = -1)
     {
         var modusLabel = modus == "tief" ? "tief" : "schnell";
-        string summary;
+        string label;
         if (laufend)
-            summary = $"🔎 Live-Suche läuft … (Modus: {modusLabel})";
+            label = $"🔎 Recherche läuft … (Modus: {modusLabel})";
         else if (gefundenCount > 0)
-            summary = $"🔎 Suche abgeschlossen (Modus: {modusLabel}) — {gefundenCount} Quelle(n) gefunden";
+            label = $"🔎 Recherche ansehen ({gefundenCount} Quelle(n))";
         else
-            summary = $"🔎 Suche abgeschlossen (Modus: {modusLabel}) — keine Quellen gefunden";
+            label = $"🔎 Recherche ansehen (keine Quellen)";
+
+        var tooltip = laufend
+            ? "Recherche läuft noch — Klick öffnet den bisherigen Stand."
+            : "Klick öffnet Suchschritte und anonymisiert gesendeten Text.";
+
+        var button = $"<button class='chat-action-button such-panel-button' " +
+                     $"data-action='recherche' data-msg='{panelIndex}' title='{WebUtility.HtmlEncode(tooltip)}'>" +
+                     $"{WebUtility.HtmlEncode(label)}</button>";
+
+        // T#320: die eigentlichen Suchschritte und der anonymisierte Text stehen
+        // NICHT mehr im Chat, sondern werden im Dialog per PanelIndex nachgeschlagen.
+        return $"<div class='such-panel-compact'>{button}</div>";
+    }
+
+    /// <summary>T#320: baut den Inhalt des Recherche-Ergebnis-Dialogs als HTML.
+    /// Wird von RechercheErgebnisDialog verwendet, um die bisherigen &lt;details&gt;-Inhalte
+    /// formatiert und gut lesbar anzuzeigen.</summary>
+    public static string BuildRechercheDialogHtml(string stepsHtml, bool laufend, string modus, int gefundenCount,
+        string? anonymisiertGesendet)
+    {
+        var modusLabel = modus == "tief" ? "tief" : "schnell";
+        string status;
+        if (laufend)
+            status = $"🔎 Live-Suche läuft … (Modus: {modusLabel})";
+        else if (gefundenCount > 0)
+            status = $"✅ Suche abgeschlossen (Modus: {modusLabel}) — {gefundenCount} Quelle(n) gefunden";
+        else
+            status = $"✅ Suche abgeschlossen (Modus: {modusLabel}) — keine Quellen gefunden";
 
         var anonymHtml = string.IsNullOrWhiteSpace(anonymisiertGesendet)
             ? ""
             : "<div class='such-anonym'><div class='such-anonym-titel'>🔒 Anonymisiert gesendet:</div>" +
               $"<div class='such-anonym-text'>{WebUtility.HtmlEncode(anonymisiertGesendet)}</div></div>";
 
-        var openAttr = laufend ? " open" : "";
-        return $"<details class='such-panel'{openAttr}><summary>{WebUtility.HtmlEncode(summary)}</summary>" +
-               $"<div class='such-liste'>{stepsHtml}</div>{anonymHtml}</details>";
+        return $"<div class='recherche-dialog'><div class='recherche-status'>{WebUtility.HtmlEncode(status)}</div>" +
+               $"<div class='such-liste'>{stepsHtml}</div>{anonymHtml}</div>";
     }
 
     public static string WrapSystemMessage(string text)
     {
         return $"<div class='system-message'>{WebUtility.HtmlEncode(text)}</div>";
+    }
+
+    /// <summary>Systemnachricht, die beim Mandantenwechsel eingeblendet wird,
+    /// mit direkt klickbaren Aktionen für Zusammenfassung und Timeline.</summary>
+    public static string WrapMandantGeladenHinweis(string mandantName)
+    {
+        static string H(string s) => WebUtility.HtmlEncode(s);
+        var text = $"👤 Mandant {H(mandantName)} geladen.";
+        return $"<div class='system-message'>{text}<br>" +
+               $"<button class='chat-action-button primary' data-action='mandant-zusammenfassung'>📊 Zusammenfassung</button>" +
+               $"<button class='chat-action-button' data-action='mandant-timeline'>🕐 Timeline</button></div>";
     }
 
     /// <summary>Entwurfskarte im Chat: Titel, Art (Brief/E-Mail umschaltbar), Empfänger,
@@ -437,6 +479,8 @@ public static class ChatHtmlRenderer
             sb.Append("<div class='ek-aktionen'>");
             if (k.OeffnenLabel is not null)
                 sb.Append($"<button class='chat-action-button primary' data-action='oeffnen' data-msg='{k.Id}'>{H(k.OeffnenLabel)}</button>");
+            if (k.BelegeAnsehenMoeglich)
+                sb.Append($"<button class='chat-action-button' data-action='belege' data-msg='{k.Id}'>📋 Belege ansehen</button>");
             if (k.AblegenMoeglich)
                 sb.Append($"<button class='chat-action-button' data-action='uebernehmen' data-msg='{k.Id}'>📁 In Akte ablegen</button>");
             sb.Append($"<button class='chat-action-button' data-action='kopieren' data-msg='{k.Id}'>Text kopieren</button>");
@@ -453,6 +497,7 @@ public static class ChatHtmlRenderer
     /// </summary>
     private static string _outputFontFamily = "'Segoe UI', system-ui, sans-serif";
     private static double _outputFontSize = 13;
+    private static bool _dunkel = true;
 
     public static void SetOutputFont(string fontFamily, double fontSize)
     {
@@ -460,19 +505,57 @@ public static class ChatHtmlRenderer
         _outputFontSize = fontSize;
     }
 
+    public static void SetTheme(bool dunkel)
+    {
+        _dunkel = dunkel;
+    }
+
+    private static string HexToRgb(string hex)
+    {
+        if (hex.Length == 7 && hex[0] == '#')
+        {
+            var r = int.Parse(hex.Substring(1, 2), System.Globalization.NumberStyles.HexNumber);
+            var g = int.Parse(hex.Substring(3, 2), System.Globalization.NumberStyles.HexNumber);
+            var b = int.Parse(hex.Substring(5, 2), System.Globalization.NumberStyles.HexNumber);
+            return $"{r}, {g}, {b}";
+        }
+        return "0, 0, 0";
+    }
+
     public static string GetChatCss()
     {
+        var t = Theme.Aus(_dunkel);
         return $@"
         <style>
-            body {{ margin: 0; padding: 12px; font-family: {_outputFontFamily}; background: #0d1117; color: #c9d1d9; line-height: 1.5; }}
+            :root {{
+                --lw-bg: {t.Bg};
+                --lw-panel: {t.Panel};
+                --lw-raised: {t.Raised};
+                --lw-border: {t.Border};
+                --lw-text: {t.Text};
+                --lw-text-strong: {t.TextStrong};
+                --lw-muted: {t.Muted};
+                --lw-accent: {t.Akzent};
+                --lw-red: {t.Red};
+                --lw-orange: {t.Orange};
+                --lw-green: {t.Green};
+                --lw-blue: {t.Blue};
+                --lw-primary: {t.Primary};
+                --lw-green-rgb: {HexToRgb(t.Green)};
+                --lw-orange-rgb: {HexToRgb(t.Orange)};
+                --lw-red-rgb: {HexToRgb(t.Red)};
+                --lw-accent-rgb: {HexToRgb(t.Akzent)};
+            }}
+
+            body {{ margin: 0; padding: 12px; font-family: {_outputFontFamily}; background: var(--lw-bg); color: var(--lw-text); line-height: 1.5; }}
 
             .user-message {{ text-align: right; margin: 8px 0 12px 60px; }}
-            .user-bubble {{ display: inline-block; background: #1f6feb; color: #fff; border-radius: 16px 4px 16px 16px; padding: 10px 14px; max-width: 85%; text-align: left; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
+            .user-bubble {{ display: inline-block; background: var(--lw-primary); color: var(--lw-text-strong); border-radius: 16px 4px 16px 16px; padding: 10px 14px; max-width: 85%; text-align: left; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
 
             .ai-message {{ text-align: left; margin: 8px 0 12px 8px; }}
-            .ai-bubble {{ display: inline-block; background: #21262d; color: #c9d1d9; border-radius: 4px 16px 16px 16px; padding: 12px 16px; max-width: 85%; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
+            .ai-bubble {{ display: inline-block; background: var(--lw-raised); color: var(--lw-text); border-radius: 4px 16px 16px 16px; padding: 12px 16px; max-width: 85%; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
 
-            .system-message {{ display: inline-block; text-align: center; background: #21262d; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 1)}px; border-radius: 12px; padding: 6px 14px; margin: 8px auto 12px auto; font-family: {_outputFontFamily}; }}
+            .system-message {{ display: inline-block; text-align: center; background: var(--lw-raised); color: var(--lw-muted); font-size: {Math.Max(10, _outputFontSize - 1)}px; border-radius: 12px; padding: 6px 14px; margin: 8px auto 12px auto; font-family: {_outputFontFamily}; }}
 
             .chat-paragraph {{ margin: 0 0 10px 0; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
             .chat-paragraph:last-child {{ margin-bottom: 0; }}
@@ -480,75 +563,79 @@ public static class ChatHtmlRenderer
             .chat-list {{ margin: 8px 0 10px 16px; padding-left: 16px; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
             .chat-list li {{ margin-bottom: 4px; }}
 
-            .code-block {{ background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 10px 12px; margin: 10px 0; overflow-x: auto; font-family: Consolas, 'Courier New', monospace; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
-            .code-block code {{ color: #e6edf3; background: transparent; padding: 0; white-space: pre; }}
+            .code-block {{ background: var(--lw-panel); border: 1px solid var(--lw-border); border-radius: 6px; padding: 10px 12px; margin: 10px 0; overflow-x: auto; font-family: Consolas, 'Courier New', monospace; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
+            .code-block code {{ color: var(--lw-text-strong); background: transparent; padding: 0; white-space: pre; }}
 
-            .inline-code {{ background: #161b22; color: #e6edf3; padding: 2px 5px; border-radius: 4px; font-family: Consolas, 'Courier New', monospace; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
+            .inline-code {{ background: var(--lw-panel); color: var(--lw-text-strong); padding: 2px 5px; border-radius: 4px; font-family: Consolas, 'Courier New', monospace; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
 
-            .chat-link {{ color: #58a6ff; text-decoration: none; }}
+            .chat-link {{ color: var(--lw-blue); text-decoration: none; }}
             .chat-link:hover {{ text-decoration: underline; }}
 
-            .chat-heading {{ color: #e8a838; margin: 14px 0 8px 0; font-weight: 600; font-family: {_outputFontFamily}; font-size: {Math.Max(12, _outputFontSize + 2)}px; }}
-            .chat-hr {{ border: 0; border-top: 1px solid #30363d; margin: 14px 0; }}
+            .chat-heading {{ color: var(--lw-accent); margin: 14px 0 8px 0; font-weight: 600; font-family: {_outputFontFamily}; font-size: {Math.Max(12, _outputFontSize + 2)}px; }}
+            .chat-hr {{ border: 0; border-top: 1px solid var(--lw-border); margin: 14px 0; }}
 
-            .chat-action-button {{ display: inline-block; margin-top: 8px; padding: 8px 14px; border: 1px solid #30363d; border-radius: 6px; background: #21262d; color: #c9d1d9; font-size: {Math.Max(10, _outputFontSize - 1)}px; cursor: pointer; }}
-            .chat-action-button.primary {{ color: #e8a838; }}
-            .chat-action-button:hover {{ background: #30363d; }}
+            .chat-action-button {{ display: inline-block; margin-top: 8px; padding: 8px 14px; border: 1px solid var(--lw-border); border-radius: 6px; background: var(--lw-raised); color: var(--lw-text); font-size: {Math.Max(10, _outputFontSize - 1)}px; cursor: pointer; }}
+            .chat-action-button.primary {{ color: var(--lw-accent); }}
+            .chat-action-button:hover {{ background: var(--lw-border); }}
 
-            .quellen-liste {{ margin-top: 10px; padding-top: 8px; border-top: 1px solid #30363d; display: flex; flex-wrap: wrap; gap: 6px; }}
-            .quelle-link {{ border: 1px solid #30363d; border-radius: 6px; background: transparent; color: #79c0ff; padding: 4px 9px; font-size: {Math.Max(10, _outputFontSize - 2)}px; cursor: pointer; }}
-            .quelle-link:hover {{ background: #30363d; text-decoration: underline; }}
+            .quellen-liste {{ margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--lw-border); display: flex; flex-wrap: wrap; gap: 6px; }}
+            .quelle-link {{ border: 1px solid var(--lw-border); border-radius: 6px; background: transparent; color: var(--lw-blue); padding: 4px 9px; font-size: {Math.Max(10, _outputFontSize - 2)}px; cursor: pointer; }}
+            .quelle-link:hover {{ background: var(--lw-raised); text-decoration: underline; }}
 
-            .entwurf-karte {{ background: #161b22; border: 1px solid #30363d; border-left: 3px solid #e8a838; border-radius: 8px; padding: 12px 14px; margin: 8px 60px 12px 8px; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
-            .entwurf-karte.inaktiv {{ border-left-color: #30363d; opacity: 0.75; }}
+            .entwurf-karte {{ background: var(--lw-panel); border: 1px solid var(--lw-border); border-left: 3px solid var(--lw-accent); border-radius: 8px; padding: 12px 14px; margin: 8px 60px 12px 8px; font-family: {_outputFontFamily}; font-size: {_outputFontSize}px; }}
+            .entwurf-karte.inaktiv {{ border-left-color: var(--lw-border); opacity: 0.75; }}
             .ek-kopf {{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }}
-            .ek-titel {{ color: #e6edf3; font-weight: 600; }}
-            .ek-art {{ display: inline-flex; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; flex-shrink: 0; }}
-            .ek-art-btn {{ background: transparent; color: #8b949e; border: 0; padding: 3px 10px; cursor: pointer; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
-            .ek-art-btn.an {{ background: #30363d; color: #e6edf3; }}
-            .ek-art-fest {{ color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
-            .ek-meta {{ color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 1)}px; margin-top: 4px; }}
+            .ek-titel {{ color: var(--lw-text-strong); font-weight: 600; }}
+            .ek-art {{ display: inline-flex; border: 1px solid var(--lw-border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }}
+            .ek-art-btn {{ background: transparent; color: var(--lw-muted); border: 0; padding: 3px 10px; cursor: pointer; font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
+            .ek-art-btn.an {{ background: var(--lw-border); color: var(--lw-text-strong); }}
+            .ek-art-fest {{ color: var(--lw-muted); font-size: {Math.Max(10, _outputFontSize - 2)}px; }}
+            .ek-meta {{ color: var(--lw-muted); font-size: {Math.Max(10, _outputFontSize - 1)}px; margin-top: 4px; }}
             .ek-text {{ margin-top: 8px; }}
-            .ek-text summary {{ color: #8b949e; cursor: pointer; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
-            .ek-volltext {{ white-space: pre-wrap; margin-top: 8px; padding: 10px 12px; background: #0d1117; border-radius: 6px; color: #c9d1d9; }}
-            .ek-status {{ color: #3fb950; font-size: {Math.Max(10, _outputFontSize - 1)}px; margin-top: 8px; }}
-            .entwurf-karte.inaktiv .ek-status {{ color: #8b949e; }}
+            .ek-text summary {{ color: var(--lw-muted); cursor: pointer; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
+            .ek-volltext {{ white-space: pre-wrap; margin-top: 8px; padding: 10px 12px; background: var(--lw-bg); border-radius: 6px; color: var(--lw-text); }}
+            .ek-status {{ color: var(--lw-green); font-size: {Math.Max(10, _outputFontSize - 1)}px; margin-top: 8px; }}
+            .entwurf-karte.inaktiv .ek-status {{ color: var(--lw-muted); }}
             .ek-aktionen {{ display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }}
             .ek-aktionen .chat-action-button {{ margin-top: 4px; }}
-            .ek-select {{ margin-top: 4px; padding: 7px 8px; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
+            .ek-select {{ margin-top: 4px; padding: 7px 8px; background: var(--lw-bg); color: var(--lw-text); border: 1px solid var(--lw-border); border-radius: 6px; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
 
-            .highlight-frist {{ color: #ff7b72; font-weight: 700; text-decoration: underline; }}
-            .highlight-paragraph {{ color: #79c0ff; font-weight: 600; }}
-            a.highlight-paragraph.quelle-link {{ text-decoration: none; cursor: pointer; border-bottom: 1px dotted #79c0ff; }}
-            a.highlight-paragraph.quelle-link:hover {{ color: #a5d6ff; border-bottom-style: solid; }}
-            .highlight-empfehlung {{ color: #e8a838; font-weight: 700; }}
+            .highlight-frist {{ color: var(--lw-red); font-weight: 700; text-decoration: underline; }}
+            .highlight-paragraph {{ color: var(--lw-blue); font-weight: 600; }}
+            a.highlight-paragraph.quelle-link {{ text-decoration: none; cursor: pointer; border-bottom: 1px dotted var(--lw-blue); }}
+            a.highlight-paragraph.quelle-link:hover {{ color: var(--lw-blue); border-bottom-style: solid; }}
+            .highlight-empfehlung {{ color: var(--lw-accent); font-weight: 700; }}
 
             .confidence-badge {{ display: inline-block; float: right; margin: 0 0 8px 10px; padding: 2px 9px;
                                   border-radius: 10px; font-size: {Math.Max(10, _outputFontSize - 2)}px;
                                   font-weight: 700; font-family: {_outputFontFamily}; }}
-            .confidence-badge.confidence-green {{ background: #2ea04326; color: #3fb950; }}
-            .confidence-badge.confidence-yellow {{ background: #d2992226; color: #e8a838; }}
-            .confidence-badge.confidence-red {{ background: #f8514926; color: #ff7b72; }}
+            .confidence-badge.confidence-green {{ background: rgba(var(--lw-green-rgb), 0.15); color: var(--lw-green); }}
+            .confidence-badge.confidence-yellow {{ background: rgba(var(--lw-orange-rgb), 0.15); color: var(--lw-accent); }}
+            .confidence-badge.confidence-red {{ background: rgba(var(--lw-red-rgb), 0.15); color: var(--lw-red); }}
 
-            .such-panel {{ margin: 8px 8px 12px 8px; border: 1px solid #30363d; border-radius: 8px; background: #161b22; }}
-            .such-panel summary {{ cursor: pointer; padding: 10px 14px; color: #c9d1d9; font-size: {_outputFontSize}px; font-weight: 600; list-style: none; }}
-            .such-panel summary::-webkit-details-marker {{ display: none; }}
-            .such-panel[open] summary {{ border-bottom: 1px solid #30363d; }}
-            .such-liste {{ padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }}
-            .such-schritt {{ border: 1px solid #30363d; border-radius: 6px; padding: 8px 11px; background: #0d1117; }}
+            .such-panel {{ margin: 8px 8px 12px 8px; border: 1px solid var(--lw-border); border-radius: 8px; background: var(--lw-panel); }}
+            .such-panel summary {{ cursor: pointer; padding: 10px 14px; color: var(--lw-text); font-size: {_outputFontSize}px; font-weight: 600; list-style: none; }}
+            .such-panel-compact {{ margin: 8px 8px 12px 8px; display: inline-block; }}
+            .such-panel-button {{ display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--lw-border); border-radius: 6px; background: var(--lw-raised); color: var(--lw-text); font-size: {_outputFontSize}px; cursor: pointer; }}
+            .such-panel-button:hover {{ background: var(--lw-border); border-color: var(--lw-blue); color: var(--lw-text-strong); }}
+            .recherche-dialog {{ padding: 14px; }}
+            .recherche-status {{ padding: 10px 14px; margin-bottom: 12px; border: 1px solid var(--lw-border); border-radius: 8px; background: var(--lw-panel); color: var(--lw-text); font-weight: 600; font-size: {_outputFontSize}px; }}
+            .such-leer {{ color: var(--lw-muted); font-size: {_outputFontSize}px; padding: 8px 2px; }}
+            .such-liste {{ display: flex; flex-direction: column; gap: 8px; }}
+            .such-schritt {{ border: 1px solid var(--lw-border); border-radius: 6px; padding: 8px 11px; background: var(--lw-bg); }}
             .such-kopf {{ display: flex; align-items: center; gap: 6px; }}
             .such-icon {{ font-size: {Math.Max(13, _outputFontSize + 1)}px; }}
-            .such-quelle {{ color: #c9d1d9; font-weight: 600; font-size: {_outputFontSize}px; }}
-            .such-konfidenz {{ margin-left: auto; color: #8b949e; font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
-            .such-text {{ margin-top: 4px; color: #a8b3bd; font-size: {Math.Max(11, _outputFontSize - 1)}px; line-height: 1.5; }}
-            .such-schritt.such-gefunden .such-quelle {{ color: #3fb950; }}
-            .such-schritt.such-verworfen .such-quelle {{ color: #f85149; }}
-            .such-schritt.such-fehler .such-quelle {{ color: #f85149; }}
-            .such-schritt.such-done .such-quelle {{ color: #3fb950; }}
+            .such-quelle {{ color: var(--lw-text); font-weight: 600; font-size: {_outputFontSize}px; }}
+            .such-konfidenz {{ margin-left: auto; color: var(--lw-muted); font-size: {Math.Max(10, _outputFontSize - 1)}px; }}
+            .such-text {{ margin-top: 4px; color: var(--lw-muted); font-size: {Math.Max(11, _outputFontSize - 1)}px; line-height: 1.5; }}
+            .such-schritt.such-gefunden .such-quelle {{ color: var(--lw-green); }}
+            .such-schritt.such-verworfen .such-quelle {{ color: var(--lw-red); }}
+            .such-schritt.such-fehler .such-quelle {{ color: var(--lw-red); }}
+            .such-schritt.such-done .such-quelle {{ color: var(--lw-green); }}
 
-            .such-anonym {{ margin: 4px 0 0 0; padding: 10px 14px 12px 14px; border-top: 1px solid #30363d; background: rgba(232, 168, 56, 0.06); }}
-            .such-anonym-titel {{ color: #e8a838; font-weight: 700; font-size: {_outputFontSize}px; margin-bottom: 6px; }}
-            .such-anonym-text {{ white-space: pre-wrap; color: #c9d1d9; font-size: {Math.Max(11, _outputFontSize - 1)}px; line-height: 1.5; max-height: 280px; overflow-y: auto; background: #0d1117; border: 1px solid #e8a838; border-radius: 6px; padding: 10px; font-family: Consolas, 'Courier New', monospace; }}
+            .such-anonym {{ margin: 4px 0 0 0; padding: 10px 14px 12px 14px; border: 1px solid var(--lw-border); border-radius: 8px; background: rgba(var(--lw-accent-rgb), 0.06); }}
+            .such-anonym-titel {{ color: var(--lw-accent); font-weight: 700; font-size: {_outputFontSize}px; margin-bottom: 6px; }}
+            .such-anonym-text {{ white-space: pre-wrap; color: var(--lw-text); font-size: {Math.Max(11, _outputFontSize - 1)}px; line-height: 1.5; max-height: 280px; overflow-y: auto; background: var(--lw-bg); border: 1px solid var(--lw-accent); border-radius: 6px; padding: 10px; font-family: Consolas, 'Courier New', monospace; }}
         </style>";
     }
 }

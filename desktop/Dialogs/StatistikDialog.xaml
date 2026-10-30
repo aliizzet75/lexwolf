@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="560" Height="420"
         MinWidth="420" MinHeight="320"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -19,21 +19,21 @@
 
         <TextBlock Grid.Row="0"
                    Text="Konfidenz-Statistik"
-                   Foreground="#e6edf3"
+                   Foreground="{DynamicResource LwTextStrong}"
                    FontSize="16"
                    FontWeight="SemiBold"
                    Margin="0,0,0,12"/>
 
         <Border Grid.Row="1"
-                Background="#161b22"
-                BorderBrush="#30363d"
+                Background="{DynamicResource LwPanel}"
+                BorderBrush="{DynamicResource LwBorder}"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="16"
                 Margin="0,0,0,16">
             <StackPanel>
                 <TextBlock Text="Durchschnittliche Konfidenz der letzten 20 Antworten"
-                           Foreground="#8b949e"
+                           Foreground="{DynamicResource LwMuted}"
                            FontSize="12"/>
                 <TextBlock x:Name="DurchschnittText"
                            Text="—"
@@ -42,15 +42,15 @@
                            Margin="0,6,0,0"/>
                 <TextBlock x:Name="AnzahlText"
                            Text=""
-                           Foreground="#8b949e"
+                           Foreground="{DynamicResource LwMuted}"
                            FontSize="11"
                            Margin="0,4,0,0"/>
             </StackPanel>
         </Border>
 
         <Border Grid.Row="2"
-                Background="#161b22"
-                BorderBrush="#30363d"
+                Background="{DynamicResource LwPanel}"
+                BorderBrush="{DynamicResource LwBorder}"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="16,16,16,10">
@@ -60,7 +60,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Text="Trend (älteste → neueste Antwort)"
-                           Foreground="#8b949e" FontSize="12" Margin="0,0,0,10"/>
+                           Foreground="{DynamicResource LwMuted}" FontSize="12" Margin="0,0,0,10"/>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="TrendItems">
                         <ItemsControl.ItemsPanel>

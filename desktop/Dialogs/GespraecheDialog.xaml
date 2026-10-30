@@ -5,14 +5,14 @@
         Icon="/Assets/lexwolf.ico"
         Width="760" Height="640" MinWidth="560" MinHeight="420"
         WindowState="Maximized"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
     <Window.Resources>
         <Style x:Key="GespraechKarte" TargetType="Border">
-            <Setter Property="Background" Value="#161b22"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwPanel}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="14"/>
@@ -21,7 +21,7 @@
     </Window.Resources>
 
     <DockPanel>
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="🎙 Gespräche" Style="{StaticResource LwDialogTitel}"/>
                 <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>

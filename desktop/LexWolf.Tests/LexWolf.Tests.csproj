@@ -55,6 +55,7 @@
     <Compile Include="../Services/MandatAufnahme.cs" Link="MandatAufnahme.cs" />
     <Compile Include="../Services/AktenAblage.cs" Link="AktenAblage.cs" />
     <Compile Include="../Services/VorlagenOrdner.cs" Link="VorlagenOrdner.cs" />
+    <Compile Include="../Services/SchriftsatzArtErkennung.cs" Link="SchriftsatzArtErkennung.cs" />
     <Compile Include="../Services/VorlagenEditor.cs" Link="VorlagenEditor.cs" />
     <Compile Include="../Services/Formularwerte.cs" Link="Formularwerte.cs" />
     <Compile Include="../Services/MsgKonverter.cs" Link="MsgKonverter.cs" />

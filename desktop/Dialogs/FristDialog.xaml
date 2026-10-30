@@ -4,7 +4,7 @@
         Title="LexWolf — Frist"
         Icon="/Assets/lexwolf.ico"
         Width="640" Height="680" MinWidth="520" MinHeight="560"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -25,7 +25,7 @@
                 <TextBlock Text="Was für eine Frist?" Style="{StaticResource LwLabel}"/>
                 <ComboBox x:Name="ArtBox" Style="{StaticResource DarkComboBoxStyle}" DisplayMemberPath="Anzeige"
                           SelectionChanged="OnEingabeGeaendert"/>
-                <TextBlock x:Name="ArtHinweis" Foreground="#8b949e" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock x:Name="ArtHinweis" Foreground="{DynamicResource LwMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
                 <TextBlock Text="Bezeichnung" Style="{StaticResource LwLabel}"/>
                 <TextBox x:Name="BezeichnungBox" Style="{StaticResource LwTextBox}"/>
@@ -59,11 +59,11 @@
                     </StackPanel>
                 </Grid>
 
-                <Border Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="8"
+                <Border Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" CornerRadius="8"
                         Padding="14" Margin="0,16,0,0">
                     <StackPanel>
                         <TextBlock x:Name="EndeText" Text="Fristende: —" Foreground="#e8a838" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="RechenwegText" Foreground="#c9d1d9" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        <TextBlock x:Name="RechenwegText" Foreground="{DynamicResource LwText}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
 

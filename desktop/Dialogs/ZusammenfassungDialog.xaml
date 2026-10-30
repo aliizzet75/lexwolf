@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="780" Height="520"
         MinWidth="560" MinHeight="360"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -20,21 +20,21 @@
         <TextBlock x:Name="HeaderText"
                    Grid.Row="0"
                    Text="Zusammenfassung"
-                   Foreground="#e6edf3"
+                   Foreground="{DynamicResource LwTextStrong}"
                    FontSize="16"
                    FontWeight="SemiBold"
                    Margin="0,0,0,12"/>
 
         <Border Grid.Row="1"
-                Background="#161b22"
-                BorderBrush="#30363d"
+                Background="{DynamicResource LwPanel}"
+                BorderBrush="{DynamicResource LwBorder}"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="16">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <TextBlock x:Name="ZusammenfassungText"
                            Text=""
-                           Foreground="#c9d1d9"
+                           Foreground="{DynamicResource LwText}"
                            FontSize="13"
                            TextWrapping="Wrap"/>
             </ScrollViewer>
@@ -45,9 +45,9 @@
                 Click="OnCloseClick"
                 HorizontalAlignment="Right"
                 Margin="0,16,0,0"
-                Background="#21262d"
-                Foreground="#c9d1d9"
-                BorderBrush="#30363d"
+                Background="{DynamicResource LwRaised}"
+                Foreground="{DynamicResource LwText}"
+                BorderBrush="{DynamicResource LwBorder}"
                 BorderThickness="1"
                 Padding="16,7"
                 Cursor="Hand"/>

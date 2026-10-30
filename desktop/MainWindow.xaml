@@ -208,28 +208,15 @@
                     <DockPanel>
                         <TextBlock Text="Chat" Foreground="#8b949e" FontSize="11" FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
-                        <Button x:Name="ClearBtn" Content="✕ Löschen" Click="OnClearChat"
-                                DockPanel.Dock="Right" HorizontalAlignment="Right"
-                                Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                                FontSize="11" Cursor="Hand" Padding="8,0"/>
-                        <!-- Schriftgröße von Eingabe + Ausgabe zusammen (feiner: Einstellungen) -->
-                        <Button x:Name="FontLargerBtn" Content="A+" Click="OnFontLarger"
-                                DockPanel.Dock="Right" ToolTip="Schrift größer (Strg + Plus)"
-                                Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                                FontSize="12" FontWeight="SemiBold" Cursor="Hand" Padding="6,0"/>
-                        <Button x:Name="FontSmallerBtn" Content="A−" Click="OnFontSmaller"
-                                DockPanel.Dock="Right" ToolTip="Schrift kleiner (Strg + Minus)"
-                                Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                                FontSize="10" FontWeight="SemiBold" Cursor="Hand" Padding="6,0"/>
-                        <Button x:Name="StatistikBtn"
-                                Content="📈 Statistik"
-                                Click="OnStatistikClick"
+                        <Button x:Name="DokumenteBtn"
+                                Content="📎 Dokumente"
+                                Click="OnDokumenteClick"
                                 DockPanel.Dock="Right"
                                 Background="#21262d" Foreground="#c9d1d9"
                                 BorderBrush="#30363d" BorderThickness="1"
                                 FontSize="11" FontWeight="SemiBold"
                                 Cursor="Hand" Padding="10,4" Margin="0,0,8,0"
-                                ToolTip="Durchschnittliche Konfidenz der letzten 20 Antworten">
+                                ToolTip="Dateien oder E-Mails in die Akte legen — auswählen oder einfach aufs Fenster ziehen, auch direkt aus Outlook">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border Background="{TemplateBinding Background}"
@@ -246,41 +233,15 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
-                        <Button x:Name="ZusammenfassungBtn"
-                                Content="📊 Zusammenfassung"
-                                Click="OnZusammenfassungClick"
+                        <Button x:Name="SchriftsatzBtn"
+                                Content="📝 Schriftsatz"
+                                Click="OnSchriftsatzClick"
                                 DockPanel.Dock="Right"
-                                Visibility="Collapsed"
-                                Background="#21262d" Foreground="#c9d1d9"
-                                BorderBrush="#30363d" BorderThickness="1"
-                                FontSize="11" FontWeight="SemiBold"
-                                Cursor="Hand" Padding="10,4" Margin="0,0,8,0">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="5" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#30363d"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                        <Button x:Name="KopierenBtn"
-                                Content="📋 Kopieren"
-                                Click="OnKopierenClick"
-                                DockPanel.Dock="Right"
-                                Visibility="Collapsed"
                                 Background="#21262d" Foreground="#c9d1d9"
                                 BorderBrush="#30363d" BorderThickness="1"
                                 FontSize="11" FontWeight="SemiBold"
                                 Cursor="Hand" Padding="10,4" Margin="0,0,8,0"
-                                ToolTip="Letzte Antwort in die Zwischenablage kopieren">
+                                ToolTip="Schriftsatz aus der Akte entwerfen — mit Belegen und geprüften Zitaten">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border Background="{TemplateBinding Background}"
@@ -297,58 +258,37 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
-                        <Button x:Name="NotizenBtn"
-                                Content="📝 Notizen"
-                                Click="OnNotizenClick"
+                        <Button x:Name="OverflowBtn" Content="⋯"
                                 DockPanel.Dock="Right"
-                                Visibility="Collapsed"
-                                Background="#21262d" Foreground="#c9d1d9"
-                                BorderBrush="#30363d" BorderThickness="1"
-                                FontSize="11" FontWeight="SemiBold"
-                                Cursor="Hand" Padding="10,4" Margin="0,0,8,0">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="5" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#30363d"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
+                                Background="Transparent" Foreground="#c9d1d9" BorderThickness="0"
+                                FontSize="16" FontWeight="Bold" Cursor="Hand" Padding="8,0" Margin="0,0,8,0"
+                                Click="OnOverflowClick">
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="OverflowMenu" Background="#161b22" BorderBrush="#30363d" Foreground="#c9d1d9"
+                                             Placement="Bottom" PlacementTarget="{Binding ElementName=OverflowBtn}">
+                                    <MenuItem Header="📈 Statistik" Click="OnStatistikClick" ToolTip="Durchschnittliche Konfidenz der letzten 20 Antworten"/>
+                                    <MenuItem Header="📊 Zusammenfassung" Click="OnZusammenfassungClick"/>
+                                    <MenuItem Header="📋 Kopieren" Click="OnKopierenClick" ToolTip="Letzte Antwort in die Zwischenablage kopieren"/>
+                                    <MenuItem Header="📝 Notizen" Click="OnNotizenClick"/>
+                                    <Separator Background="#30363d"/>
+                                    <MenuItem Header="🗂 Aktenstamm" Click="OnAktenstammClick" ToolTip="Beteiligte, Gericht, Aktenzeichen, Zeitleiste und Kollisionsprüfung"/>
+                                    <MenuItem Header="🎙 Gespräch aufnehmen" Click="OnGespraechClick" ToolTip="Mandantengespräch lokal aufnehmen und transkribieren (Whisper) — Audio verlässt nie den PC"/>
+                                    <MenuItem Header="📋 Gespräche" Click="OnGespraecheAnzeigenClick" ToolTip="Aufgezeichnete Gespräche vollständig ansehen oder löschen"/>
+                                    <MenuItem Header="🧮 Rechner" Click="OnRechnerClick" ToolTip="Unterhalt, Zugewinn, Verfahrenswert, RVG — mit Rechenweg"/>
+                                    <MenuItem Header="✉ Sachstand" Click="OnSachstandClick" ToolTip="Sachstandsmitteilung an den Mandanten in verständlicher Sprache"/>
+                                    <MenuItem Header="📋 Fragebogen" Click="OnFragebogenClick" ToolTip="Mandanten-Fragebogen (Einkommen, Kinder, Vermögen) — füllt die Rechner vor"/>
+                                    <Separator Background="#30363d"/>
+                                    <MenuItem Header="✕ Löschen" Click="OnClearChat" ToolTip="Chat-Verlauf leeren"/>
+                                    <MenuItem Header="A+" Click="OnFontLarger" ToolTip="Schrift größer (Strg + Plus)"/>
+                                    <MenuItem Header="A−" Click="OnFontSmaller" ToolTip="Schrift kleiner (Strg + Minus)"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
                         </Button>
-                    </DockPanel>
-                </Border>
-                <!-- Werkzeuge für den aktiven Mandanten (sichtbar, sobald einer gewählt ist) -->
-                <Border x:Name="AktenLeiste" DockPanel.Dock="Top" Background="{DynamicResource LwFensterHintergrund}" BorderBrush="#30363d"
-                        BorderThickness="0,0,0,1" Padding="10,8,10,0" Visibility="Collapsed">
-                    <WrapPanel>
-                        <Button Content="📎 Dokumente" Style="{StaticResource LwButton}" Padding="12,6" Click="OnDokumenteClick"
-                                Margin="0,0,8,8" ToolTip="Dateien oder E-Mails in die Akte legen — auswählen oder einfach aufs Fenster ziehen, auch direkt aus Outlook"/>
-                        <Button Content="🗂 Aktenstamm" Style="{StaticResource LwButton}" Padding="12,6" Click="OnAktenstammClick"
-                                Margin="0,0,8,8" ToolTip="Beteiligte, Gericht, Aktenzeichen, Zeitleiste und Kollisionsprüfung"/>
-                        <Button Content="📝 Schriftsatz" Style="{StaticResource LwButton}" Padding="12,6" Click="OnSchriftsatzClick"
-                                Margin="0,0,8,8" ToolTip="Schriftsatz aus der Akte entwerfen — mit Belegen und geprüften Zitaten"/>
-                        <Button x:Name="GespraechBtn" Content="🎙 Gespräch aufnehmen" Style="{StaticResource LwButton}" Padding="12,6" Click="OnGespraechClick"
-                                Margin="0,0,8,8" ToolTip="Mandantengespräch lokal aufnehmen und transkribieren (Whisper) — Audio verlässt nie den PC"/>
-                        <Button Content="📋 Gespräche" Style="{StaticResource LwButton}" Padding="12,6" Click="OnGespraecheAnzeigenClick"
-                                Margin="0,0,8,8" ToolTip="Aufgezeichnete Gespräche vollständig ansehen oder löschen"/>
-                        <Button Content="🧮 Rechner" Style="{StaticResource LwButton}" Padding="12,6" Click="OnRechnerClick"
-                                Margin="0,0,8,8" ToolTip="Unterhalt, Zugewinn, Verfahrenswert, RVG — mit Rechenweg"/>
-                        <Button Content="✉ Sachstand" Style="{StaticResource LwButton}" Padding="12,6" Click="OnSachstandClick"
-                                Margin="0,0,8,8" ToolTip="Sachstandsmitteilung an den Mandanten in verständlicher Sprache"/>
-                        <Button Content="📋 Fragebogen" Style="{StaticResource LwButton}" Padding="12,6" Click="OnFragebogenClick"
-                                Margin="0,0,16,8" ToolTip="Mandanten-Fragebogen (Einkommen, Kinder, Vermögen) — füllt die Rechner vor"/>
                         <TextBlock x:Name="KollisionHinweis" Foreground="#f85149" FontSize="{DynamicResource LwSchriftNormal}"
                                    FontWeight="SemiBold" VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed"
-                                   Margin="0,0,0,8" MouseLeftButtonUp="OnKollisionHinweisClick"
-                                   Text="⚠ Mögliche Interessenkollision"/>
-                    </WrapPanel>
+                                   Margin="0,0,16,0" MouseLeftButtonUp="OnKollisionHinweisClick"
+                                   Text="⚠ Mögliche Interessenkollision" DockPanel.Dock="Right"/>
+                    </DockPanel>
                 </Border>
                 <Grid>
                     <Grid.RowDefinitions>
@@ -401,6 +341,23 @@
                                 <ProgressBar x:Name="ModellLadeBalken" Height="4" Minimum="0" Maximum="1" Margin="0,4,0,0"
                                              Background="#21262d" BorderThickness="0" Foreground="#e8a838"/>
                             </StackPanel>
+                            <!-- T#323: Dokumente für die aktuelle Frage im Chat
+                                 direkt auswählen — zusätzlich zur automatischen
+                                 Priorisierung per Rechtsklick im Dateibaum. -->
+                            <Button x:Name="ChatDokumenteBtn" Content="📎"
+                                    DockPanel.Dock="Right"
+                                    MinWidth="44"
+                                    Height="36"
+                                    VerticalAlignment="Bottom"
+                                    Click="OnDokumenteAuswahlClick"
+                                    Background="#21262d"
+                                    Foreground="#c9d1d9"
+                                    BorderBrush="#30363d"
+                                    BorderThickness="1"
+                                    FontSize="15"
+                                    Padding="8,5"
+                                    Margin="0,0,8,0"
+                                    ToolTip="Dokumente des Mandanten für diese Chat-Frage auswählen"/>
                             <!-- SendBtn zuerst + Dock=Right, damit InputBox als letztes Kind
                                  (DockPanel-Default LastChildFill=True) den Rest ausfüllt.
                                  Umgekehrte Reihenfolge machte InputBox faktisch unsichtbar,
@@ -457,8 +414,8 @@
                                      MinHeight="36"
                                      MaxHeight="200"
                                      Padding="2,7"
-                                     Background="#0d1117"
-                                     Foreground="#c9d1d9"
+                                     Background="{DynamicResource LwFensterHintergrund}"
+                                     Foreground="{DynamicResource LwVordergrund}"
                                      BorderBrush="#30363d"
                                      BorderThickness="1"
                                      TextWrapping="Wrap"

@@ -4,13 +4,13 @@
         Title="LexWolf — Mandant löschen"
         Icon="/Assets/lexwolf.ico"
         Width="680" Height="640" MinWidth="520" MinHeight="460"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
     <DockPanel>
         <!-- Kopf -->
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="🗑 Mandant löschen" Style="{StaticResource LwDialogTitel}" Foreground="#f85149"/>
                 <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
@@ -28,7 +28,7 @@
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,18,8">
             <StackPanel>
-                <TextBlock Style="{StaticResource LwFliesstext}" Foreground="#e6edf3" Margin="0,0,0,12"
+                <TextBlock Style="{StaticResource LwFliesstext}" Foreground="{DynamicResource LwTextStrong}" Margin="0,0,0,12"
                            Text="Folgendes wird gelöscht:"/>
                 <Border Style="{StaticResource LwKarte}">
                     <ItemsControl x:Name="UmfangListe">

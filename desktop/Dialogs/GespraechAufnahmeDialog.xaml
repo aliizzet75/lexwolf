@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="360" Height="420"
         MinWidth="360" MinHeight="420"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="NoResize">
@@ -79,11 +79,11 @@
             </Image>
         </Viewbox>
 
-        <TextBlock Grid.Row="2" x:Name="ZeitText" Text="00:00" Foreground="#e6edf3"
+        <TextBlock Grid.Row="2" x:Name="ZeitText" Text="00:00" Foreground="{DynamicResource LwTextStrong}"
                    FontSize="36" FontWeight="Bold" FontFamily="Consolas"
                    HorizontalAlignment="Center" Margin="0,4,0,4"/>
 
-        <TextBlock Grid.Row="3" x:Name="HinweisText" Text="Audio verlässt nie diesen Rechner." Foreground="#8b949e"
+        <TextBlock Grid.Row="3" x:Name="HinweisText" Text="Audio verlässt nie diesen Rechner." Foreground="{DynamicResource LwMuted}"
                    FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,18"/>
 
         <StackPanel Grid.Row="4">

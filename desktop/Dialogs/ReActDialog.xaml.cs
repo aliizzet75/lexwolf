@@ -134,7 +134,7 @@ public partial class ReActDialog : Window
         header.Children.Add(new TextBlock
         {
             Text = quelle,
-            Foreground = System.Windows.Media.Brushes.White,
+            Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwTextStrong"],
             FontSize = 12,
             FontWeight = FontWeights.SemiBold,
         });
@@ -156,7 +156,7 @@ public partial class ReActDialog : Window
         body.Children.Add(new TextBlock
         {
             Text = text,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e)),
+            Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwMuted"],
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(19, 2, 0, 0),
@@ -164,8 +164,8 @@ public partial class ReActDialog : Window
 
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x16, 0x1b, 0x22)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0x30, 0x36, 0x3d)),
+            Background = (SolidColorBrush)System.Windows.Application.Current.Resources["LwPanel"],
+            BorderBrush = (SolidColorBrush)System.Windows.Application.Current.Resources["LwBorder"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(10, 7, 10, 7),

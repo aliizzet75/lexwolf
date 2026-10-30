@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="680" Height="480"
         MinWidth="560" MinHeight="380"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -13,7 +13,7 @@
     <Window.Resources>
         <!-- Nav item style -->
         <Style x:Key="NavItem" TargetType="ListBoxItem">
-            <Setter Property="Foreground"        Value="#8b949e"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwMuted}"/>
             <Setter Property="Background"        Value="Transparent"/>
             <Setter Property="Padding"           Value="14,8"/>
             <Setter Property="FontSize"          Value="13"/>
@@ -27,11 +27,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#e6edf3"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwTextStrong}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#161b22"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource LwPanel}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -41,27 +41,27 @@
 
         <!-- Input style -->
         <Style x:Key="Input" TargetType="TextBox">
-            <Setter Property="Background"        Value="#0d1117"/>
-            <Setter Property="Foreground"        Value="#c9d1d9"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Background"        Value="{DynamicResource LwBg}"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="10,7"/>
             <Setter Property="FontSize"          Value="13"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="CaretBrush"        Value="#c9d1d9"/>
+            <Setter Property="CaretBrush"        Value="{DynamicResource LwText}"/>
         </Style>
 
         <!-- Slider style -->
         <Style x:Key="DarkSlider" TargetType="Slider">
-            <Setter Property="Background"        Value="#21262d"/>
-            <Setter Property="Foreground"        Value="#1f6feb"/>
+            <Setter Property="Background"        Value="{DynamicResource LwRaised}"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwPrimary}"/>
             <Setter Property="IsSnapToTickEnabled" Value="True"/>
             <Setter Property="TickFrequency"     Value="1"/>
         </Style>
 
         <!-- Primary button -->
         <Style x:Key="PrimaryBtn" TargetType="Button">
-            <Setter Property="Background"        Value="#1f6feb"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPrimary}"/>
             <Setter Property="Foreground"        Value="White"/>
             <Setter Property="BorderThickness"   Value="0"/>
             <Setter Property="Padding"           Value="20,8"/>
@@ -76,10 +76,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#388bfd"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1158c7"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryPressed}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -90,8 +90,8 @@
         <!-- Ghost button -->
         <Style x:Key="GhostBtn" TargetType="Button">
             <Setter Property="Background"        Value="Transparent"/>
-            <Setter Property="Foreground"        Value="#8b949e"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwMuted}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="20,8"/>
             <Setter Property="FontSize"          Value="13"/>
@@ -107,8 +107,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#c9d1d9"/>
+                                <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -131,11 +131,11 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left nav -->
-            <Border Grid.Column="0" Background="#161b22"
-                    BorderBrush="#30363d" BorderThickness="0,0,1,0">
+            <Border Grid.Column="0" Background="{DynamicResource LwPanel}"
+                    BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,1,0">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Padding="16,16,16,8">
-                        <TextBlock Text="Einstellungen" Foreground="#e6edf3"
+                        <TextBlock Text="Einstellungen" Foreground="{DynamicResource LwTextStrong}"
                                    FontSize="13" FontWeight="SemiBold"/>
                     </Border>
                     <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
@@ -155,15 +155,15 @@
                     <!-- === Allgemein === -->
                     <StackPanel x:Name="PanelAllgemein">
 
-                        <TextBlock Text="Allgemein" Foreground="#e6edf3"
+                        <TextBlock Text="Allgemein" Foreground="{DynamicResource LwTextStrong}"
                                    FontSize="16" FontWeight="SemiBold" Margin="0,0,0,20"/>
 
                         <!-- Dokumente-Verzeichnis -->
                         <TextBlock Text="Dokumente-Verzeichnis"
-                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,0,0,4"/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Foreground="#8b949e" FontSize="12">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
                             Ordner, in dem Mandanten-Unterordner mit Dokumenten liegen.
                             Der Scanner überwacht diesen Ordner live.
                         </TextBlock>
@@ -183,10 +183,10 @@
                         </Grid>
 
                         <TextBlock Text="Briefkopf (Kanzleiname, Adresse)"
-                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,20,0,4"/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Foreground="#8b949e" FontSize="12">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
                             Wird oben in neue Schriftsatz-Entwürfe und in den Chat-Kontext eingefügt.
                         </TextBlock>
                         <TextBox x:Name="BriefkopfBox"
@@ -197,7 +197,7 @@
                                  Margin="0,0,0,12"/>
 
                         <TextBlock Text="Briefende (Grußformel, Unterschrift)"
-                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,0,0,4"/>
                         <TextBox x:Name="BriefendeBox"
                                  Style="{StaticResource Input}"
@@ -207,10 +207,10 @@
                                  Margin="0,0,0,12"/>
 
                         <TextBlock Text="Ort (für Datum/Ort-Zeile im Schriftsatz)"
-                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,0,0,4"/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Foreground="#8b949e" FontSize="12">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
                             Z. B. „Düsseldorf" — zusammen mit dem heutigen Datum automatisch im Entwurf.
                         </TextBlock>
                         <TextBox x:Name="KanzleiOrtBox"
@@ -218,10 +218,10 @@
                                  Margin="0,0,0,12"/>
 
                         <TextBlock Text="Kontodaten"
-                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,0,0,4"/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Foreground="#8b949e" FontSize="12">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
                             Bank, IBAN, BIC — wird nur eingefügt, wenn der Entwurf Zahlungsangaben braucht (z. B. Kostennote).
                         </TextBlock>
                         <TextBox x:Name="KanzleiKontodatenBox"
@@ -231,42 +231,42 @@
                                  MinHeight="60"/>
 
                         <TextBlock Text="Bundesland"
-                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,20,0,4"/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Foreground="#8b949e" FontSize="12">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
                             Für die Feiertage bei der Fristberechnung (Gerichtsort).
                         </TextBlock>
                         <ComboBox x:Name="BundeslandBox" Style="{StaticResource DarkComboBoxStyle}"
                                   HorizontalAlignment="Left" Width="220"
                                   DisplayMemberPath="Value" SelectedValuePath="Key"/>
 
-                        <Separator Background="#21262d" Margin="0,28,0,20"/>
+                        <Separator Background="{DynamicResource LwRaised}" Margin="0,28,0,20"/>
 
                         <!-- === Feedback & Datenschutz === -->
-                        <TextBlock Text="Feedback &amp; Datenschutz" Foreground="#e6edf3"
+                        <TextBlock Text="Feedback &amp; Datenschutz" Foreground="{DynamicResource LwTextStrong}"
                                    FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
 
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,14"
-                                   Foreground="#8b949e" FontSize="12" LineHeight="18">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12" LineHeight="18">
                             Hier entscheiden Sie, ob LexWolf Daten zur Verbesserung des Schreibstils mit uns teilen darf. Es werden ausschließlich anonymisierte Stil-Metriken übermittelt – keine Inhalte Ihrer Schriftsätze, keine Mandantendaten, keine §-Referenzen und keine Geldbeträge.
                         </TextBlock>
 
-                        <CheckBox x:Name="FeedbackOptInBox" Foreground="#c9d1d9" FontSize="13"
+                        <CheckBox x:Name="FeedbackOptInBox" Foreground="{DynamicResource LwText}" FontSize="13"
                                   Margin="0,0,0,10" VerticalContentAlignment="Center">
-                            <TextBlock Text="Stil-Verbesserungen senden" Foreground="#c9d1d9" FontSize="13"/>
+                            <TextBlock Text="Stil-Verbesserungen senden" Foreground="{DynamicResource LwText}" FontSize="13"/>
                         </CheckBox>
                         <TextBlock TextWrapping="Wrap" Margin="24,0,0,18"
-                                   Foreground="#8b949e" FontSize="12">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
                             Beispiel: Durchschnittliche Satzlängen, Satzbausteine und Häufigkeiten von Korrekturkategorien.
                         </TextBlock>
 
-                        <CheckBox x:Name="AbTestOptInBox" Foreground="#c9d1d9" FontSize="13"
+                        <CheckBox x:Name="AbTestOptInBox" Foreground="{DynamicResource LwText}" FontSize="13"
                                   Margin="0,0,0,10" VerticalContentAlignment="Center">
-                            <TextBlock Text="A/B-Tests teilnehmen" Foreground="#c9d1d9" FontSize="13"/>
+                            <TextBlock Text="A/B-Tests teilnehmen" Foreground="{DynamicResource LwText}" FontSize="13"/>
                         </CheckBox>
                         <TextBlock TextWrapping="Wrap" Margin="24,0,0,0"
-                                   Foreground="#8b949e" FontSize="12">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
                             Sie erhalten gelegentlich zwei alternative Formulierungen. Die Wahl wird anonymisiert ausgewertet, um den Schreibstil zu verbessern.
                         </TextBlock>
 
@@ -275,17 +275,17 @@
                     <!-- === Darstellung === -->
                     <StackPanel x:Name="PanelDarstellung" Visibility="Collapsed">
 
-                        <TextBlock Text="Darstellung" Foreground="#e6edf3"
+                        <TextBlock Text="Darstellung" Foreground="{DynamicResource LwTextStrong}"
                                    FontSize="16" FontWeight="SemiBold" Margin="0,0,0,20"/>
 
-                        <CheckBox x:Name="DunkelModusBox" Foreground="#c9d1d9" FontSize="13"
+                        <CheckBox x:Name="DunkelModusBox" Foreground="{DynamicResource LwText}" FontSize="13"
                                   Margin="0,0,0,16" VerticalContentAlignment="Center"
                                   Checked="OnDunkelModusChanged" Unchecked="OnDunkelModusChanged">
-                            <TextBlock Text="Dunkles Design" Foreground="#c9d1d9" FontSize="13"/>
+                            <TextBlock Text="Dunkles Design" Foreground="{DynamicResource LwText}" FontSize="13"/>
                         </CheckBox>
 
                         <TextBlock Text="Chat-Eingabefeld"
-                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,0,0,4"/>
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
@@ -299,11 +299,11 @@
                                     Style="{StaticResource DarkSlider}"
                                     ValueChanged="OnInputFontSizeChanged"/>
                         </Grid>
-                        <TextBlock x:Name="InputFontSizeLabel" Foreground="#8b949e" FontSize="12"
+                        <TextBlock x:Name="InputFontSizeLabel" Foreground="{DynamicResource LwMuted}" FontSize="12"
                                    Margin="0,-8,0,18"/>
 
                         <TextBlock Text="Chat-Ausgabe (WebView2)"
-                                   Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold"
                                    Margin="0,0,0,4"/>
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
@@ -317,13 +317,13 @@
                                     Style="{StaticResource DarkSlider}"
                                     ValueChanged="OnOutputFontSizeChanged"/>
                         </Grid>
-                        <TextBlock x:Name="OutputFontSizeLabel" Foreground="#8b949e" FontSize="12"
+                        <TextBlock x:Name="OutputFontSizeLabel" Foreground="{DynamicResource LwMuted}" FontSize="12"
                                    Margin="0,-8,0,0"/>
 
-                        <Border Background="#161b22" BorderBrush="#30363d" BorderThickness="1"
+                        <Border Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1"
                                 CornerRadius="6" Padding="12" Margin="0,24,0,0">
                             <TextBlock x:Name="PreviewText" Text="Vorschau: Dies ist ein Beispieltext."
-                                       Foreground="#c9d1d9" FontSize="13" TextWrapping="Wrap"/>
+                                       Foreground="{DynamicResource LwText}" FontSize="13" TextWrapping="Wrap"/>
                         </Border>
 
                     </StackPanel>
@@ -331,35 +331,35 @@
                     <!-- === Spracheingabe === -->
                     <StackPanel x:Name="PanelSprache" Visibility="Collapsed">
 
-                        <TextBlock Text="Spracheingabe" Foreground="#e6edf3"
+                        <TextBlock Text="Spracheingabe" Foreground="{DynamicResource LwTextStrong}"
                                    FontSize="16" FontWeight="SemiBold" Margin="0,0,0,20"/>
 
-                        <CheckBox x:Name="VoskGrossBox" Foreground="#c9d1d9" FontSize="13"
+                        <CheckBox x:Name="VoskGrossBox" Foreground="{DynamicResource LwText}" FontSize="13"
                                   Margin="0,0,0,10" VerticalContentAlignment="Center">
-                            <TextBlock Text="Großes Sprachmodell beim Start laden" Foreground="#c9d1d9" FontSize="13"/>
+                            <TextBlock Text="Großes Sprachmodell beim Start laden" Foreground="{DynamicResource LwText}" FontSize="13"/>
                         </CheckBox>
                         <TextBlock TextWrapping="Wrap" Margin="24,0,0,8"
-                                   Foreground="#8b949e" FontSize="12" LineHeight="18">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12" LineHeight="18">
                             Das große Modell erkennt Diktate deutlich genauer, braucht aber rund 3 GB Arbeitsspeicher und lädt einige Minuten im Hintergrund. Ohne diese Option diktiert LexWolf mit dem kleinen Modell. Ausschalten wirkt ab dem nächsten Start.
                         </TextBlock>
                         <TextBlock x:Name="VoskGrossStatus" TextWrapping="Wrap" Margin="24,0,0,0"
-                                   Foreground="#6e7681" FontSize="11"/>
+                                   Foreground="{DynamicResource LwDisabledText}" FontSize="11"/>
 
                     </StackPanel>
 
                     <!-- === KI-Modell (Test) === -->
                     <StackPanel x:Name="PanelKiModell" Visibility="Collapsed">
 
-                        <TextBlock Text="KI-Modell (Test)" Foreground="#e6edf3"
+                        <TextBlock Text="KI-Modell (Test)" Foreground="{DynamicResource LwTextStrong}"
                                    FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,20"
-                                   Foreground="#8b949e" FontSize="12" LineHeight="18">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12" LineHeight="18">
                             Zum Testen umschaltbar, welches KI-Modell LexWolf tatsächlich verwendet — wirkt
                             sofort beim Klick auf „Übernehmen", unabhängig vom restlichen „Speichern" dieses
                             Fensters.
                         </TextBlock>
 
-                        <TextBlock Text="Modus" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock Text="Modus" Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <ComboBox x:Name="KiModusBox" Style="{StaticResource DarkComboBoxStyle}"
                                   HorizontalAlignment="Left" Width="260" Margin="0,0,0,16"
                                   SelectionChanged="OnKiModusChanged">
@@ -370,14 +370,14 @@
 
                         <!-- Ein Modell -->
                         <StackPanel x:Name="KiEinModellPanel" Visibility="Collapsed">
-                            <TextBlock Text="Anbieter" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="Anbieter" Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <ComboBox x:Name="KiAnbieterBox" Style="{StaticResource DarkComboBoxStyle}"
                                       HorizontalAlignment="Left" Width="260" Margin="0,0,0,12"
                                       SelectionChanged="OnKiAnbieterChanged">
                                 <ComboBoxItem Content="Claude Code" Tag="claude_code"/>
                                 <ComboBoxItem Content="Ollama Cloud" Tag="ollama"/>
                             </ComboBox>
-                            <TextBlock Text="Modell" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="Modell" Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <ComboBox x:Name="KiEinModellModellBox" Style="{StaticResource DarkComboBoxStyle}"
                                       HorizontalAlignment="Left" Width="320" Margin="0,0,0,16"
                                       DisplayMemberPath="Anzeige"/>
@@ -385,26 +385,26 @@
 
                         <!-- Hybrid -->
                         <StackPanel x:Name="KiHybridPanel" Visibility="Collapsed">
-                            <TextBlock Text="Claude-Code-Modell" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="Claude-Code-Modell" Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <ComboBox x:Name="KiHybridClaudeBox" Style="{StaticResource DarkComboBoxStyle}"
                                       HorizontalAlignment="Left" Width="320" Margin="0,0,0,12"
                                       DisplayMemberPath="Anzeige"/>
-                            <TextBlock Text="Ollama-Cloud-Modell" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="Ollama-Cloud-Modell" Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <ComboBox x:Name="KiHybridOllamaBox" Style="{StaticResource DarkComboBoxStyle}"
                                       HorizontalAlignment="Left" Width="320" Margin="0,0,0,12"
                                       DisplayMemberPath="Anzeige"/>
                             <TextBlock TextWrapping="Wrap" Margin="0,0,0,16"
-                                       Foreground="#8b949e" FontSize="12" LineHeight="18">
+                                       Foreground="{DynamicResource LwMuted}" FontSize="12" LineHeight="18">
                                 Kurze/einfache Anfragen gehen automatisch an das günstigere, aufwändige
                                 Entwürfe (z.B. Schriftsätze) an das teurere der beiden Modelle.
                             </TextBlock>
                         </StackPanel>
 
-                        <Separator Background="#21262d" Margin="0,4,0,20"/>
+                        <Separator Background="{DynamicResource LwRaised}" Margin="0,4,0,20"/>
 
-                        <TextBlock Text="Claude Code API-Key" Foreground="#c9d1d9" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock Text="Claude Code API-Key" Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Foreground="#8b949e" FontSize="12">
+                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
                             Ohne Key läuft Claude Code über den lokalen Entwickler-Proxy (kein eigener Zugang
                             nötig). Mit Key geht es direkt über die Anthropic-API.
                         </TextBlock>
@@ -414,14 +414,14 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <PasswordBox x:Name="KiApiKeyBox" Grid.Column="0"
-                                         Background="#0d1117" Foreground="#c9d1d9"
-                                         BorderBrush="#30363d" BorderThickness="1"
-                                         Padding="10,7" FontSize="13" CaretBrush="#c9d1d9"
+                                         Background="{DynamicResource LwBg}" Foreground="{DynamicResource LwText}"
+                                         BorderBrush="{DynamicResource LwBorder}" BorderThickness="1"
+                                         Padding="10,7" FontSize="13" CaretBrush="{DynamicResource LwText}"
                                          VerticalContentAlignment="Center" Margin="0,0,6,0"/>
                             <Button Grid.Column="1" Content="Entfernen" Style="{StaticResource GhostBtn}"
                                     Padding="12,7" Click="OnKiApiKeyEntfernen"/>
                         </Grid>
-                        <TextBlock x:Name="KiApiKeyStatus" Foreground="#6e7681" FontSize="11" Margin="0,0,0,20"/>
+                        <TextBlock x:Name="KiApiKeyStatus" Foreground="{DynamicResource LwDisabledText}" FontSize="11" Margin="0,0,0,20"/>
 
                         <Button x:Name="KiUebernehmenBtn" Content="Übernehmen" Style="{StaticResource PrimaryBtn}"
                                 HorizontalAlignment="Left" Click="OnKiUebernehmen"/>
@@ -436,8 +436,8 @@
         </Grid>
 
         <!-- Footer: actions -->
-        <Border Grid.Row="1" Background="#161b22"
-                BorderBrush="#30363d" BorderThickness="0,1,0,0"
+        <Border Grid.Row="1" Background="{DynamicResource LwPanel}"
+                BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,1,0,0"
                 Padding="16,12">
             <DockPanel>
                 <TextBlock x:Name="StatusLabel" DockPanel.Dock="Left"

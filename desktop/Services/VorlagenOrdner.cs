@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -96,5 +97,21 @@ public static class VorlagenOrdner
         var vorlagenOrdner = Path.Combine(dokumentePfad, Ordnername);
         var typOrdner = Path.Combine(vorlagenOrdner, OrdnerName(schriftsatzTyp));
         return ErsteDateiAlphabetisch(typOrdner) ?? ErsteDateiAlphabetisch(vorlagenOrdner);
+    }
+
+    /// <summary>Liest den Inhalt einer Vorlagen-Datei robust gegen Datei-Lesefehler (Task #323) —
+    /// z.B. wenn die Datei gerade in Word geöffnet ist oder von VorlageSpeichernDialog geschrieben
+    /// wird. Gibt bei IOException/UnauthorizedAccessException null zurück statt zu werfen, damit
+    /// der Chat (MainWindow.GetLatestTemplateContext) normal weiterläuft, nur ohne diesen
+    /// Kontext-Baustein, statt mit einer unbehandelten Exception bis zum globalen
+    /// Exception-Handler (App.xaml.cs) durchzulaufen.</summary>
+    public static string? LiesInhaltOderNull(string pfad)
+    {
+        try
+        {
+            return File.ReadAllText(pfad, System.Text.Encoding.UTF8);
+        }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
     }
 }

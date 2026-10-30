@@ -1,0 +1,56 @@
+<Window x:Class="LexWolf.Dialogs.BelegeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LexWolf — Belegprüfung"
+        Icon="/Assets/lexwolf.ico"
+        Width="680" Height="560"
+        MinWidth="440" MinHeight="320"
+        Background="{DynamicResource LwBg}"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="CanResizeWithGrip">
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="📋 Belegprüfung" Foreground="{DynamicResource LwTextStrong}" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock x:Name="UntertitelText" Foreground="{DynamicResource LwMuted}" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="#1a2f1e" BorderBrush="#3fb950" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0">
+                <TextBlock x:Name="GeprueftZahl" Foreground="#3fb950" FontSize="12" FontWeight="SemiBold"/>
+            </Border>
+            <Border Grid.Column="1" Background="#2a2210" BorderBrush="#d29922" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0">
+                <TextBlock x:Name="PruefenZahl" Foreground="#d29922" FontSize="12" FontWeight="SemiBold"/>
+            </Border>
+            <Border Grid.Column="2" Background="#2a1512" BorderBrush="#f85149" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0">
+                <TextBlock x:Name="FalschZahl" Foreground="#f85149" FontSize="12" FontWeight="SemiBold"/>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" CornerRadius="8">
+            <ScrollViewer x:Name="RechercheScroll" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="BelegeListe" Margin="10"/>
+            </ScrollViewer>
+        </Border>
+
+        <Button Grid.Row="3" x:Name="CloseBtn" Content="Schließen"
+                HorizontalAlignment="Right" Margin="0,12,0,0"
+                Background="Transparent" Foreground="{DynamicResource LwMuted}"
+                BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" Padding="16,8"
+                Cursor="Hand" Click="OnClose"/>
+    </Grid>
+</Window>

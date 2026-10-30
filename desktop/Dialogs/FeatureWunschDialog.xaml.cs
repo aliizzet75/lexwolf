@@ -458,8 +458,8 @@ public partial class FeatureWunschDialog : Window
         var isUser = role == "user";
         var bubble = new Border
         {
-            Background = isUser ? new SolidColorBrush(Color.FromRgb(0x1f, 0x6f, 0xeb))
-                                 : new SolidColorBrush(Color.FromRgb(0x16, 0x1b, 0x22)),
+            Background = isUser ? (SolidColorBrush)System.Windows.Application.Current.Resources["LwPrimary"]
+                                 : (SolidColorBrush)System.Windows.Application.Current.Resources["LwPanel"],
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(10, 7, 10, 7),
             Margin = new Thickness(isUser ? 60 : 0, 5, isUser ? 0 : 60, 5),
@@ -468,7 +468,7 @@ public partial class FeatureWunschDialog : Window
             {
                 Text = text,
                 TextWrapping = TextWrapping.Wrap,
-                Foreground = System.Windows.Media.Brushes.White,
+                Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwAnonymisiertText"],
                 FontSize = 13,
             },
         };
