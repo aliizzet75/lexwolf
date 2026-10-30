@@ -157,6 +157,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.81.0",
         "Fehler beim Umbenennen behoben: 'NaN ist kein gueltiger Wert' kam bei Dialogen, die ihre Hoehe automatisch an den Inhalt anpassen (Umbenennen, Vorlage speichern), weil die Schriftgroessen-Anpassung diese automatische Hoehe versehentlich ueberschrieben hat.",
     ),
+    (
+        "0.82.0",
+        "Obere Leiste aufgeraeumt: Live-Suche-Button und die nie wirklich funktionierende Ordner-scannen-Attrappe entfernt, Neues-Mandat-Button in die linke Seitenleiste verschoben, Einstellungen/Hilfe/Features/Feature-Wunsch zu einem Menue zusammengefasst, Verbindungsstatus zeigt nur noch 'Verbunden' ohne die technische Adresse.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
