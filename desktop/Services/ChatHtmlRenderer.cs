@@ -581,6 +581,7 @@ public static class ChatHtmlRenderer
             .such-panel-button:hover {{ background: #30363d; border-color: #58a6ff; color: #e6edf3; }}
             .recherche-dialog {{ padding: 14px; }}
             .recherche-status {{ padding: 10px 14px; margin-bottom: 12px; border: 1px solid #30363d; border-radius: 8px; background: #161b22; color: #c9d1d9; font-weight: 600; font-size: {_outputFontSize}px; }}
+            .such-leer {{ color: #8b949e; font-size: {_outputFontSize}px; padding: 8px 2px; }}
             .such-liste {{ display: flex; flex-direction: column; gap: 8px; }}
             .such-schritt {{ border: 1px solid #30363d; border-radius: 6px; padding: 8px 11px; background: #0d1117; }}
             .such-kopf {{ display: flex; align-items: center; gap: 6px; }}

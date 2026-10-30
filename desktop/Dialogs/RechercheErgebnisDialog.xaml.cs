@@ -49,14 +49,24 @@ public partial class RechercheErgebnisDialog : Window
         }
         catch (Exception ex)
         {
+            // War zuvor nur Debug.WriteLine (im Release-Build nie sichtbar) — der Anwalt
+            // sah dann nur ein leeres Fenster ohne jeden Hinweis, was schiefging.
             System.Diagnostics.Debug.WriteLine($"[RechercheErgebnisDialog] {ex.Message}");
+            System.Windows.MessageBox.Show(
+                this, $"Die Recherche-Ergebnisse konnten nicht angezeigt werden:\n\n{ex.Message}",
+                "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
     private string BuildHtml()
     {
+        // Ohne Suchschritte (z.B. Schnell-Modus ohne Treffer) wäre such-liste sonst leer
+        // und ohne Hinweis — sieht dann wie ein kaputtes, leeres Fenster aus.
+        var steps = string.IsNullOrWhiteSpace(_stepsHtml) && !_laufend
+            ? "<div class='such-leer'>Keine Suchschritte aufgezeichnet.</div>"
+            : _stepsHtml;
         var content = ChatHtmlRenderer.BuildRechercheDialogHtml(
-            _stepsHtml, _laufend, _modus, _gefundenCount, _anonymisiertGesendet);
+            steps, _laufend, _modus, _gefundenCount, _anonymisiertGesendet);
 
         return $"<!DOCTYPE html>\n<html>\n<head>\n<meta charset='utf-8'>\n{ChatHtmlRenderer.GetChatCss()}\n</head>\n<body>\n{content}\n</body>\n</html>";
     }

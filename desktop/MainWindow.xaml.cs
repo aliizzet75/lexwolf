@@ -425,7 +425,14 @@ document.addEventListener('click', function (e) {{
 
     private void OnAnalyseStatusChanged(AnalyseStatus status)
     {
-        AddReasoning("🔍", $"Analyse-Status: {status}");
+        // AddReasoning hängt nur an, löscht nie — bei jedem Mandantenwechsel kam eine
+        // weitere Zeile dazu, die Leiste über dem Chat wuchs unbegrenzt ("Analyse-Status:
+        // ready" sammelte sich an). Nur während des Scans selbst ist das eine relevante
+        // Information; danach (Ready) gibt es nichts mehr zu zeigen — Leiste bleibt leer,
+        // statt den Chat-Bereich dauerhaft zu verkleinern.
+        Dispatcher.Invoke(() => ReasoningPanel.Children.Clear());
+        if (status == AnalyseStatus.Scanning)
+            AddReasoning("🔍", "Mandant wird im Hintergrund analysiert …");
         // Der Zusammenfassungs-/Kopieren-Button befinden sich im Overflow-Menü
         // (Task #319). Sichtbarkeits-/Enabled-Logik daran ist nicht mehr möglich.
     }
