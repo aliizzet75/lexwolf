@@ -297,7 +297,7 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0" Background="{DynamicResource LwFensterHintergrund}" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8">
+                    <Border x:Name="ReasoningBorder" Grid.Row="0" Background="{DynamicResource LwFensterHintergrund}" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="12,8" Visibility="Collapsed">
                         <Grid>
                             <StackPanel x:Name="ReasoningPanel"/>
                             <StackPanel x:Name="WolfLoadingPanel" Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">

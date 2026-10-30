@@ -101,7 +101,9 @@ public partial class MainWindow
         AktualisiereKollisionHinweis();
     }
 
-    /// <summary>Beim Start: was ist heute wichtig? Erscheint oben im Chat-Bereich.</summary>
+    /// <summary>Beim Start: was ist heute wichtig? War früher eine dauerhafte Zeile über dem
+    /// Chat (AddReasoning, nie geleert) — nahm Platz weg, den der Chat jetzt bekommen soll.
+    /// Erscheint stattdessen als eigenes, schließbares Fenster.</summary>
     private void ZeigeTagesueberblick()
     {
         var heute = DateTime.Today;
@@ -117,8 +119,10 @@ public partial class MainWindow
         if (woche > 0) teile.Add($"{woche} Frist(en) diese Woche");
         if (vorschlaege > 0) teile.Add($"{vorschlaege} neue Fristvorschläge");
         if (eingaenge > 0) teile.Add($"{eingaenge} offene Eingänge");
-        AddReasoning("☀", "Tagesüberblick: " + string.Join(" · ", teile));
-        if (dringend > 0 || vorschlaege > 0) LinksTabs.SelectedIndex = 1;
+
+        var dlg = new Dialogs.TagesueberblickDialog(teile, mitFristenLink: dringend > 0 || vorschlaege > 0) { Owner = this };
+        dlg.ShowDialog();
+        if (dlg.ZuFristenGewaehlt) LinksTabs.SelectedIndex = 1;
     }
 
     /// <summary>Mandant per Id auswählen (z. B. Klick auf eine Frist oder einen Eingang).</summary>

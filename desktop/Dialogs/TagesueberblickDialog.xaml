@@ -1,0 +1,65 @@
+<Window x:Class="LexWolf.Dialogs.TagesueberblickDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LexWolf — Tagesüberblick"
+        Icon="/Assets/lexwolf.ico"
+        Width="460" SizeToContent="Height"
+        MinWidth="380"
+        Background="{DynamicResource LwBg}"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="☀ Tagesüberblick"
+                   Foreground="{DynamicResource LwTextStrong}"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,12"/>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource LwPanel}"
+                BorderBrush="{DynamicResource LwBorder}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16">
+            <ItemsControl x:Name="PunkteListe">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" Foreground="{DynamicResource LwText}"
+                                   FontSize="13" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button x:Name="ZuFristenBtn"
+                    Content="Zu den Fristen"
+                    Click="OnZuFristenClick"
+                    Background="{DynamicResource LwAkzent}"
+                    Foreground="{DynamicResource LwStatusBadgeText}"
+                    FontWeight="SemiBold"
+                    BorderThickness="0"
+                    Padding="16,7"
+                    Margin="0,0,8,0"
+                    Cursor="Hand"
+                    Visibility="Collapsed"/>
+            <Button Content="Schließen"
+                    Click="OnCloseClick"
+                    Background="{DynamicResource LwRaised}"
+                    Foreground="{DynamicResource LwText}"
+                    BorderBrush="{DynamicResource LwBorder}"
+                    BorderThickness="1"
+                    Padding="16,7"
+                    Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

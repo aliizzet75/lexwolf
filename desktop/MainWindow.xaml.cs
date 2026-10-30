@@ -431,7 +431,7 @@ document.addEventListener('click', function (e) {{
         // ready" sammelte sich an). Nur während des Scans selbst ist das eine relevante
         // Information; danach (Ready) gibt es nichts mehr zu zeigen — Leiste bleibt leer,
         // statt den Chat-Bereich dauerhaft zu verkleinern.
-        Dispatcher.Invoke(() => ReasoningPanel.Children.Clear());
+        Dispatcher.Invoke(() => { ReasoningPanel.Children.Clear(); AktualisiereReasoningBorderSichtbarkeit(); });
         if (status == AnalyseStatus.Scanning)
             AddReasoning("🔍", "Mandant wird im Hintergrund analysiert …");
         // Der Zusammenfassungs-/Kopieren-Button befinden sich im Overflow-Menü
@@ -1708,6 +1708,7 @@ document.addEventListener('click', function (e) {{
         if (_wolfLoadingAktiv++ > 0) return;
         WolfLoadingPanel.Visibility = Visibility.Visible;
         ((Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"]).Begin(WolfLoadingPanel, true);
+        AktualisiereReasoningBorderSichtbarkeit();
     }
 
     private void VerbergeWolfLoading()
@@ -1715,6 +1716,7 @@ document.addEventListener('click', function (e) {{
         if (_wolfLoadingAktiv == 0 || --_wolfLoadingAktiv > 0) return;
         WolfLoadingPanel.Visibility = Visibility.Collapsed;
         ((Storyboard)WolfLoadingPanel.Resources["WolfPulseStoryboard"]).Stop(WolfLoadingPanel);
+        AktualisiereReasoningBorderSichtbarkeit();
     }
 
     // ── Agentic-Suche vor der Antwort (T#309) ───────────────────────────────────
@@ -2905,7 +2907,19 @@ document.addEventListener('click', function (e) {{
             textBox.VerticalAlignment = VerticalAlignment.Top;
             row.Children.Add(textBox);
             ReasoningPanel.Children.Add(row);
+            AktualisiereReasoningBorderSichtbarkeit();
         });
+    }
+
+    /// <summary>Die Leiste über dem Chat (ReasoningBorder) soll nur Platz einnehmen, wenn
+    /// tatsächlich etwas drinsteht (Reasoning-Zeile oder Lade-Animation) — sonst bekommt
+    /// der Chat die volle Höhe bis ganz oben, statt permanent Platz für eine meist leere
+    /// Leiste zu reservieren.</summary>
+    private void AktualisiereReasoningBorderSichtbarkeit()
+    {
+        ReasoningBorder.Visibility = ReasoningPanel.Children.Count > 0 || WolfLoadingPanel.Visibility == Visibility.Visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     /// <summary>Task #322: "Timeline"-Aktion aus der Mandant-geladen-Hinweisnachricht:
