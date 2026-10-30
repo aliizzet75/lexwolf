@@ -105,6 +105,26 @@ public partial class DokumentAuswahl : UserControl
         if (dlg.ShowDialog(Window.GetWindow(this)) == true) Hinzufuegen(dlg.FileNames);
     }
 
+    /// <summary>Alle Dateien eines gewählten Ordners (inkl. Unterordner) zur Auswahl hinzufügen —
+    /// beim Übernehmen landen sie flach im Aktenverzeichnis des Mandanten (AktenAblage.Ablegen
+    /// nimmt nur den Dateinamen, keine Unterordner-Struktur), unabhängig davon, wie tief eine
+    /// Datei im gewählten Ordner lag.</summary>
+    private void OnOrdnerWaehlen(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Ordner für die Akte auswählen" };
+        if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            var dateien = Directory.EnumerateFiles(dlg.FolderName, "*", SearchOption.AllDirectories);
+            Hinzufuegen(dateien);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), $"Der Ordner konnte nicht gelesen werden: {ex.Message}", "Dokumente",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void OnEntfernen(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is Eintrag d) _dateien.Remove(d);

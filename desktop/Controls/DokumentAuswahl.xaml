@@ -3,17 +3,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel>
         <!-- Ablagezone -->
-        <Grid x:Name="Ablagezone" AllowDrop="True" Background="#0d1117"
+        <Grid x:Name="Ablagezone" AllowDrop="True" Background="{DynamicResource LwBg}"
               DragEnter="OnDragEnter" DragOver="OnDragEnter" DragLeave="OnDragLeave" Drop="OnDrop">
-            <Rectangle x:Name="Rahmen" Stroke="#484f58" StrokeThickness="2" StrokeDashArray="4 3" RadiusX="8" RadiusY="8"/>
+            <Rectangle x:Name="Rahmen" Stroke="{DynamicResource LwMuted}" StrokeThickness="2" StrokeDashArray="4 3" RadiusX="8" RadiusY="8"/>
             <StackPanel Margin="16,18" HorizontalAlignment="Center">
-                <TextBlock Text="📎" FontSize="{DynamicResource LwSchriftTitel}" HorizontalAlignment="Center" Foreground="#9da7b3"/>
+                <TextBlock Text="📎" FontSize="{DynamicResource LwSchriftTitel}" HorizontalAlignment="Center" Foreground="{DynamicResource LwMuted}"/>
                 <TextBlock Text="Dateien oder E-Mails hierher ziehen" Style="{StaticResource LwHeading}" HorizontalAlignment="Center"
                            Margin="0,4,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
                 <TextBlock Style="{StaticResource LwHinweis}" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,2,0,0"
                            Text="aus dem Explorer oder direkt aus Outlook — PDF, Word, E-Mails, Fotos"/>
-                <Button Content="📁 Dateien auswählen …" Style="{StaticResource LwButton}" HorizontalAlignment="Center"
-                        Margin="0,12,0,0" Click="OnWaehlen"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+                    <Button Content="📁 Dateien auswählen …" Style="{StaticResource LwButton}" Click="OnWaehlen"/>
+                    <Button Content="🗂 Ordner auswählen …" Style="{StaticResource LwButton}" Margin="8,0,0,0" Click="OnOrdnerWaehlen"
+                            ToolTip="Alle Dateien aus diesem Ordner (inkl. Unterordner) hinzufügen"/>
+                </StackPanel>
             </StackPanel>
         </Grid>
 
@@ -28,7 +31,7 @@
                             <TextBlock DockPanel.Dock="Left" Text="{Binding Symbol}" FontSize="{DynamicResource LwSchriftGross}"
                                        VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="32" TextAlignment="Center"/>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Name}" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3"
+                                <TextBlock Text="{Binding Name}" Style="{StaticResource LwFliesstext}" Foreground="{DynamicResource LwTextStrong}"
                                            TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
                                 <TextBlock Text="{Binding Hinweis}" Style="{StaticResource LwHinweis}" Foreground="{Binding HinweisFarbe}"/>
                             </StackPanel>
@@ -49,8 +52,8 @@
                                       VerticalContentAlignment="Top" Click="OnPostfachGeaendert">
                                 <StackPanel Margin="4,0,0,0">
                                     <TextBlock Style="{StaticResource LwFliesstext}" TextWrapping="Wrap">
-                                        <Run Text="{Binding Datum, Mode=OneWay}" Foreground="#e8a838" FontWeight="SemiBold"/>
-                                        <Run Text="{Binding Betreff, Mode=OneWay}" Foreground="#e6edf3"/>
+                                        <Run Text="{Binding Datum, Mode=OneWay}" Foreground="{DynamicResource LwAkzent}" FontWeight="SemiBold"/>
+                                        <Run Text="{Binding Betreff, Mode=OneWay}" Foreground="{DynamicResource LwTextStrong}"/>
                                     </TextBlock>
                                     <TextBlock Text="{Binding Absender}" Style="{StaticResource LwHinweis}"/>
                                 </StackPanel>
