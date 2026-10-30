@@ -165,14 +165,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            // Standardmäßig legt WebView2 sein Datenverzeichnis (EBWebView) neben der
-            // .exe an — bei Installation nach Program Files ohne Admin-Rechte nicht
-            // schreibbar ("kein Lese-/Schreibzugriff"). Explizit auf ein Verzeichnis
-            // im Nutzerprofil umleiten, analog zu AppSettings.
-            var userDataFolder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "LexWolf", "WebView2");
-            var webViewEnv = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+            // Geteiltes Environment (App.GetSharedWebViewEnvironmentAsync) statt einem
+            // eigenen hier — sonst kollidiert ein zweites WebView2 (z.B. im Recherche-
+            // Ergebnis-Fenster) mit "die angeforderte Ressource wird bereits verwendet".
+            var webViewEnv = await App.GetSharedWebViewEnvironmentAsync();
             await ChatWebView.EnsureCoreWebView2Async(webViewEnv);
             ChatWebView.CoreWebView2.WebMessageReceived += OnChatWebMessage;
             _chatHistoryHtml.Clear();

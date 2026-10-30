@@ -378,15 +378,12 @@
                                  Antwort läuft (GET /api/search/stream) — Live-Schritte erscheinen
                                  inline im Chat, gefundene Quellen fließen in die /chat-Antwort ein. -->
                             <ComboBox x:Name="SuchModusBox"
+                                      Style="{StaticResource DarkComboBoxStyle}"
                                       DockPanel.Dock="Right"
                                       Width="84"
                                       Height="36"
                                       VerticalAlignment="Bottom"
                                       Margin="0,0,8,0"
-                                      Background="#21262d"
-                                      Foreground="#c9d1d9"
-                                      BorderBrush="#30363d"
-                                      BorderThickness="1"
                                       ToolTip="Agentic-Suche vor der Antwort: schnell (1 Runde) oder tief (mehrere Runden, Zitier-Graph)">
                                 <ComboBoxItem Content="⚡ Schnell" Tag="schnell" IsSelected="True"/>
                                 <ComboBoxItem Content="🐢 Tief" Tag="tief"/>

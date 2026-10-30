@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
 using WpfApplication = System.Windows.Application;
@@ -7,6 +9,23 @@ namespace LexWolf;
 
 public partial class App : WpfApplication
 {
+    private static Task<CoreWebView2Environment>? _webViewEnvTask;
+
+    /// <summary>EIN WebView2-Environment für die ganze App, gemeinsam genutzt von MainWindow
+    /// und allen Dialogen mit eigenem WebView2 (z.B. RechercheErgebnisDialog). Jede weitere,
+    /// unabhängig erzeugte Environment-Instanz im selben Prozess (auch mit anderem Ordner)
+    /// kollidiert mit der ersten — Symptom war genau "die angeforderte Ressource wird bereits
+    /// verwendet" beim Öffnen eines Recherche-Fensters, während der Chat schon lief. Außerdem
+    /// legt WebView2 sein Datenverzeichnis sonst neben der .exe an — bei Installation nach
+    /// Program Files ohne Admin-Rechte nicht schreibbar, daher explizit ins Nutzerprofil.</summary>
+    public static Task<CoreWebView2Environment> GetSharedWebViewEnvironmentAsync()
+    {
+        _webViewEnvTask ??= CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "LexWolf", "WebView2"));
+        return _webViewEnvTask;
+    }
+
     /// <summary>Setzt die Schriftstufen der ganzen Oberfläche; alles mit DynamicResource passt sich sofort an.</summary>
     public static void SetzeSchriftgroesse(double grundgroesse)
     {

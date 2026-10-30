@@ -43,7 +43,10 @@ public partial class RechercheErgebnisDialog : Window
     {
         try
         {
-            await WebView.EnsureCoreWebView2Async();
+            // Geteiltes Environment statt dem Default (sonst "die angeforderte Ressource
+            // wird bereits verwendet", weil der Chat im Hauptfenster schon ein eigenes hat).
+            var webViewEnv = await App.GetSharedWebViewEnvironmentAsync();
+            await WebView.EnsureCoreWebView2Async(webViewEnv);
             var html = BuildHtml();
             WebView.NavigateToString(html);
         }
