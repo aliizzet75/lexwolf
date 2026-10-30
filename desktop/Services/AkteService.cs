@@ -242,6 +242,13 @@ public sealed class AkteService
         var liste = new List<AktenEreignis>();
         foreach (var e in _db.GetEingaenge(mandantId, limit: 100000))
         {
+            // E-Mails (ob automatisch per Absender-Abgleich zugeordnet oder vom Anwalt aus dem
+            // Posteingang übernommen, beides landet ohne Unterschied im selben Ordner) dürfen
+            // die Zeitleiste erst beeinflussen, wenn der Anwalt sie bewusst in die Akte übernommen
+            // hat — wie schon bei LocalDb.GetDokumenteForMandant für Chat/Dokumentenauswahl.
+            var segmente = e.Pfad.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (segmente.Contains(AktenAblage.EmailOrdner)) continue;
+
             try { liste.AddRange(DokumentAnalyse.Parse(e.Json).Ereignisse); } catch { }
         }
         var ausgeblendet = _db.GetAusgeblendeteZeitleisteEintraege(mandantId);
