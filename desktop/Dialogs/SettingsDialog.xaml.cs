@@ -113,6 +113,16 @@ public partial class SettingsDialog : Window
 
     private async Task LadeKiModellKonfigurationAsync()
     {
+        // Ohne diese Sperre konnte der Anwalt schon im Modus/Modell wählen, bevor dieser
+        // GET-Aufruf (gerade nach einem Backend-Neustart spürbar langsam) zurückkam — die
+        // eigene Auswahl wurde dann vom verspätet eintreffenden, alten Serverstand wieder
+        // überschrieben und sprang z.B. zurück auf "Localhost".
+        KiModusBox.IsEnabled = false;
+        KiAnbieterBox.IsEnabled = false;
+        KiEinModellModellBox.IsEnabled = false;
+        KiHybridClaudeBox.IsEnabled = false;
+        KiHybridOllamaBox.IsEnabled = false;
+        KiUebernehmenBtn.IsEnabled = false;
         try
         {
             using var http = new HttpClient();
@@ -153,6 +163,15 @@ public partial class SettingsDialog : Window
         {
             KiStatusLabel.Text = $"KI-Modell-Konfiguration konnte nicht geladen werden: {ex.Message}";
             KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0xf8, 0x51, 0x49));
+        }
+        finally
+        {
+            KiModusBox.IsEnabled = true;
+            KiAnbieterBox.IsEnabled = true;
+            KiEinModellModellBox.IsEnabled = true;
+            KiHybridClaudeBox.IsEnabled = true;
+            KiHybridOllamaBox.IsEnabled = true;
+            KiUebernehmenBtn.IsEnabled = true;
         }
     }
 
