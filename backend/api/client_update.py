@@ -149,6 +149,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.79.0",
         "Tagesueberblick (Fristen/Vorschlaege/Eingaenge) ist jetzt ein eigenes, schliessbares Fenster statt einer dauerhaften Zeile ueber dem Chat. Der Chat-Bereich nutzt jetzt die volle Hoehe bis ganz oben, wenn gerade nichts anderes anzuzeigen ist.",
     ),
+    (
+        "0.80.0",
+        "Schnell/Tief-Auswahl im Chat war grau auf weiss, jetzt mit dem richtigen dunklen Stil lesbar. Recherche-Fenster zeigte 'Ressource bereits verwendet' - zwei WebView2-Umgebungen kollidierten, jetzt teilen sich Chat und Recherche-Fenster dieselbe.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
