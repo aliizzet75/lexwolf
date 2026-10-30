@@ -23,38 +23,27 @@
                         DockPanel.Dock="Right"
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
                         FontSize="16" Cursor="Hand" Padding="8,0" ToolTip="Verbindung prüfen"/>
-                <Button x:Name="SettingsBtn" Content="⚙" Click="OnOpenSettings"
+                <!-- Features/Feature-Wunsch/Einstellungen/Hilfe zu einem Menü zusammengefasst
+                     statt vier Icons, um oben mehr Platz zu sparen. -->
+                <Button x:Name="TopMenuBtn" Content="☰" Click="OnTopMenuClick"
                         DockPanel.Dock="Right"
                         Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                        FontSize="15" Cursor="Hand" Padding="8,0" ToolTip="Einstellungen"/>
-                <Button x:Name="InfoBtn" Content="?" Click="OnShowInfo"
-                        DockPanel.Dock="Right"
-                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                        FontSize="15" FontWeight="Bold" Cursor="Hand" Padding="8,0" ToolTip="Info"/>
-                <Button x:Name="FeatureWunschBtn" Content="💡 Feature-Wunsch" Click="OnFeatureWunschClick"
-                        DockPanel.Dock="Right"
-                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                        FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
-                        ToolTip="Feature-Wunsch an LexWolf senden"/>
-                <Button x:Name="FeatureUebersichtBtn" Content="🗳️ Features" Click="OnFeatureUebersichtClick"
-                        DockPanel.Dock="Right"
-                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                        FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
-                        ToolTip="Eigene Feature-Wünsche und laufende Entwicklungen anzeigen"/>
-                <Button x:Name="ReActBtn" Content="🧠 Live-Suche" Click="OnReActClick"
-                        DockPanel.Dock="Right"
-                        Background="Transparent" Foreground="#8b949e" BorderThickness="0"
-                        FontSize="13" Cursor="Hand" Padding="8,0" Margin="0,0,4,0"
-                        ToolTip="Live-Denkprozess der Rechtsrecherche anzeigen (Suchschritte, Konfidenz)"/>
-                
-                <!-- FolderPicker-Button für Verzeichnis-Scanning -->
-                <Button x:Name="ScanFolderBtn" Content="📂 Ordner scannen" Click="OnScanFolderClicked"
-                        DockPanel.Dock="Right"
-                        Background="#21262d" Foreground="#c9d1d9" BorderBrush="#30363d" BorderThickness="1"
-                        FontSize="13" Cursor="Hand" Padding="12,6" Margin="8,0,0,0"
-                        ToolTip="Verzeichnis rekursiv scannen (.docx, .pdf, .txt, .eml)"/>
-                
-                <!-- ProgressBar für Fortschritt -->
+                        FontSize="16" Cursor="Hand" Padding="8,0" ToolTip="Menü">
+                    <Button.ContextMenu>
+                        <ContextMenu x:Name="TopMenu" Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}"
+                                     Foreground="{DynamicResource LwText}">
+                            <MenuItem Header="⚙ Einstellungen" Click="OnOpenSettings"/>
+                            <MenuItem Header="? Hilfe / Info" Click="OnShowInfo"/>
+                            <Separator Background="{DynamicResource LwBorder}"/>
+                            <MenuItem Header="🗳️ Features" Click="OnFeatureUebersichtClick"
+                                      ToolTip="Eigene Feature-Wünsche und laufende Entwicklungen anzeigen"/>
+                            <MenuItem Header="💡 Feature-Wunsch" Click="OnFeatureWunschClick"
+                                      ToolTip="Feature-Wunsch an LexWolf senden"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
+
+                <!-- ProgressBar für Fortschritt (z.B. Update-Download) -->
                 <!-- Nur sichtbar während Scan/Download läuft (SetProgressBusy) — sonst
                      leicht mit einem leeren Eingabefeld zu verwechseln. -->
                 <ProgressBar x:Name="ProgressBar" Width="150" Height="20" Margin="12,0,0,0"
@@ -69,10 +58,6 @@
                                  Background="#21262d" BorderBrush="#30363d" Foreground="#238636"/>
                 </StackPanel>
                 
-                <Button x:Name="NeuesMandatBtn" Content="＋ Neues Mandat" Click="OnNeuesMandatClick"
-                        DockPanel.Dock="Right" Style="{StaticResource LwPrimaryButton}" Padding="12,5"
-                        VerticalAlignment="Center" Margin="0,0,12,0"
-                        ToolTip="Neuen Mandanten mit Akte anlegen — mit Kollisionsprüfung, Frist, Vollmacht und ersten Schritten"/>
                 <ComboBox x:Name="MandantBox"
                           DockPanel.Dock="Right" Width="220"
                           VerticalAlignment="Center" Margin="0,0,8,0"
@@ -117,12 +102,18 @@
                     </TabItem.Header>
             <DockPanel Background="{DynamicResource LwOberflaeche}">
                 <Border DockPanel.Dock="Top" BorderBrush="#30363d" BorderThickness="0,0,0,1" Padding="10,8">
-                    <TextBox x:Name="FileTreeSearchBox"
-                             Background="{DynamicResource LwFensterHintergrund}" Foreground="{DynamicResource LwVordergrund}"
-                             BorderBrush="#30363d" BorderThickness="1"
-                             Padding="6,4" FontSize="12"
-                             TextChanged="OnFileTreeSearchChanged"
-                             ToolTip="Dateien/Ordner durchsuchen"/>
+                    <DockPanel>
+                        <Button x:Name="NeuesMandatBtn" Content="＋" Click="OnNeuesMandatClick"
+                                DockPanel.Dock="Right" Style="{StaticResource LwPrimaryButton}"
+                                Padding="10,4" Margin="6,0,0,0" FontWeight="Bold"
+                                ToolTip="Neuen Mandanten mit Akte anlegen — mit Kollisionsprüfung, Frist, Vollmacht und ersten Schritten"/>
+                        <TextBox x:Name="FileTreeSearchBox"
+                                 Background="{DynamicResource LwFensterHintergrund}" Foreground="{DynamicResource LwVordergrund}"
+                                 BorderBrush="#30363d" BorderThickness="1"
+                                 Padding="6,4" FontSize="12"
+                                 TextChanged="OnFileTreeSearchChanged"
+                                 ToolTip="Dateien/Ordner durchsuchen"/>
+                    </DockPanel>
                 </Border>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,8">
                     <!-- Virtualisierung eingeschaltet, damit die linke Mandanten-/Dateiliste

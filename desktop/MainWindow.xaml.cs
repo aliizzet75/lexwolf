@@ -373,10 +373,11 @@ document.addEventListener('click', function (e) {{
         dlg.ShowDialog();
     }
 
-    private void OnReActClick(object sender, RoutedEventArgs e)
+    private void OnTopMenuClick(object sender, RoutedEventArgs e)
     {
-        var dlg = new LexWolf.Dialogs.ReActDialog(BackendUrl) { Owner = this };
-        dlg.ShowDialog();
+        TopMenu.PlacementTarget = TopMenuBtn;
+        TopMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        TopMenu.IsOpen = true;
     }
 
     private void OnFeatureUebersichtClick(object sender, RoutedEventArgs e)
@@ -412,7 +413,7 @@ document.addEventListener('click', function (e) {{
         {
             VerbergeWolfLoading();
             SetProgressBusy(false);
-            SetStatus(true, $"Verbunden — {BackendUrl}");
+            SetStatus(true, "Verbunden");
         }
 
         // Erst nach dem Ausblenden der Animation öffnen — der Dialog ist modal.
@@ -547,7 +548,7 @@ document.addEventListener('click', function (e) {{
         try
         {
             await _http.GetStringAsync($"{BackendUrl}/health");
-            SetStatus(true, $"Verbunden — {BackendUrl}");
+            SetStatus(true, "Verbunden");
         }
         catch
         {
@@ -2837,54 +2838,6 @@ document.addEventListener('click', function (e) {{
             return System.IO.File.ReadAllText(path);
         }
         catch { return string.Empty; }
-    }
-
-    private async void OnScanFolderClicked(object sender, RoutedEventArgs e)
-    {
-        var folderDialog = new Forms.FolderBrowserDialog
-        {
-            Description = "Verzeichnis zum Scannen auswählen",
-            UseDescriptionForTitle = true,
-        };
-
-        var result = folderDialog.ShowDialog();
-        if (result == Forms.DialogResult.OK)
-        {
-            var folderPath = folderDialog.SelectedPath;
-            if (!string.IsNullOrEmpty(folderPath))
-            {
-                ProgressBar.Value = 0;
-                SetProgressBusy(true);
-
-                await Task.Run(() =>
-                {
-                    var totalFiles = 0;
-                    var scannedFiles = 0;
-                    var extensions = new[] { ".docx", ".pdf", ".txt", ".eml" };
-
-                    foreach (var file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
-                    {
-                        if (extensions.Contains(System.IO.Path.GetExtension(file).ToLowerInvariant()))
-                        {
-                            totalFiles++;
-                        }
-                    }
-
-                    foreach (var file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
-                    {
-                        if (extensions.Contains(System.IO.Path.GetExtension(file).ToLowerInvariant()))
-                        {
-                            scannedFiles++;
-                            var progress = (double)scannedFiles / totalFiles * 100;
-                            Dispatcher.Invoke(() => ProgressBar.Value = progress);
-                        }
-                    }
-                });
-
-                SetProgressBusy(false);
-                MessageBox.Show($"Scan abgeschlossen. Dateien wurden indexiert.");
-            }
-        }
     }
 
     private void AddReasoning(string emoji, string text)
