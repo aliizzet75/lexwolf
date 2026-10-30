@@ -181,6 +181,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.87.0",
         "KI-Modell in den Einstellungen springt nicht mehr auf den alten Stand (z.B. Localhost) zurueck, wenn er direkt beim Oeffnen der Einstellungen gesetzt wird.",
     ),
+    (
+        "0.88.0",
+        "Tagesueberblick beim Start deaktiviert. KI-Modell-Einstellung: kein API-Key-Feld mehr, wird jetzt mit Speichern statt eigenem Uebernehmen-Knopf gesichert.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
