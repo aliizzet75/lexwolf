@@ -48,7 +48,10 @@ public partial class MainWindow
         timer.Tick += (_, _) => AktualisiereAktenAnsichten();
         timer.Start();
 
-        ZeigeTagesueberblick();
+        // Erst nach dem Laden zeigen: ZeigeTagesueberblick öffnet ggf. einen modalen Dialog
+        // mit Owner=MainWindow — das hier (noch im MainWindow-Konstruktor, Fenster noch
+        // nicht angezeigt) wirft "Cannot set Owner..." und LexWolf startet gar nicht erst.
+        Loaded += (_, _) => ZeigeTagesueberblick();
         StarteGrossesSprachmodell();
     }
 
