@@ -379,14 +379,15 @@
                                 <ComboBoxItem Content="⚡ Schnell" Tag="schnell" IsSelected="True"/>
                                 <ComboBoxItem Content="🐢 Tief" Tag="tief"/>
                             </ComboBox>
-                            <!-- Spracheingabe: Klick startet, zweiter Klick beendet die Aufnahme;
-                                 Live-Text lokal mit Vosk, danach Nachkorrektur mit Whisper (DiktatService). -->
+                            <!-- Feature vorerst versteckt (Icon + Panel), Logik bleibt für eine
+                                 spätere Reaktivierung erhalten. -->
                             <Button x:Name="DiktatBtn" Content="🎤"
                                     DockPanel.Dock="Right"
                                     MinWidth="44"
                                     Height="36"
                                     VerticalAlignment="Bottom"
                                     Click="OnDiktatClick"
+                                    Visibility="Collapsed"
                                     Background="#21262d"
                                     Foreground="#c9d1d9"
                                     BorderBrush="#30363d"

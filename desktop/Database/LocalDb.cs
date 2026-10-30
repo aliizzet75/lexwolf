@@ -362,6 +362,15 @@ namespace LexWolf.Database
             var result = new System.Collections.Generic.List<(string, string, string)>();
             foreach (var (pfad, (titel, text, _)) in byPfad)
             {
+                // E-Mails (ob automatisch per Absender-Abgleich zugeordnet oder vom Anwalt aus dem
+                // Posteingang übernommen) landen zwar im Aktenordner, dürfen aber erst Chat/Schriftsatz
+                // beeinflussen, wenn der Anwalt sie bewusst über "📎 Dokumente" einzeln hinzufügt —
+                // sonst könnte eine automatisch zugeordnete, nie geprüfte Mail unbemerkt in einen
+                // KI-Entwurf einfließen. Ordner-Segment, nicht nur Teilstring, damit ein Mandant
+                // namens "E-Mails-Kontor" o.ä. nicht versehentlich mit ausgeschlossen wird.
+                var segmente = pfad.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+                if (segmente.Contains(Services.AktenAblage.EmailOrdner)) continue;
+
                 result.Add((titel, pfad, text.ToString().Trim()));
                 if (result.Count >= maxDokumente) break;
             }

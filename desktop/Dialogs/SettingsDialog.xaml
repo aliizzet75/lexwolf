@@ -142,7 +142,7 @@
                              SelectionChanged="OnNavChanged" Padding="4,0">
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="allgemein">Allgemein</ListBoxItem>
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="darstellung">Darstellung</ListBoxItem>
-                        <ListBoxItem Style="{StaticResource NavItem}" Tag="sprache">Spracheingabe</ListBoxItem>
+                        <!-- Spracheingabe vorerst versteckt, siehe PanelSprache weiter unten -->
                         <ListBoxItem Style="{StaticResource NavItem}" Tag="ki_modell">KI-Modell (Test)</ListBoxItem>
                     </ListBox>
                 </DockPanel>
