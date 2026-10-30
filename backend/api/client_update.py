@@ -153,6 +153,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.80.0",
         "Schnell/Tief-Auswahl im Chat war grau auf weiss, jetzt mit dem richtigen dunklen Stil lesbar. Recherche-Fenster zeigte 'Ressource bereits verwendet' - zwei WebView2-Umgebungen kollidierten, jetzt teilen sich Chat und Recherche-Fenster dieselbe.",
     ),
+    (
+        "0.81.0",
+        "Fehler beim Umbenennen behoben: 'NaN ist kein gueltiger Wert' kam bei Dialogen, die ihre Hoehe automatisch an den Inhalt anpassen (Umbenennen, Vorlage speichern), weil die Schriftgroessen-Anpassung diese automatische Hoehe versehentlich ueberschrieben hat.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
