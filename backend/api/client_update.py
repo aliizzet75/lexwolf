@@ -169,6 +169,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.84.0",
         "E-Mails im Aktenordner fliessen erst nach bewusster Uebernahme in Chat/Dokumente/Schriftsatz ein. Diktat-Feature (Mikrofon-Icon, Ladeanzeige, Einstellungen) vorerst versteckt.",
     ),
+    (
+        "0.85.0",
+        "Zeitleiste zeigt nur noch Ereignisse aus Dokumenten, die der Anwalt bewusst in die Akte uebernommen hat.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
