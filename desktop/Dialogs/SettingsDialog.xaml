@@ -400,31 +400,6 @@
                             </TextBlock>
                         </StackPanel>
 
-                        <Separator Background="{DynamicResource LwRaised}" Margin="0,4,0,20"/>
-
-                        <TextBlock Text="Claude Code API-Key" Foreground="{DynamicResource LwText}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
-                                   Foreground="{DynamicResource LwMuted}" FontSize="12">
-                            Ohne Key läuft Claude Code über den lokalen Entwickler-Proxy (kein eigener Zugang
-                            nötig). Mit Key geht es direkt über die Anthropic-API.
-                        </TextBlock>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <PasswordBox x:Name="KiApiKeyBox" Grid.Column="0"
-                                         Background="{DynamicResource LwBg}" Foreground="{DynamicResource LwText}"
-                                         BorderBrush="{DynamicResource LwBorder}" BorderThickness="1"
-                                         Padding="10,7" FontSize="13" CaretBrush="{DynamicResource LwText}"
-                                         VerticalContentAlignment="Center" Margin="0,0,6,0"/>
-                            <Button Grid.Column="1" Content="Entfernen" Style="{StaticResource GhostBtn}"
-                                    Padding="12,7" Click="OnKiApiKeyEntfernen"/>
-                        </Grid>
-                        <TextBlock x:Name="KiApiKeyStatus" Foreground="{DynamicResource LwDisabledText}" FontSize="11" Margin="0,0,0,20"/>
-
-                        <Button x:Name="KiUebernehmenBtn" Content="Übernehmen" Style="{StaticResource PrimaryBtn}"
-                                HorizontalAlignment="Left" Click="OnKiUebernehmen"/>
                         <TextBlock x:Name="KiStatusLabel" FontSize="12" Margin="0,10,0,0"/>
 
                     </StackPanel>
@@ -446,7 +421,7 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Abbrechen" Style="{StaticResource GhostBtn}"
                             Margin="0,0,8,0" Click="OnCancel"/>
-                    <Button Content="Speichern"  Style="{StaticResource PrimaryBtn}"
+                    <Button x:Name="SaveBtn" Content="Speichern"  Style="{StaticResource PrimaryBtn}"
                             Click="OnSave"/>
                 </StackPanel>
             </DockPanel>

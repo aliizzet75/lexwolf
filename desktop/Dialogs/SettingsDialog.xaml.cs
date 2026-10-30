@@ -29,8 +29,6 @@ public partial class SettingsDialog : Window
     private List<KiModellEintrag> _claudeKatalog = new();
     private List<KiModellEintrag> _ollamaKatalog = new();
     private bool _kiKonfigLaedt;
-    private bool _kiApiKeyVorhanden;
-    private bool _kiApiKeyLoeschen;
     private bool _laden;
 
     public SettingsDialog(AppSettings current, string backendUrl)
@@ -122,7 +120,6 @@ public partial class SettingsDialog : Window
         KiEinModellModellBox.IsEnabled = false;
         KiHybridClaudeBox.IsEnabled = false;
         KiHybridOllamaBox.IsEnabled = false;
-        KiUebernehmenBtn.IsEnabled = false;
         try
         {
             using var http = new HttpClient();
@@ -150,9 +147,6 @@ public partial class SettingsDialog : Window
                 SelectById(KiHybridClaudeBox, config.GetProperty("hybrid_claude_code_modell").GetString() ?? "");
                 KiHybridOllamaBox.ItemsSource = _ollamaKatalog;
                 SelectById(KiHybridOllamaBox, config.GetProperty("hybrid_ollama_modell").GetString() ?? "");
-
-                _kiApiKeyVorhanden = config.GetProperty("hat_claude_api_key").GetBoolean();
-                AktualisiereApiKeyStatus();
             }
             finally
             {
@@ -171,7 +165,6 @@ public partial class SettingsDialog : Window
             KiEinModellModellBox.IsEnabled = true;
             KiHybridClaudeBox.IsEnabled = true;
             KiHybridOllamaBox.IsEnabled = true;
-            KiUebernehmenBtn.IsEnabled = true;
         }
     }
 
@@ -210,13 +203,6 @@ public partial class SettingsDialog : Window
         KiHybridPanel.Visibility = modus == "hybrid" ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void AktualisiereApiKeyStatus()
-    {
-        KiApiKeyStatus.Text = _kiApiKeyVorhanden
-            ? "Ein Key ist hinterlegt (geht direkt über die Anthropic-API). Feld leer lassen, um ihn zu behalten."
-            : "Kein Key hinterlegt — läuft über den lokalen Claude-Code-Proxy.";
-    }
-
     private void OnKiModusChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_kiKonfigLaedt) return;
@@ -235,19 +221,12 @@ public partial class SettingsDialog : Window
             KiEinModellModellBox.SelectedIndex = 0;
     }
 
-    private void OnKiApiKeyEntfernen(object sender, RoutedEventArgs e)
+    /// <summary>Teil von OnSave — es gibt keinen eigenen "Übernehmen"-Knopf mehr, Speichern
+    /// sichert auch die KI-Modell-Auswahl. Der Claude-Code-API-Key wird über dieses Fenster
+    /// nicht mehr bearbeitet (Feld entfernt); ein evtl. zuvor hinterlegter Key bleibt beim
+    /// Speichern unverändert, da ein leeres Feld laut Backend "unverändert lassen" bedeutet.</summary>
+    private async Task<bool> SpeichereKiModellAsync()
     {
-        KiApiKeyBox.Password = "";
-        _kiApiKeyLoeschen = true;
-        _kiApiKeyVorhanden = false;
-        AktualisiereApiKeyStatus();
-    }
-
-    private async void OnKiUebernehmen(object sender, RoutedEventArgs e)
-    {
-        KiUebernehmenBtn.IsEnabled = false;
-        KiStatusLabel.Text = "Wird übernommen …";
-        KiStatusLabel.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwMuted"];
         try
         {
             var modus = (KiModusBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "localhost";
@@ -259,31 +238,21 @@ public partial class SettingsDialog : Window
                 ein_modell = (KiEinModellModellBox.SelectedItem as KiModellEintrag)?.Id ?? "",
                 hybrid_claude_code_modell = (KiHybridClaudeBox.SelectedItem as KiModellEintrag)?.Id ?? "",
                 hybrid_ollama_modell = (KiHybridOllamaBox.SelectedItem as KiModellEintrag)?.Id ?? "",
-                claude_api_key = KiApiKeyBox.Password,
-                claude_api_key_loeschen = _kiApiKeyLoeschen,
+                claude_api_key = "",
+                claude_api_key_loeschen = false,
             });
 
             using var http = new HttpClient();
             using var content = new StringContent(payload, Encoding.UTF8, "application/json");
             var response = await http.PostAsync($"{_backendUrl}/api/llm-config", content);
             response.EnsureSuccessStatusCode();
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            _kiApiKeyVorhanden = doc.RootElement.GetProperty("config").GetProperty("hat_claude_api_key").GetBoolean();
-            _kiApiKeyLoeschen = false;
-            KiApiKeyBox.Password = "";
-            AktualisiereApiKeyStatus();
-
-            KiStatusLabel.Text = "✓ Übernommen — wirkt sofort, auch ohne das Fenster zu schließen.";
-            KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0x3f, 0xb9, 0x50));
+            return true;
         }
         catch (Exception ex)
         {
-            KiStatusLabel.Text = $"Fehlgeschlagen: {ex.Message}";
+            KiStatusLabel.Text = $"KI-Modell konnte nicht gespeichert werden: {ex.Message}";
             KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0xf8, 0x51, 0x49));
-        }
-        finally
-        {
-            KiUebernehmenBtn.IsEnabled = true;
+            return false;
         }
     }
 
@@ -357,27 +326,38 @@ public partial class SettingsDialog : Window
             DokumentePfadBox.Text = dlg.FolderName;
     }
 
-    private void OnSave(object sender, RoutedEventArgs e)
+    private async void OnSave(object sender, RoutedEventArgs e)
     {
-        Settings.DokumentePfad = DokumentePfadBox.Text.Trim();
-        Settings.Briefkopf = BriefkopfBox.Text.Trim();
-        Settings.Briefende = BriefendeBox.Text.Trim();
-        Settings.KanzleiOrt = KanzleiOrtBox.Text.Trim();
-        Settings.KanzleiKontodaten = KanzleiKontodatenBox.Text.Trim();
-        Settings.Bundesland = BundeslandBox.SelectedValue as string ?? Settings.Bundesland;
-        Settings.FeedbackOptIn = FeedbackOptInBox.IsChecked == true;
-        Settings.AbTestOptIn = AbTestOptInBox.IsChecked == true;
-        Settings.VoskGrossBeimStart = VoskGrossBox.IsChecked == true;
-        Settings.ChatInputFont = InputFontCombo.SelectedItem as string ?? "Segoe UI";
-        Settings.ChatInputFontSize = InputFontSizeSlider.Value;
-        Settings.ChatOutputFont = OutputFontCombo.SelectedItem as string ?? "Segoe UI";
-        Settings.ChatOutputFontSize = OutputFontSizeSlider.Value;
-        Settings.DunkelModus = DunkelModusBox.IsChecked == true;
-        App.SetzeTheme(Settings.DunkelModus);
-        Settings.Save();
-        StatusLabel.Text       = "Gespeichert";
-        StatusLabel.Visibility = Visibility.Visible;
-        DialogResult           = true;
+        SaveBtn.IsEnabled = false;
+        try
+        {
+            if (!await SpeichereKiModellAsync())
+                return;
+
+            Settings.DokumentePfad = DokumentePfadBox.Text.Trim();
+            Settings.Briefkopf = BriefkopfBox.Text.Trim();
+            Settings.Briefende = BriefendeBox.Text.Trim();
+            Settings.KanzleiOrt = KanzleiOrtBox.Text.Trim();
+            Settings.KanzleiKontodaten = KanzleiKontodatenBox.Text.Trim();
+            Settings.Bundesland = BundeslandBox.SelectedValue as string ?? Settings.Bundesland;
+            Settings.FeedbackOptIn = FeedbackOptInBox.IsChecked == true;
+            Settings.AbTestOptIn = AbTestOptInBox.IsChecked == true;
+            Settings.VoskGrossBeimStart = VoskGrossBox.IsChecked == true;
+            Settings.ChatInputFont = InputFontCombo.SelectedItem as string ?? "Segoe UI";
+            Settings.ChatInputFontSize = InputFontSizeSlider.Value;
+            Settings.ChatOutputFont = OutputFontCombo.SelectedItem as string ?? "Segoe UI";
+            Settings.ChatOutputFontSize = OutputFontSizeSlider.Value;
+            Settings.DunkelModus = DunkelModusBox.IsChecked == true;
+            App.SetzeTheme(Settings.DunkelModus);
+            Settings.Save();
+            StatusLabel.Text       = "Gespeichert";
+            StatusLabel.Visibility = Visibility.Visible;
+            DialogResult           = true;
+        }
+        finally
+        {
+            SaveBtn.IsEnabled = true;
+        }
     }
 
     private void OnCancel(object sender, RoutedEventArgs e) => DialogResult = false;
