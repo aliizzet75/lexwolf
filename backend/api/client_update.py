@@ -161,6 +161,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.82.0",
         "Obere Leiste aufgeraeumt: Live-Suche-Button und die nie wirklich funktionierende Ordner-scannen-Attrappe entfernt, Neues-Mandat-Button in die linke Seitenleiste verschoben, Einstellungen/Hilfe/Features/Feature-Wunsch zu einem Menue zusammengefasst, Verbindungsstatus zeigt nur noch 'Verbunden' ohne die technische Adresse.",
     ),
+    (
+        "0.83.0",
+        "Hotfix: LexWolf startete in manchen Faellen gar nicht mehr (Fehler beim Fensterstart durch den Tagesueberblick-Dialog). Behoben - die App startet jetzt wieder normal.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
