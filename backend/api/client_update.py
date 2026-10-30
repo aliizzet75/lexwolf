@@ -165,6 +165,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.83.0",
         "Hotfix: LexWolf startete in manchen Faellen gar nicht mehr (Fehler beim Fensterstart durch den Tagesueberblick-Dialog). Behoben - die App startet jetzt wieder normal.",
     ),
+    (
+        "0.84.0",
+        "E-Mails im Aktenordner fliessen erst nach bewusster Uebernahme in Chat/Dokumente/Schriftsatz ein. Diktat-Feature (Mikrofon-Icon, Ladeanzeige, Einstellungen) vorerst versteckt.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
