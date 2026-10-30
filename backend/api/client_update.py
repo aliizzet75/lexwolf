@@ -141,6 +141,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.77.0",
         "Echtes Hell/Dunkel-Theme: alle Texte in beiden Modi lesbar - vollstaendige Farbpalette statt nur 4 Kernfarben, alle Dialoge umgestellt, Chat-Inhalt (WebView2) faerbt sich jetzt beim Umschalten sofort mit um statt dauerhaft dunkel zu bleiben.",
     ),
+    (
+        "0.78.0",
+        "Dokumente: jetzt auch ein ganzer Ordner auswaehlbar, der Inhalt (inkl. Unterordner) wird wie einzeln ausgewaehlte Dateien ins Aktenverzeichnis des Mandanten gelegt. Ausserdem: Dokumente-Auswahl-Fenster hatte noch feste Dunkel-Farben, jetzt auch im Hell-Modus lesbar.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
