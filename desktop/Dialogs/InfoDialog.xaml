@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="400" Height="280"
         MinWidth="400" MinHeight="240"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="NoResize">
@@ -13,7 +13,7 @@
     <Window.Resources>
         <!-- Primary button -->
         <Style x:Key="PrimaryBtn" TargetType="Button">
-            <Setter Property="Background"        Value="#1f6feb"/>
+            <Setter Property="Background"        Value="{DynamicResource LwPrimary}"/>
             <Setter Property="Foreground"        Value="White"/>
             <Setter Property="BorderThickness"   Value="0"/>
             <Setter Property="Padding"           Value="16,8"/>
@@ -28,14 +28,14 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#388bfd"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1158c7"/>
+                                <Setter Property="Background" Value="{DynamicResource LwPrimaryPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#8b949e"/>
+                                <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwMuted}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -46,8 +46,8 @@
         <!-- Ghost button -->
         <Style x:Key="GhostBtn" TargetType="Button">
             <Setter Property="Background"        Value="Transparent"/>
-            <Setter Property="Foreground"        Value="#8b949e"/>
-            <Setter Property="BorderBrush"       Value="#30363d"/>
+            <Setter Property="Foreground"        Value="{DynamicResource LwMuted}"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness"   Value="1"/>
             <Setter Property="Padding"           Value="16,8"/>
             <Setter Property="FontSize"          Value="13"/>
@@ -63,11 +63,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#21262d"/>
-                                <Setter Property="Foreground" Value="#c9d1d9"/>
+                                <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#484f58"/>
+                                <Setter Property="Foreground" Value="{DynamicResource LwDisabledText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -86,12 +86,12 @@
 
         <TextBlock Grid.Row="0" Text="LexWolf" Foreground="#e8a838" FontSize="20" FontWeight="Bold"/>
         <TextBlock Grid.Row="1" x:Name="VersionText" Text="Version 0.0.0"
-                   Foreground="#8b949e" FontSize="13" Margin="0,4,0,20"/>
+                   Foreground="{DynamicResource LwMuted}" FontSize="13" Margin="0,4,0,20"/>
 
         <StackPanel Grid.Row="2" VerticalAlignment="Top">
-            <TextBlock x:Name="StatusText" Text="" Foreground="#c9d1d9" FontSize="13"
+            <TextBlock x:Name="StatusText" Text="" Foreground="{DynamicResource LwText}" FontSize="13"
                        TextWrapping="Wrap" Margin="0,0,0,6"/>
-            <TextBlock x:Name="NotesText" Text="" Foreground="#8b949e" FontSize="12"
+            <TextBlock x:Name="NotesText" Text="" Foreground="{DynamicResource LwMuted}" FontSize="12"
                        TextWrapping="Wrap" Margin="0,0,0,6" Visibility="Collapsed"/>
             <ProgressBar x:Name="UpdateProgressBar" Height="6" Margin="0,8,0,0"
                          Minimum="0" Maximum="100" Visibility="Collapsed"/>

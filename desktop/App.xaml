@@ -42,6 +42,13 @@
         <SolidColorBrush x:Key="LwHerkunftAnwalt" Color="#3b7dd8"/>
         <SolidColorBrush x:Key="LwHerkunftAnwaltHintergrund" Color="#0f1c30"/>
         <SolidColorBrush x:Key="LwHerkunftAnwaltText" Color="#79b8ff"/>
+        <SolidColorBrush x:Key="LwStatusBadgeText" Color="#0d1117"/>
+        <SolidColorBrush x:Key="LwPrimary" Color="#1f6feb"/>
+        <SolidColorBrush x:Key="LwPrimaryHover" Color="#388bfd"/>
+        <SolidColorBrush x:Key="LwPrimaryPressed" Color="#1158c7"/>
+        <SolidColorBrush x:Key="LwDisabledText" Color="#6e7681"/>
+        <SolidColorBrush x:Key="LwAnonymisiertHintergrund" Color="#1a1608"/>
+        <SolidColorBrush x:Key="LwAnonymisiertText" Color="#ffffff"/>
 
         <!-- Dark-Theme ComboBox: die Standard-Vorlage ignoriert Background/Foreground
              für Popup und Chrome weitgehend — ohne eigenes ControlTemplate wirkt sie

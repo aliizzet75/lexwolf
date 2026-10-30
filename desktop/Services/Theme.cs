@@ -27,7 +27,14 @@ public readonly record struct Theme(
     string HerkunftLexWolfText,
     string HerkunftAnwalt,
     string HerkunftAnwaltHintergrund,
-    string HerkunftAnwaltText)
+    string HerkunftAnwaltText,
+    string StatusBadgeText,
+    string Primary,
+    string PrimaryHover,
+    string PrimaryPressed,
+    string DisabledText,
+    string AnonymisiertHintergrund,
+    string AnonymisiertText)
 {
     public static Theme Aus(bool dunkel) => dunkel
         ? new Theme(
@@ -51,7 +58,14 @@ public readonly record struct Theme(
             HerkunftLexWolfText: "#e8a838",
             HerkunftAnwalt: "#3b7dd8",
             HerkunftAnwaltHintergrund: "#0f1c30",
-            HerkunftAnwaltText: "#79b8ff")
+            HerkunftAnwaltText: "#79b8ff",
+            StatusBadgeText: "#0d1117",
+            Primary: "#1f6feb",
+            PrimaryHover: "#388bfd",
+            PrimaryPressed: "#1158c7",
+            DisabledText: "#6e7681",
+            AnonymisiertHintergrund: "#1a1608",
+            AnonymisiertText: "#ffffff")
         : new Theme(
             Hintergrund: "#ffffff",
             Vordergrund: "#1b1f24",
@@ -73,5 +87,12 @@ public readonly record struct Theme(
             HerkunftLexWolfText: "#7a4f08",
             HerkunftAnwalt: "#0550ae",
             HerkunftAnwaltHintergrund: "#ddf4ff",
-            HerkunftAnwaltText: "#0969da");
+            HerkunftAnwaltText: "#0969da",
+            StatusBadgeText: "#0d1117",
+            Primary: "#0969da",
+            PrimaryHover: "#4097ff",
+            PrimaryPressed: "#0757bd",
+            DisabledText: "#59636e",
+            AnonymisiertHintergrund: "#1a1608",
+            AnonymisiertText: "#ffffff");
 }

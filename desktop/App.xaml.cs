@@ -47,6 +47,13 @@ public partial class App : WpfApplication
         Current.Resources["LwHerkunftAnwalt"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftAnwalt));
         Current.Resources["LwHerkunftAnwaltHintergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftAnwaltHintergrund));
         Current.Resources["LwHerkunftAnwaltText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.HerkunftAnwaltText));
+        Current.Resources["LwStatusBadgeText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.StatusBadgeText));
+        Current.Resources["LwPrimary"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.Primary));
+        Current.Resources["LwPrimaryHover"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.PrimaryHover));
+        Current.Resources["LwPrimaryPressed"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.PrimaryPressed));
+        Current.Resources["LwDisabledText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.DisabledText));
+        Current.Resources["LwAnonymisiertHintergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.AnonymisiertHintergrund));
+        Current.Resources["LwAnonymisiertText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.AnonymisiertText));
     }
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)

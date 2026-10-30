@@ -4,30 +4,30 @@
         Title="Dokumente für diese Frage auswählen"
         Icon="/Assets/lexwolf.ico"
         Width="560" Height="480" MinWidth="420" MinHeight="320"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
     <Window.Resources>
         <Style x:Key="LwHeading" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
         <Style x:Key="LwHinweis" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#8b949e"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwMuted}"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
         <Style x:Key="LwCheckBox" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style x:Key="LwButton" TargetType="Button">
-            <Setter Property="Background" Value="#21262d"/>
-            <Setter Property="Foreground" Value="#c9d1d9"/>
-            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Background" Value="{DynamicResource LwRaised}"/>
+            <Setter Property="Foreground" Value="{DynamicResource LwText}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource LwBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,5"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -38,7 +38,7 @@
         </Style>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </Window.Resources>
-    <Border Padding="16" Background="#0d1117">
+    <Border Padding="16" Background="{DynamicResource LwBg}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -57,7 +57,7 @@
                 <TextBlock x:Name="ZaehlerText" Style="{StaticResource LwHinweis}" VerticalAlignment="Center"/>
             </DockPanel>
 
-            <Border Grid.Row="2" Background="#161b22" BorderBrush="#30363d" BorderThickness="1" Padding="10,8">
+            <Border Grid.Row="2" Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" Padding="10,8">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <ItemsControl x:Name="DokumenteListe">
@@ -70,8 +70,8 @@
                                         <CheckBox IsChecked="{Binding Ausgewaehlt}" Style="{StaticResource LwCheckBox}"
                                                   VerticalContentAlignment="Top" Click="OnDokumentGeaendert">
                                             <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
-                                                <TextBlock FontSize="12" Foreground="#c9d1d9" Text="{Binding Titel}"/>
-                                                <TextBlock FontSize="12" Foreground="#8b949e" FontStyle="Italic"
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource LwText}" Text="{Binding Titel}"/>
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource LwMuted}" FontStyle="Italic"
                                                            Text=" — Vorlage"
                                                            Visibility="{Binding IstVorlage, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                             </StackPanel>

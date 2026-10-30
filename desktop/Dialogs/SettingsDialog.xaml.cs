@@ -228,7 +228,7 @@ public partial class SettingsDialog : Window
     {
         KiUebernehmenBtn.IsEnabled = false;
         KiStatusLabel.Text = "Wird übernommen …";
-        KiStatusLabel.Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e));
+        KiStatusLabel.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwMuted"];
         try
         {
             var modus = (KiModusBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "localhost";

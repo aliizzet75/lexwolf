@@ -4,12 +4,12 @@
         Title="LexWolf — Einwilligung zur Gesprächsaufzeichnung"
         Icon="/Assets/lexwolf.ico"
         Width="520" Height="320" MinWidth="440" MinHeight="280"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="NoResize">
     <DockPanel>
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="🔒 Einwilligung zur Gesprächsaufzeichnung" Style="{StaticResource LwDialogTitel}"/>
                 <TextBlock x:Name="UntertitelText" Style="{StaticResource LwDialogUntertitel}"/>
@@ -26,7 +26,7 @@
         </Border>
 
         <StackPanel Margin="24,16,24,8">
-            <TextBlock x:Name="HinweisText" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3" TextWrapping="Wrap"/>
+            <TextBlock x:Name="HinweisText" Style="{StaticResource LwFliesstext}" Foreground="{DynamicResource LwTextStrong}" TextWrapping="Wrap"/>
         </StackPanel>
     </DockPanel>
 </Window>

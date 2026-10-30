@@ -314,7 +314,7 @@ public partial class SchriftsatzDialog : Window
     /// eigene Farbe (Amber statt Grün/Rot), damit sie sich klar von den Suchschritten abhebt.</summary>
     private UIElement BuildAnonymisiertRow(string text)
     {
-        var amber = new SolidColorBrush(Color.FromRgb(0xe8, 0xa8, 0x38));
+        var amber = (SolidColorBrush)System.Windows.Application.Current.Resources["LwAkzent"];
 
         var header = new StackPanel { Orientation = Orientation.Horizontal };
         header.Children.Add(new TextBlock { Text = "🔒", Foreground = amber, FontSize = 15, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
@@ -322,11 +322,11 @@ public partial class SchriftsatzDialog : Window
 
         var body = new StackPanel();
         body.Children.Add(header);
-        body.Children.Add(new TextBlock { Text = text, Foreground = System.Windows.Media.Brushes.White, FontSize = 13, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(18, 6, 0, 0) });
+        body.Children.Add(new TextBlock { Text = text, Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwAnonymisiertText"], FontSize = 13, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(18, 6, 0, 0) });
 
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x1a, 0x16, 0x08)),
+            Background = (SolidColorBrush)System.Windows.Application.Current.Resources["LwAnonymisiertHintergrund"],
             BorderBrush = amber,
             BorderThickness = new Thickness(2),
             CornerRadius = new CornerRadius(6),
@@ -355,19 +355,19 @@ public partial class SchriftsatzDialog : Window
 
         var header = new StackPanel { Orientation = Orientation.Horizontal };
         header.Children.Add(new TextBlock { Text = icon, Foreground = brush, FontSize = 14, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
-        header.Children.Add(new TextBlock { Text = quelle, Foreground = System.Windows.Media.Brushes.White, FontSize = 13, FontWeight = FontWeights.SemiBold });
+        header.Children.Add(new TextBlock { Text = quelle, Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwTextStrong"], FontSize = 13, FontWeight = FontWeights.SemiBold });
         if (confidence.HasValue)
             header.Children.Add(new TextBlock { Text = $"  {confidence.Value * 100:F0}%", Foreground = brush, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) });
 
         var body = new StackPanel();
         body.Children.Add(header);
         if (!string.IsNullOrWhiteSpace(text))
-            body.Children.Add(new TextBlock { Text = text, Foreground = new SolidColorBrush(Color.FromRgb(0xa8, 0xb3, 0xbd)), FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(20, 3, 0, 0) });
+            body.Children.Add(new TextBlock { Text = text, Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwMuted"], FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(20, 3, 0, 0) });
 
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x0d, 0x11, 0x17)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0x30, 0x36, 0x3d)),
+            Background = (SolidColorBrush)System.Windows.Application.Current.Resources["LwBg"],
+            BorderBrush = (SolidColorBrush)System.Windows.Application.Current.Resources["LwBorder"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(10, 7, 10, 7),

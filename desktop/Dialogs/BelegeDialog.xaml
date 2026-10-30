@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="680" Height="560"
         MinWidth="440" MinHeight="320"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -19,8 +19,8 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,10">
-            <TextBlock Text="📋 Belegprüfung" Foreground="#e6edf3" FontSize="15" FontWeight="SemiBold"/>
-            <TextBlock x:Name="UntertitelText" Foreground="#8b949e" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="📋 Belegprüfung" Foreground="{DynamicResource LwTextStrong}" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock x:Name="UntertitelText" Foreground="{DynamicResource LwMuted}" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,0,0,10">
@@ -41,7 +41,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="8">
+        <Border Grid.Row="2" Background="{DynamicResource LwPanel}" BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" CornerRadius="8">
             <ScrollViewer x:Name="RechercheScroll" VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="BelegeListe" Margin="10"/>
             </ScrollViewer>
@@ -49,8 +49,8 @@
 
         <Button Grid.Row="3" x:Name="CloseBtn" Content="Schließen"
                 HorizontalAlignment="Right" Margin="0,12,0,0"
-                Background="Transparent" Foreground="#8b949e"
-                BorderBrush="#30363d" BorderThickness="1" Padding="16,8"
+                Background="Transparent" Foreground="{DynamicResource LwMuted}"
+                BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" Padding="16,8"
                 Cursor="Hand" Click="OnClose"/>
     </Grid>
 </Window>

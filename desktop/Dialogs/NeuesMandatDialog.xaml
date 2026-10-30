@@ -5,7 +5,7 @@
         Title="LexWolf — Neues Mandat"
         Icon="/Assets/lexwolf.ico"
         Width="900" Height="820" MinWidth="700" MinHeight="560"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -20,7 +20,7 @@
 
     <DockPanel>
         <!-- Kopf -->
-        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="#30363d" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="24,18,24,14" BorderBrush="{DynamicResource LwBorder}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="Neues Mandat" Style="{StaticResource LwDialogTitel}"/>
                 <TextBlock Style="{StaticResource LwHinweis}" Margin="0,4,0,0"
@@ -61,7 +61,7 @@
                                 <DockPanel>
                                     <Button DockPanel.Dock="Right" Content="Bestehende Akte öffnen" Style="{StaticResource LwSmallButton}"
                                             Click="OnBestehendeOeffnen" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                    <TextBlock x:Name="BestehendText" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3"
+                                    <TextBlock x:Name="BestehendText" Style="{StaticResource LwFliesstext}" Foreground="{DynamicResource LwTextStrong}"
                                                VerticalAlignment="Center"/>
                                 </DockPanel>
                             </Border>
@@ -121,7 +121,7 @@
                                 <StackPanel>
                                     <TextBlock Text="⚠ Mögliche Interessenkollision (§ 43a Abs. 4 BRAO)" Foreground="#f85149"
                                                FontWeight="SemiBold" FontSize="{DynamicResource LwSchriftGross}" TextWrapping="Wrap"/>
-                                    <TextBlock x:Name="KollisionText" Style="{StaticResource LwFliesstext}" Foreground="#e6edf3" Margin="0,6,0,8"/>
+                                    <TextBlock x:Name="KollisionText" Style="{StaticResource LwFliesstext}" Foreground="{DynamicResource LwTextStrong}" Margin="0,6,0,8"/>
                                     <CheckBox x:Name="KollisionGeprueftBox" Style="{StaticResource LwCheckBox}" Click="OnEingabeGeaendert"
                                               Content="Geprüft — es liegt keine Interessenkollision vor"/>
                                 </StackPanel>

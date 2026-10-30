@@ -4,7 +4,7 @@
         Title="LexWolf — E-Mail-Postfach verbinden"
         Icon="/Assets/lexwolf.ico"
         Width="560" Height="640" MinWidth="480" MinHeight="560"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
@@ -16,7 +16,7 @@
         </Grid.RowDefinitions>
         <StackPanel>
             <TextBlock Text="E-Mail-Postfach verbinden" Style="{StaticResource LwHeading}"/>
-            <TextBlock Foreground="#8b949e" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+            <TextBlock Foreground="{DynamicResource LwMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
                        Text="LexWolf ruft neue Mails regelmäßig ab, ordnet sie dem passenden Mandanten zu (Aktenzeichen, Namen, bekannte Absender) und legt sie mit Anhängen in der Akte ab. Im Postfach wird nichts verändert — Mails werden nur gelesen."/>
         </StackPanel>
 
@@ -37,9 +37,9 @@
                 <TextBlock Text="Benutzername (meist die E-Mail-Adresse)" Style="{StaticResource LwLabel}"/>
                 <TextBox x:Name="BenutzerBox" Style="{StaticResource LwTextBox}"/>
                 <TextBlock Text="Passwort" Style="{StaticResource LwLabel}"/>
-                <PasswordBox x:Name="PasswortBox" Background="#0d1117" Foreground="#c9d1d9" BorderBrush="#30363d"
+                <PasswordBox x:Name="PasswortBox" Background="{DynamicResource LwBg}" Foreground="{DynamicResource LwText}" BorderBrush="{DynamicResource LwBorder}"
                              BorderThickness="1" Padding="6,4" FontSize="12"/>
-                <TextBlock x:Name="PasswortHinweis" Foreground="#8b949e" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"
+                <TextBlock x:Name="PasswortHinweis" Foreground="{DynamicResource LwMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"
                            Text="Wird verschlüsselt nur für Ihren Windows-Benutzer gespeichert. Leer lassen = bisheriges Passwort behalten."/>
                 <TextBlock Text="Ordner" Style="{StaticResource LwLabel}"/>
                 <TextBox x:Name="OrdnerBox" Style="{StaticResource LwTextBox}" Text="INBOX"/>
@@ -51,7 +51,7 @@
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Margin="0,14,0,0">
-            <TextBlock x:Name="StatusText" Foreground="#8b949e" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
+            <TextBlock x:Name="StatusText" Foreground="{DynamicResource LwMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="TestBtn" Content="Verbindung testen" Style="{StaticResource LwButton}" Click="OnTesten"/>
                 <Button Content="Speichern" Style="{StaticResource LwPrimaryButton}" Margin="8,0,0,0" Click="OnSpeichern" IsDefault="True"/>

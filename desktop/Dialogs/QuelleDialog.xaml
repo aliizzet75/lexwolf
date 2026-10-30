@@ -5,7 +5,7 @@
         Icon="/Assets/lexwolf.ico"
         Width="640" Height="520"
         MinWidth="420" MinHeight="300"
-        Background="#0d1117"
+        Background="{DynamicResource LwBg}"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
 
@@ -21,15 +21,15 @@
 
         <TextBox Grid.Row="1" x:Name="TextBox" IsReadOnly="True" TextWrapping="Wrap"
                  AcceptsReturn="True" FontSize="13"
-                 Background="#161b22" Foreground="#c9d1d9" BorderBrush="#30363d"
+                 Background="{DynamicResource LwPanel}" Foreground="{DynamicResource LwText}" BorderBrush="{DynamicResource LwBorder}"
                  BorderThickness="1" Padding="10"
-                 SelectionBrush="#1f6feb"
+                 SelectionBrush="{DynamicResource LwPrimary}"
                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
 
         <Button Grid.Row="2" x:Name="CloseBtn" Content="Schließen"
                 HorizontalAlignment="Right" Margin="0,16,0,0"
-                Background="Transparent" Foreground="#8b949e"
-                BorderBrush="#30363d" BorderThickness="1" Padding="16,8"
+                Background="Transparent" Foreground="{DynamicResource LwMuted}"
+                BorderBrush="{DynamicResource LwBorder}" BorderThickness="1" Padding="16,8"
                 Cursor="Hand" Click="OnClose"/>
     </Grid>
 </Window>

@@ -30,7 +30,7 @@ public partial class BelegeDialog : Window
             BelegeListe.Children.Add(new TextBlock
             {
                 Text = "Keine Zitate im Entwurf.",
-                Foreground = new SolidColorBrush(Color.FromRgb(0x8b, 0x94, 0x9e)),
+                Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwMuted"],
                 FontSize = 13,
                 Margin = new Thickness(0, 6, 0, 0)
             });
@@ -56,7 +56,7 @@ public partial class BelegeDialog : Window
 
         var header = new StackPanel { Orientation = Orientation.Horizontal };
         header.Children.Add(new TextBlock { Text = symbol, Foreground = brush, FontSize = 15, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 6, 0) });
-        header.Children.Add(new TextBlock { Text = beleg.Zitat, Foreground = Brushes.White, FontSize = 13, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+        header.Children.Add(new TextBlock { Text = beleg.Zitat, Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["LwTextStrong"], FontSize = 13, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
 
         var body = new StackPanel();
         body.Children.Add(header);
@@ -81,8 +81,8 @@ public partial class BelegeDialog : Window
 
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x0d, 0x11, 0x17)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0x30, 0x36, 0x3d)),
+            Background = (SolidColorBrush)System.Windows.Application.Current.Resources["LwBg"],
+            BorderBrush = (SolidColorBrush)System.Windows.Application.Current.Resources["LwBorder"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(10, 7, 10, 7),
