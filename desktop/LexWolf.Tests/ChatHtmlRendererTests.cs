@@ -102,4 +102,28 @@ public class ChatHtmlRendererTests
 
         Assert.DoesNotContain("<script>", html);
     }
+
+    [Theory]
+    [InlineData(true, "#0d1117")]
+    [InlineData(false, "#ffffff")]
+    public void GetChatCss_UsesThemeBackground(bool dunkel, string erwarteteBg)
+    {
+        ChatHtmlRenderer.SetTheme(dunkel);
+        var css = ChatHtmlRenderer.GetChatCss();
+
+        Assert.Contains($"--lw-bg: {erwarteteBg}", css);
+        Assert.Contains("background: var(--lw-bg)", css);
+    }
+
+    [Theory]
+    [InlineData(true, "#1f6feb")]
+    [InlineData(false, "#0969da")]
+    public void GetChatCss_UsesThemePrimaryForUserBubble(bool dunkel, string erwartetePrimary)
+    {
+        ChatHtmlRenderer.SetTheme(dunkel);
+        var css = ChatHtmlRenderer.GetChatCss();
+
+        Assert.Contains($"--lw-primary: {erwartetePrimary}", css);
+        Assert.Contains("background: var(--lw-primary)", css);
+    }
 }

@@ -151,6 +151,7 @@ public partial class MainWindow : Window
         ChatHtmlRenderer.SetOutputFont(_settings.ChatOutputFont, _settings.ChatOutputFontSize);
         App.SetzeSchriftgroesse(_settings.ChatOutputFontSize);
         App.SetzeTheme(_settings.DunkelModus);
+        App.ThemeChanged += (_, _) => RefreshChatWebView();
         _diktat.LiveTextChanged += OnDiktatLiveText;
         // App-Hintergrund (Fenster verliert Fokus, z.B. Alt-Tab) löst ebenfalls eine
         // Hintergrund-Zusammenfassung aus, nicht nur der Mandant-Wechsel — sonst

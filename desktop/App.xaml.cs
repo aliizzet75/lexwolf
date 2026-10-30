@@ -1,3 +1,4 @@
+using System;
 using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
 using WpfApplication = System.Windows.Application;
@@ -16,6 +17,8 @@ public partial class App : WpfApplication
         Current.Resources["LwSchriftGross"] = s.Gross;
         Current.Resources["LwSchriftTitel"] = s.Titel;
     }
+
+    public static event EventHandler? ThemeChanged;
 
     /// <summary>Setzt die Theme-Kernfarben der Oberfläche; alles mit DynamicResource passt sich sofort an.</summary>
     public static void SetzeTheme(bool dunkel)
@@ -54,6 +57,9 @@ public partial class App : WpfApplication
         Current.Resources["LwDisabledText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.DisabledText));
         Current.Resources["LwAnonymisiertHintergrund"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.AnonymisiertHintergrund));
         Current.Resources["LwAnonymisiertText"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(t.AnonymisiertText));
+
+        LexWolf.Services.ChatHtmlRenderer.SetTheme(dunkel);
+        ThemeChanged?.Invoke(null, EventArgs.Empty);
     }
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)
