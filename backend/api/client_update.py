@@ -173,6 +173,10 @@ VERSION_HISTORY: list[tuple[str, str]] = [
         "0.85.0",
         "Zeitleiste zeigt nur noch Ereignisse aus Dokumenten, die der Anwalt bewusst in die Akte uebernommen hat.",
     ),
+    (
+        "0.86.0",
+        "Zusammenfassung: Fehlschlag wird nicht mehr dauerhaft gecacht, Doppelklick-Schutz. Menue: Auf Update pruefen hinzugefuegt.",
+    ),
 ]
 
 LATEST_VERSION = VERSION_HISTORY[-1][0]
